@@ -17,7 +17,7 @@ CROWDED_FOLDER = 24
 
 # Organize each extension group into a shared folder
 FILE_TYPES = {
-    "media" : ['.jpg', '.png', '.gi',f '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4'],
+    "media" : ['.jpg', '.png', '.gif', '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4'],
     "programming" : ['.py', '.ahk', '.json', '.ini', '.csv', '.nb', '.cdf', '.apk'],
     "syslinks" : ['.lnk', '.url'],
     "executables" :[' .exe', '.msi'],
@@ -110,7 +110,7 @@ file_groups = {}
 # file_groups["media"] will contain a list of all pictures in CWD
 # file_groups["zip files"] contain a list of all compressed archives in CWD
 # etc
-.for file_type, extension_list in FILE_TYPES.items():
+for file_type, extension_list in FILE_TYPES.items():
     extension_pattern = re.compile("("+"|".join(extension_list)+")$")
     file_groups[file_type] = [file_name for file_name in all_files if re.search(extension_pattern, file_name)]
     for file in file_groups[file_type]:
