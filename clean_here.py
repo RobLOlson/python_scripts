@@ -41,11 +41,11 @@ def handle_files(files, folder="miscellaneous", month=False):
         if file_size > 150_000_000:
             target_folder = os.path.join("Large_Files", str(f_year))
         else:
-            target_folder = os.path.join(folder, str(f_year))
+            target_folder = os.path.join(folder, f"{folder} {str(f_year)}")
 
         if month:
             f_month = MONTHS[last_modified.month]
-            target_folder = os.path.join(target_folder, f_month)
+            target_folder = os.path.join(target_folder, f"{folder} {f_month} {f_year}")
 
         os.makedirs(target_folder, exist_ok=True)
 
@@ -135,7 +135,7 @@ for file_type, file_group in file_groups.items():
     handle_files(file_group, file_type)
 
     # Each file-type-folder should have one or more year folders (e.g., 'media/2020')
-    year_folders = glob.glob(file_type+"/????")
+    year_folders = glob.glob(file_type+"/* ????")
 
     # Check year folders for crowdedness
     for year in year_folders:
@@ -149,3 +149,5 @@ for file_type, file_group in file_groups.items():
 for target_folder in FILE_TYPES.keys():
     if target_folder != "programming":
         remove_empty_dirs(os.path.join(root, target_folder))
+
+# END OF MAIN()
