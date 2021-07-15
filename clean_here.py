@@ -89,7 +89,7 @@ def remove_empty_dirs(path):
 
 # MAIN()
 
-root = input(f"Clean current working directory?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
+root = input(f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
 
 # Allows user to use environment variables to set execution directory
 if root and root[0] == '$':
