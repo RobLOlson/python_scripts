@@ -17,7 +17,7 @@ CROWDED_FOLDER = 24
 
 # Organize each extension group into a shared folder
 FILE_TYPES = {
-    "media" : ['.jpg', '.png', '.gif', '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4', '.tif', '.psf'],
+    "media" : ['.jpg', '.png', '.gif', '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4', '.tif', '.psd', '.skba', '.lip'],
     "programming" : ['.py', '.ahk', '.json', '.ini', '.csv', '.nb', '.cdf', '.apk'],
     "syslinks" : ['.lnk', '.url'],
     "executables" :[' .exe', '.msi'],
