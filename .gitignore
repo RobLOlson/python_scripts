@@ -1,3 +1,7 @@
 *
 !.gitignore
 !clean_here.py
+!textframe.py
+!hierarchy.py
+!testtextframe.py
+!testhierarchy.py
