@@ -140,8 +140,10 @@ for file_type, file_group in file_groups.items():
     # Check year folders for crowdedness
     for year in year_folders:
         sorted_files = glob.glob(year+"/*.*")
-        if len(sorted_files) > CROWDED_FOLDER:
-            choice = input(f"{year} has {len(sorted_files)} files.  Sort by month (y/n)?\n{PROMPT}")
+        pre_sorted_files = glob.glob(year+"/*/*.*")
+
+        if len(sorted_files) and (len(sorted_files) + len(pre_sorted_files) > CROWDED_FOLDER):
+            choice = input(f"{year} has {len(sorted_files)} top-level files and {len(pre_sorted_files)} already sorted files.  Sort by month (y/n)?\n{PROMPT}")
             if choice in ['y', 'yes']:
                 handle_files(sorted_files, file_type, month=True)
 
