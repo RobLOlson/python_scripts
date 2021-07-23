@@ -50,7 +50,7 @@ def handle_files(files, folder="miscellaneous", month=False):
         os.makedirs(target_folder, exist_ok=True)
 
         while choice not in ['y', 'yes', 'n', 'no', 'a', 'all', 'd', 'del']:
-            choice = input(f"mv '{file}' {target_folder}\n(y)es/(n)o/yes_to_(a)ll/(d)el?\n{PROMPT}")
+            choice = input(f"mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n(y)es/(n)o/yes_to_(a)ll/(d)el?\n{PROMPT}")
 
         if choice in ['y', 'yes']:
             shutil.move(file, target_folder)
