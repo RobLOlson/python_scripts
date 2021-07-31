@@ -19,11 +19,11 @@ This module also contains an assortment of niche helper functions.
 
 TODO:  Finish my Frame class.  Debug my table function.
 
-Rob O.
-Last Updated: 8/30/2014
+Rob Olson
 """
 
-import re, operator, math, hierarchy
+
+import re, operator, math, hierarchy, sys
 
 try:
     from testtextframe import *
@@ -1917,15 +1917,20 @@ Returns the height (number of lines) in a multi-line string."""
     
     return len(multi_line_string.split("\n"))
 
-if __name__ == "__main__":
+def main():
     import unittest, doctest
-    p= Panel(['r',['t'],['b']])
+    # p= Panel(['r',['t'],['b']])
     
-    doctest.testmod()
-    unittest.main()
+    args = sys.argv[1:]
+    print(frame(" ".join((str(arg) for arg in args))))
+    # doctest.testmod()
+    # unittest.main()
 
-    print(frame("hello world"))
+    # print(frame("hello world"))
 
-p = Panel("root")
-p.content = "??"
-p.split()
+# p = Panel("root")
+# p.content = "??"
+# p.split()
+
+if __name__ == "__main__":
+    main()
