@@ -88,68 +88,71 @@ def remove_empty_dirs(path):
 
 
 # MAIN()
+def main():
+    root = input(f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
 
-root = input(f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
+    # Allows user to use environment variables to set execution directory
+    if root and root[0] == '$':
+        root = os.environ[root[1:]]
 
-# Allows user to use environment variables to set execution directory
-if root and root[0] == '$':
-    root = os.environ[root[1:]]
+    root = os.path.normpath(root)
 
-root = os.path.normpath(root)
+    os.chdir(root)
 
-os.chdir(root)
+    all_files = glob.glob("*.*")
 
-all_files = glob.glob("*.*")
-
-file_groups = {}
+    file_groups = {}
 
 
-# put all files with same extension group into one list
-# and put that list in the file_groups dictionary
-# FOR EXAMPLE
-# file_groups["media"] will contain a list of all pictures in CWD
-# file_groups["zip files"] contain a list of all compressed archives in CWD
-# etc
-for file_type, extension_list in FILE_TYPES.items():
-    extension_pattern = re.compile("("+"|".join(extension_list)+")$")
-    file_groups[file_type] = [file_name for file_name in all_files if re.search(extension_pattern, file_name)]
-    for file in file_groups[file_type]:
-        all_files.remove(file)
+    # put all files with same extension group into one list
+    # and put that list in the file_groups dictionary
+    # FOR EXAMPLE
+    # file_groups["media"] will contain a list of all pictures in CWD
+    # file_groups["zip files"] contain a list of all compressed archives in CWD
+    # etc
+    for file_type, extension_list in FILE_TYPES.items():
+        extension_pattern = re.compile("("+"|".join(extension_list)+")$")
+        file_groups[file_type] = [file_name for file_name in all_files if re.search(extension_pattern, file_name)]
+        for file in file_groups[file_type]:
+            all_files.remove(file)
 
-    file_groups["misc"] = all_files
+        file_groups["misc"] = all_files
 
-# Do not target THIS file
-if __file__ in file_groups["programming"]:
-    file_groups["programming"].remove(__file__)
+    # Do not target THIS file
+    if __file__ in file_groups["programming"]:
+        file_groups["programming"].remove(__file__)
 
-# Do not target THIS file
-if os.path.normpath(sys.argv[0]) in file_groups["programming"]:
-    file_groups["programming"].remove(os.path.normpath(sys.argv[0]))
+    # Do not target THIS file
+    if os.path.normpath(sys.argv[0]) in file_groups["programming"]:
+        file_groups["programming"].remove(os.path.normpath(sys.argv[0]))
 
-file_count = sum([len(file_group) for file_type, file_group in file_groups.items()])
+    file_count = sum([len(file_group) for file_type, file_group in file_groups.items()])
 
-print(f"({file_count}) files/folders to move.\n")
+    print(f"({file_count}) files/folders to move.\n")
 
-# Handles all files in file_groups
-for file_type, file_group in file_groups.items():
-    handle_files(file_group, file_type)
+    # Handles all files in file_groups
+    for file_type, file_group in file_groups.items():
+        handle_files(file_group, file_type)
 
-    # Each file-type-folder should have one or more year folders (e.g., 'media/2020')
-    year_folders = glob.glob(file_type+"/* ????")
+        # Each file-type-folder should have one or more year folders (e.g., 'media/2020')
+        year_folders = glob.glob(file_type+"/* ????")
 
-    # Check year folders for crowdedness
-    for year in year_folders:
-        sorted_files = glob.glob(year+"/*.*")
-        pre_sorted_files = glob.glob(year+"/*/*.*")
+        # Check year folders for crowdedness
+        for year in year_folders:
+            sorted_files = glob.glob(year+"/*.*")
+            pre_sorted_files = glob.glob(year+"/*/*.*")
 
-        if len(sorted_files) and (len(sorted_files) + len(pre_sorted_files) > CROWDED_FOLDER):
-            choice = input(f"{year} has {len(sorted_files)} top-level files and {len(pre_sorted_files)} already sorted files.  Sort by month (y/n)?\n{PROMPT}")
-            if choice in ['y', 'yes']:
-                handle_files(sorted_files, file_type, month=True)
+            if len(sorted_files) and (len(sorted_files) + len(pre_sorted_files) > CROWDED_FOLDER):
+                choice = input(f"{year} has {len(sorted_files)} top-level files and {len(pre_sorted_files)} already sorted files.  Sort by month (y/n)?\n{PROMPT}")
+                if choice in ['y', 'yes']:
+                    handle_files(sorted_files, file_type, month=True)
 
-# Removes empty folders, except in programming because of git clone
-for target_folder in FILE_TYPES.keys():
-    if target_folder != "programming":
-        remove_empty_dirs(os.path.join(root, target_folder))
+    # Removes empty folders, except in programming because of git clone
+    for target_folder in FILE_TYPES.keys():
+        if target_folder != "programming":
+            remove_empty_dirs(os.path.join(root, target_folder))
 
 # END OF MAIN()
+
+if __name__ == "__main__":
+    main()
