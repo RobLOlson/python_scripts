@@ -11,6 +11,8 @@ import shutil
 import pdb
 import sys
 
+from pathlib import Path
+
 
 # Number of files in a folder that prompts more sorting
 CROWDED_FOLDER = 24
@@ -34,6 +36,8 @@ def handle_files(files, folder="miscellaneous", month=False):
 
     for file in files:
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
+        f_day = last_modified.day
+        f_month = MONTHS[last_modified.month]
 
         file_size = os.stat(file).st_size
 
@@ -44,8 +48,7 @@ def handle_files(files, folder="miscellaneous", month=False):
             target_folder = os.path.join(folder, f"{folder} {str(f_year)}")
 
         if month:
-            f_month = MONTHS[last_modified.month]
-            target_folder = os.path.join(target_folder, f"{folder} {f_month} {f_year}")
+            target_folder = os.path.join(target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}")
 
         os.makedirs(target_folder, exist_ok=True)
 
@@ -53,8 +56,16 @@ def handle_files(files, folder="miscellaneous", month=False):
             choice = input(f"mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n(y)es/(n)o/yes_to_(a)ll/(d)el?\n{PROMPT}")
 
         if choice in ['y', 'yes']:
-            shutil.move(file, target_folder)
-            choice = ''
+            try:
+                shutil.move(file, target_folder)
+
+            # File of Same Name Has Already Been Moved To Folder
+            except shutil.Error as e:
+                print(f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n")
+                # breakpoint()
+                # os.rename(file, target_folder + "\\COPY " + file)
+                Path(file).rename(target_folder+f"\\{Path(file).stem} {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} ({int((datetime.datetime.now() - datetime.datetime.min).total_seconds())}) COPY{Path(file).suffix}")
+                choice = ''
 
         elif choice in ['a', 'all']:
             shutil.move(file, target_folder)
