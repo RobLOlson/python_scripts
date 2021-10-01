@@ -5,14 +5,15 @@
 
 import os
 import glob
-import re
 import datetime
 import shutil
 import pdb
 import sys
+import rich.traceback
 
 from pathlib import Path
 
+rich.traceback.install(show_locals=True)
 
 # Number of files in a folder that prompts more sorting
 CROWDED_FOLDER = 24
@@ -60,7 +61,7 @@ def handle_files(files, folder="miscellaneous", month=False):
                 shutil.move(file, target_folder)
 
             # File of Same Name Has Already Been Moved To Folder
-            except shutil.Error as e:
+            except shutil.Error:
                 print(f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n")
                 # breakpoint()
                 # os.rename(file, target_folder + "\\COPY " + file)
@@ -167,3 +168,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    datetime.datetime
