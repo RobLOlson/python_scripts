@@ -17,7 +17,10 @@ from pathlib import Path
 rich.traceback.install(show_locals=True)
 
 # Number of files in a folder that prompts more sorting
-CROWDED_FOLDER = 24
+CROWDED_FOLDER = int(os.getenv("CROWDED_FOLDER"))
+if not CROWDED_FOLDER:
+    os.putenv("CROWDED_FOLDER", "24")
+    CROWDED_FOLDER = 24
 
 # Organize each extension group into a shared folder
 FILE_TYPES = {
