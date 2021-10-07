@@ -1,1 +1,1 @@
-clone this into your main programming folder
+clone this into your python installation's Lib folder
