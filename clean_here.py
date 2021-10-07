@@ -28,10 +28,11 @@ FILE_TYPES = {
     "media" : ['.jpg', '.png', '.gif', '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4', '.tif', '.psd', '.skba', '.lip'],
     "programming" : ['.py', '.ahk', '.json', '.ini', '.csv', '.nb', '.cdf', '.apk'],
     "syslinks" : ['.lnk', '.url'],
-    "executables" :[' .exe', '.msi'],
+    "executables" :['.exe', '.msi'],
     "zip files" : ['.zip', '.7z', '.tar', '.rar', '.gz'],
     "misc" : [],
     "delete_me" : [],
+    "Large_Files": [],
 }
 
 MONTHS = [None, "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
