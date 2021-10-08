@@ -89,7 +89,7 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             choice = ''
 
 
-def remove_empty_dir(path):
+def remove_empty_dir(path: str|Path):
     """Remove empty folder."""
 
     try:
@@ -98,7 +98,7 @@ def remove_empty_dir(path):
     except OSError:
         pass
 
-def remove_empty_dirs(path):
+def remove_empty_dirs(path: str|Path):
     """Recursively remove empty folders."""
 
     for trunk, dirnames, filenames in os.walk(path, topdown=False):
