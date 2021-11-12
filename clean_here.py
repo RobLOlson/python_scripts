@@ -13,7 +13,6 @@ import re
 import rich.traceback
 
 from pathlib import Path
-from dataclasses import dataclass, field
 
 rich.traceback.install(show_locals=True)
 
@@ -226,11 +225,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-@dataclass
-class Structure:
-    id: int = field()
-    custom_id: int = field(init=False)
-    elements: list[int] = field(default_factory=list)
-
-    def __post_init__(self):
-            self.custom_id = f'#{self.id}'
