@@ -14,7 +14,7 @@ pretty.install()
 
 rich.traceback.install(show_locals=True)
 
-os.environ["PYTHONBREAKPOINT"] = "ipdb.set_trace"
+os.environ["PYTHONBREAKPOINT"] = "pdbr.set_trace"
 
 def compose(*functions):
     """Compose multiple unary functions.  E.g., compose(plus_2, times_2, minus_2)"""
