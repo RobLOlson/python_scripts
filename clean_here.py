@@ -7,9 +7,10 @@ import os
 import glob
 import datetime
 import shutil
-import pdb
 import sys
 import re
+import argparse
+
 import rich.traceback
 
 from pathlib import Path
@@ -117,7 +118,32 @@ def remove_empty_dirs(path: str|Path):
 
 # MAIN()
 def main():
-    root = input(f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
+
+    # Create the parser
+    my_parser = argparse.ArgumentParser(description='Clean up a folder.')
+
+    # Add the arguments
+    my_parser.add_argument('Path',
+                           metavar='path',
+                           nargs="?",
+                           default=".",
+                           action="store",
+                           type=str,
+                           help='the path to list')
+
+    # Execute the parse_args() method
+    args = my_parser.parse_args()
+
+    breakpoint()
+
+    input_path = args.Path
+
+    if not os.path.isdir(input_path):
+        print('The path specified does not exist')
+        root = input(f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
+
+    else:
+        root = input_path
 
     # Allows user to use environment variables to set execution directory
     if root and root[0] == '$':
@@ -225,3 +251,58 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+
+import argparse
+
+import os
+import sys
+
+# Create the parser
+my_parser = \
+argparse.ArgumentParser(
+                        prog=sys.argv[0],
+                        allow_abbrev=True,
+                        add_help=True,
+                        usage="$(prog)s [-h] path",
+                        description='List the content of a folder',
+                        epilogue='(C) Rob')
+
+# Add the arguments
+my_parser.add_argument('Path',
+                       metavar='path',
+                       nargs='?',
+                       default='.',
+                       action="store",
+                       type=str,
+                       help='the path to list')
+
+my_parser.add_argument('-l',
+                       '--long',
+                       action='store_true',
+                       help='enable long')
+
+my_group = my_parser.add_mutually_exclusive_group(required=True)
+
+my_group.add_argument(
+                      '-v',
+                      '--verbose',
+                      action='store',
+                      type=int,
+                      metavar='LEVEL')
+
+my_group.add_argument('-s',
+                      '--silent',
+                      action='store',
+                      choices=[1,2,3])
+
+# Execute the parse_args() method
+args = my_parser.parse_args()
+
+input_path = args.Path
+
+if not os.path.isdir(input_path):
+    print('The path specified does not exist')
+    sys.exit()
+
+print('\n'.join(os.listdir(input_path)))
