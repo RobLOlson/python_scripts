@@ -18,6 +18,7 @@ from pathlib import Path
 rich.traceback.install(show_locals=True)
 
 DEBUG = False
+HANDLE_MISC = True
 
 # Number of files in a folder that prompts more sorting
 CROWDED_FOLDER = os.getenv("CROWDED_FOLDER")
@@ -76,7 +77,6 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             # File of Same Name Has Already Been Moved To Folder
             except shutil.Error:
                 print(f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n")
-                # breakpoint()
                 # os.rename(file, target_folder + "\\COPY " + file)
                 Path(file).rename(target_folder+f"\\{Path(file).stem} {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} ({int((datetime.datetime.now() - datetime.datetime.min).total_seconds())}) COPY{Path(file).suffix}")
                 choice = ''
@@ -131,10 +131,7 @@ def main():
                            type=str,
                            help='the path to list')
 
-    # Execute the parse_args() method
     args = my_parser.parse_args()
-
-    breakpoint()
 
     input_path = args.Path
 
@@ -170,6 +167,7 @@ def main():
     # file_groups["media"] will contain a list of all pictures in CWD
     # file_groups["zip files"] contain a list of all compressed archives in CWD
     # etc
+
     for file_type, extension_list in FILE_TYPES.items():
         extension_pattern = re.compile("("+"|".join(extension_list)+")$")
         file_groups[file_type] = [file_name for file_name in all_files if re.search(extension_pattern, file_name)]
@@ -177,7 +175,10 @@ def main():
         for file in file_groups[file_type]:
             all_files.remove(file)
 
-        file_groups["misc"] = all_files
+    # Any file-types not explicitly handled are moved to the miscellaneous folder
+    if HANDLE_MISC:
+        file_groups["misc"].extend(all_files)
+        print(f"moved {all_files}")
 
     # Do not target THIS file
     if __file__ in file_groups["programming"]:
@@ -251,58 +252,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-
-import argparse
-
-import os
-import sys
-
-# Create the parser
-my_parser = \
-argparse.ArgumentParser(
-                        prog=sys.argv[0],
-                        allow_abbrev=True,
-                        add_help=True,
-                        usage="$(prog)s [-h] path",
-                        description='List the content of a folder',
-                        epilogue='(C) Rob')
-
-# Add the arguments
-my_parser.add_argument('Path',
-                       metavar='path',
-                       nargs='?',
-                       default='.',
-                       action="store",
-                       type=str,
-                       help='the path to list')
-
-my_parser.add_argument('-l',
-                       '--long',
-                       action='store_true',
-                       help='enable long')
-
-my_group = my_parser.add_mutually_exclusive_group(required=True)
-
-my_group.add_argument(
-                      '-v',
-                      '--verbose',
-                      action='store',
-                      type=int,
-                      metavar='LEVEL')
-
-my_group.add_argument('-s',
-                      '--silent',
-                      action='store',
-                      choices=[1,2,3])
-
-# Execute the parse_args() method
-args = my_parser.parse_args()
-
-input_path = args.Path
-
-if not os.path.isdir(input_path):
-    print('The path specified does not exist')
-    sys.exit()
-
-print('\n'.join(os.listdir(input_path)))
