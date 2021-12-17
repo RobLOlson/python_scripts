@@ -12,6 +12,7 @@ import re
 import argparse
 
 import rich.traceback
+import rich
 
 from pathlib import Path
 
@@ -29,8 +30,8 @@ CROWDED_FOLDER = int(CROWDED_FOLDER)
 
 # Organize each extension group into a shared folder
 FILE_TYPES = {
-    "media" : ['.jpg', '.png', '.gif', '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4', '.tif', '.psd', '.skba', '.lip'],
-    "programming" : ['.py', '.ahk', '.json', '.ini', '.csv', '.nb', '.cdf', '.apk', '.jonsl'],
+    "media" : ['.jpg', '.png', '.gif', '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4', '.tif', '.psd', '.skba', '.lip', '.gdoc', '.doc', '.gslides', '.gsheet', '.docx', '.odt'],
+    "programming" : ['.py', '.ahk', '.json', '.ini', '.csv', '.nb', '.cdf', '.apk', '.jonsl', '.xml'],
     "syslinks" : ['.lnk', '.url'],
     "executables" :['.exe', '.msi'],
     "zip files" : ['.zip', '.7z', '.tar', '.rar', '.gz'],
@@ -64,8 +65,10 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
 
         if month:
             target_folder = os.path.join(target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}")
-
-        os.makedirs(target_folder, exist_ok=True)
+        try:
+            os.makedirs(target_folder, exist_ok=True)
+        except:
+            pass
 
         while choice not in ['y', 'yes', 'n', 'no', 'a', 'all', 'd', 'del']:
             choice = input(f"mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n(y)es/(n)o/yes_to_(a)ll/(d)el?\n{PROMPT}")
@@ -133,18 +136,15 @@ def main():
 
     args = my_parser.parse_args()
 
-    input_path = args.Path
+    CLI_path = args.Path
 
-    if not os.path.isdir(input_path):
-        print('The path specified does not exist')
+    if not os.path.isdir(CLI_path):
+        rich.print(f'[red on black]The specified path ({CLI_path}) does not exist.')
+        exit(1)
         root = input(f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
 
     else:
-        root = input_path
-
-    # Allows user to use environment variables to set execution directory
-    if root and root[0] == '$':
-        root = os.environ[root[1:]]
+        root = CLI_path
 
     root = os.path.normpath(root)
 
@@ -169,14 +169,14 @@ def main():
     # etc
 
     for file_type, extension_list in FILE_TYPES.items():
-        extension_pattern = re.compile("("+"|".join(extension_list)+")$")
+        extension_pattern = re.compile("("+"|".join(extension_list)+")$", re.IGNORECASE)
         file_groups[file_type] = [file_name for file_name in all_files if re.search(extension_pattern, file_name)]
 
         for file in file_groups[file_type]:
             all_files.remove(file)
 
     # Any file-types not explicitly handled are moved to the miscellaneous folder
-    if HANDLE_MISC:
+    if HANDLE_MISC and all_files:
         file_groups["misc"].extend(all_files)
         print(f"moved {all_files}")
 
