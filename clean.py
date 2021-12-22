@@ -10,9 +10,11 @@ import shutil
 import sys
 import re
 import argparse
+import json
 
 import rich.traceback
 import rich
+import yaml
 
 from pathlib import Path
 
@@ -21,30 +23,25 @@ rich.traceback.install(show_locals=True)
 DEBUG = False
 HANDLE_MISC = True
 
+THIS_FILE = Path(sys.argv[0])
+with (open(THIS_FILE.parent / "clean.yaml", "r")) as fp:
+    SETTINGS = yaml.safe_load(fp)
+
 # Number of files in a folder that prompts more sorting
-CROWDED_FOLDER = os.getenv("CROWDED_FOLDER")
-if not CROWDED_FOLDER:
-    os.putenv("CROWDED_FOLDER", "24")
-    CROWDED_FOLDER = 24
-CROWDED_FOLDER = int(CROWDED_FOLDER)
+CROWDED_FOLDER = SETTINGS["CROWDED_FOLDER"]
 
-# Organize each extension group into a shared folder
-FILE_TYPES = {
-    "media" : ['.jpg', '.png', '.gif', '.mp3', '.bit', '.bmp', '.txt', '.pdf', '.leo', '.ogg', '.mp4', '.tif', '.psd', '.skba', '.lip', '.gdoc', '.doc', '.gslides', '.gsheet', '.docx', '.odt'],
-    "programming" : ['.py', '.ahk', '.json', '.ini', '.csv', '.nb', '.cdf', '.apk', '.jonsl', '.xml'],
-    "syslinks" : ['.lnk', '.url'],
-    "executables" :['.exe', '.msi'],
-    "zip files" : ['.zip', '.7z', '.tar', '.rar', '.gz'],
-    "misc" : [],
-    "delete_me" : [],
-    "Large_Files": [],
-}
+# FILE_TYPES = json.load(open(THIS_FILE.parent / "clean.json", "r"))
 
-EXCLUSIONS = ['desktop.ini']
+FILE_TYPES = SETTINGS["FILE_TYPES"]
 
-MONTHS = [None, "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+EXCLUSIONS = SETTINGS["EXCLUSIONS"]
+
+MONTHS = SETTINGS["MONTHS"]
 
 PROMPT = "(CLN)> "
+
+breakpoint()
+
 
 def handle_files(files: list, folder: str = "misc", month: bool = False):
     """Organizes files by last modified date."""
@@ -64,40 +61,49 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             target_folder = os.path.join(folder, f"{folder} {str(f_year)}")
 
         if month:
-            target_folder = os.path.join(target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}")
+            target_folder = os.path.join(
+                target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}"
+            )
         try:
             os.makedirs(target_folder, exist_ok=True)
         except:
             pass
 
-        while choice not in ['y', 'yes', 'n', 'no', 'a', 'all', 'd', 'del']:
-            choice = input(f"mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n(y)es/(n)o/yes_to_(a)ll/(d)el?\n{PROMPT}")
+        while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
+            choice = input(
+                f"mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n(y)es/(n)o/yes_to_(a)ll/(d)el?\n{PROMPT}"
+            )
 
-        if choice in ['y', 'yes']:
+        if choice in ["y", "yes"]:
             try:
                 shutil.move(file, target_folder)
 
             # File of Same Name Has Already Been Moved To Folder
             except shutil.Error:
-                print(f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n")
+                print(
+                    f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n"
+                )
                 # os.rename(file, target_folder + "\\COPY " + file)
-                Path(file).rename(target_folder+f"\\{Path(file).stem} {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} ({int((datetime.datetime.now() - datetime.datetime.min).total_seconds())}) COPY{Path(file).suffix}")
-                choice = ''
+                Path(file).rename(
+                    target_folder
+                    + f"\\{Path(file).stem} {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} ({int((datetime.datetime.now() - datetime.datetime.min).total_seconds())}) COPY{Path(file).suffix}"
+                )
+                choice = ""
 
-        elif choice in ['a', 'all']:
+        elif choice in ["a", "all"]:
             shutil.move(file, target_folder)
 
-        elif choice in ['n', 'no']:
-            choice = ''
+        elif choice in ["n", "no"]:
+            choice = ""
 
-        elif choice in ['d', 'del']:
+        elif choice in ["d", "del"]:
             os.makedirs("delete_me", exist_ok=True)
             shutil.move(file, os.path.normpath(f"delete_me/{file}"))
             # os.remove(file)
-            choice = ''
+            choice = ""
 
 
-def remove_empty_dir(path: str|Path):
+def remove_empty_dir(path: str | Path):
     """Remove empty folder."""
 
     try:
@@ -109,7 +115,8 @@ def remove_empty_dir(path: str|Path):
         else:
             pass
 
-def remove_empty_dirs(path: str|Path):
+
+def remove_empty_dirs(path: str | Path):
     """Recursively remove empty folders."""
 
     for trunk, dirnames, filenames in os.walk(path, topdown=False):
@@ -123,25 +130,29 @@ def remove_empty_dirs(path: str|Path):
 def main():
 
     # Create the parser
-    my_parser = argparse.ArgumentParser(description='Clean up a folder.')
+    my_parser = argparse.ArgumentParser(description="Clean up a folder.")
 
     # Add the arguments
-    my_parser.add_argument('Path',
-                           metavar='path',
-                           nargs="?",
-                           default=".",
-                           action="store",
-                           type=str,
-                           help='the path to list')
+    my_parser.add_argument(
+        "Path",
+        metavar="path",
+        nargs="?",
+        default=".",
+        action="store",
+        type=str,
+        help="the path to list",
+    )
 
     args = my_parser.parse_args()
 
     CLI_path = args.Path
 
     if not os.path.isdir(CLI_path):
-        rich.print(f'[red on black]The specified path ({CLI_path}) does not exist.')
+        rich.print(f"[red on black]The specified path ({CLI_path}) does not exist.")
         exit(1)
-        root = input(f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}")
+        root = input(
+            f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}"
+        )
 
     else:
         root = CLI_path
@@ -160,7 +171,6 @@ def main():
 
     ARCHIVE_FOLDERS = list(FILE_TYPES.keys())
 
-
     # put all files with same extension group into one list
     # and put that list in the file_groups dictionary
     # FOR EXAMPLE
@@ -169,8 +179,14 @@ def main():
     # etc
 
     for file_type, extension_list in FILE_TYPES.items():
-        extension_pattern = re.compile("("+"|".join(extension_list)+")$", re.IGNORECASE)
-        file_groups[file_type] = [file_name for file_name in all_files if re.search(extension_pattern, file_name)]
+        extension_pattern = re.compile(
+            "(" + "|".join(extension_list) + ")$", re.IGNORECASE
+        )
+        file_groups[file_type] = [
+            file_name
+            for file_name in all_files
+            if re.search(extension_pattern, file_name)
+        ]
 
         for file in file_groups[file_type]:
             all_files.remove(file)
@@ -185,8 +201,8 @@ def main():
         file_groups["programming"].remove(__file__)
 
     # Do not target THIS file
-    if os.path.normpath(sys.argv[0]) in file_groups["programming"]:
-        file_groups["programming"].remove(os.path.normpath(sys.argv[0]))
+    if THIS_FILE in file_groups["programming"]:
+        file_groups["programming"].remove(THIS_FILE)
 
     file_count = sum([len(file_group) for file_type, file_group in file_groups.items()])
 
@@ -197,28 +213,37 @@ def main():
         handle_files(file_group, file_type)
 
         # Each file-type-folder should have one or more year folders (e.g., 'media/2020')
-        year_folders = glob.glob(file_type+"/* ????")
+        year_folders = glob.glob(file_type + "/* ????")
 
         # Check year folders for crowdedness
         for year in year_folders:
-            sorted_files = glob.glob(year+"/*.*")
-            pre_sorted_files = glob.glob(year+"/*/*.*")
+            sorted_files = glob.glob(year + "/*.*")
+            pre_sorted_files = glob.glob(year + "/*/*.*")
 
-            if sorted_files and (len(sorted_files) + len(pre_sorted_files) > CROWDED_FOLDER):
-                choice = input(f"{year} has {len(sorted_files)} top-level files and {len(pre_sorted_files)} already sorted files.  Sort by month (y/n)?\n{PROMPT}")
-                if choice in ['y', 'yes']:
+            if sorted_files and (
+                len(sorted_files) + len(pre_sorted_files) > CROWDED_FOLDER
+            ):
+                choice = input(
+                    f"{year} has {len(sorted_files)} top-level files and {len(pre_sorted_files)} already sorted files.  Sort by month (y/n)?\n{PROMPT}"
+                )
+                if choice in ["y", "yes"]:
                     handle_files(sorted_files, file_type, month=True)
 
-
-
-
     # Check for extra folders not generated by this program
-    extra_folders = [elem for elem in glob.glob("*") if not Path(elem).suffix and elem not in ARCHIVE_FOLDERS]
+    extra_folders = [
+        elem
+        for elem in glob.glob("*")
+        if not Path(elem).suffix and elem not in ARCHIVE_FOLDERS
+    ]
 
     move_folders = False
     if extra_folders:
-        choice = input("{}\nExtra folders detected.  Move them (y/n)?\n{}".format("\n".join(extra_folders), PROMPT))
-        if choice in ['y', 'yes']:
+        choice = input(
+            "{}\nExtra folders detected.  Move them (y/n)?\n{}".format(
+                "\n".join(extra_folders), PROMPT
+            )
+        )
+        if choice in ["y", "yes"]:
             move_folders = True
 
     if move_folders:
@@ -228,10 +253,12 @@ def main():
             if choice in ["y", "yes"]:
                 for i, default_folder in enumerate(ARCHIVE_FOLDERS):
                     print(f"\n{i+1}.) {default_folder}")
-                target_folder = input(f"\nmv '{extra_folder}' ???\nDestination?\n{PROMPT}")
+                target_folder = input(
+                    f"\nmv '{extra_folder}' ???\nDestination?\n{PROMPT}"
+                )
                 try:
-                    if int(target_folder) in list(range(1,len(ARCHIVE_FOLDERS)+1)):
-                        target_folder = ARCHIVE_FOLDERS[int(target_folder)-1]
+                    if int(target_folder) in list(range(1, len(ARCHIVE_FOLDERS) + 1)):
+                        target_folder = ARCHIVE_FOLDERS[int(target_folder) - 1]
                 except ValueError:
                     pass
 
@@ -251,4 +278,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
