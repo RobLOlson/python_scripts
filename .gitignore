@@ -1,6 +1,7 @@
 *
 !.gitignore
 !clean.py
+!clean.yaml
 !textframe.py
 !hierarchy.py
 !testtextframe.py
