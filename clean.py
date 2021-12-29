@@ -40,8 +40,6 @@ MONTHS = SETTINGS["MONTHS"]
 
 PROMPT = "(CLN)> "
 
-breakpoint()
-
 
 def handle_files(files: list, folder: str = "misc", month: bool = False):
     """Organizes files by last modified date."""
