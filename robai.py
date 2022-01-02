@@ -96,14 +96,25 @@ with shelve.open(f"{FILE.parent}/db/{args.user}_convo.db") as db:
 
         if len(PRE_PROMPT) > 1000:
             break
+    try:
+        r1 = openai.Completion.create(
+            model="curie:ft-user-lxdklb8ngeneatsn8iouxynt-2021-12-09-06-55-36",
+            prompt=PRE_PROMPT + NEW_PROMPT + ROB,
+            max_tokens=60,
+            n=1,
+            temperature=TEMPERATURE,
+        )
 
-    r1 = openai.Completion.create(
-        model="curie:ft-user-lxdklb8ngeneatsn8iouxynt-2021-12-09-06-55-36",
-        prompt=PRE_PROMPT + NEW_PROMPT + ROB,
-        max_tokens=60,
-        n=1,
-        temperature=TEMPERATURE,
-    )
+    # If the model isn't spun up then this error might happen
+    except openai.error.RateLimitError:
+        r1 = openai.Completion.create(
+            model="curie:ft-user-lxdklb8ngeneatsn8iouxynt-2021-12-09-06-55-36",
+            prompt=PRE_PROMPT + NEW_PROMPT + ROB,
+            max_tokens=60,
+            n=1,
+            temperature=TEMPERATURE,
+        )
+
     response = r1.choices[0].text
     patt = re.compile(r"[^\.!?:,]+")
     reg = patt.findall(response)
