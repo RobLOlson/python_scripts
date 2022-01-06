@@ -19,6 +19,25 @@ my_parser = argparse.ArgumentParser(
 )
 
 my_parser.add_argument("-t", "--text", action="store_true", help="generate text file")
+my_parser.add_argument(
+    "-u",
+    "--user",
+    metavar="user",
+    nargs=1,
+    action="store",
+    type=str,
+    help="specify user",
+)
+
+my_parser.add_argument(
+    "-p",
+    "--pwd",
+    metavar="pwd",
+    nargs=1,
+    action="store",
+    type=str,
+    help="specify password",
+)
 
 # Execute the parse_args() method
 args = my_parser.parse_args()
@@ -27,8 +46,9 @@ args = my_parser.parse_args()
 REDDIT_ID = os.environ["REDDIT_ID"]
 REDDIT_SECRET = os.environ["REDDIT_SECRET"]
 
-REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
-REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+if not args.pwd or not args.user:
+    REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
+    REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
 
 
 reddit = praw.Reddit(
@@ -40,16 +60,9 @@ reddit = praw.Reddit(
 )
 
 
-@dataclass
-class Entry:
-    e_id: str = field()
-    body: str = field()
-    link_permalink: str = field()
-    parent_body: str = field()
-
-
 def main():
     me = reddit.user.me()
+
     new = me.comments.new(limit=None)
     top = me.comments.top(limit=None)
     contro = me.comments.controversial(limit=None)
@@ -61,6 +74,8 @@ def main():
                 db[comment.id] = {
                     "id": comment.id,
                     "body": comment.body,
+                    "ups": comment.ups,
+                    "downs": comment.downs,
                     "link_permalink": comment.link_permalink,
                     "parent_body": getattr(comment.parent(), "body", None),
                     "created_utc": comment.created_utc,
@@ -74,6 +89,8 @@ def main():
                 db[comment.id] = {
                     "id": comment.id,
                     "body": comment.body,
+                    "ups": comment.ups,
+                    "downs": comment.downs,
                     "link_permalink": comment.link_permalink,
                     "parent_body": getattr(comment.parent(), "body", None),
                     "created_utc": comment.created_utc,
@@ -89,6 +106,8 @@ def main():
                 db[comment.id] = {
                     "id": comment.id,
                     "body": comment.body,
+                    "ups": comment.ups,
+                    "downs": comment.downs,
                     "link_permalink": comment.link_permalink,
                     "parent_body": getattr(comment.parent(), "body", None),
                     "created_utc": comment.created_utc,
@@ -115,7 +134,7 @@ def main():
                         f"""
 ======
 {comment['link_permalink']}
-{comment['human_time']}
+{comment['human_time']} (+{comment['ups']} / -{comment['downs']})
 ======
 {comment['parent_body']}
 ======
