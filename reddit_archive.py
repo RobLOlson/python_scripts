@@ -124,7 +124,7 @@ def main():  # pylint: disable=missing-function-docstring
         if _ARGS.text:
             now = datetime.datetime.now()
             with open(
-                f"reddit_archive__{now.day}_{now.month}_{now.year}.txt",
+                f"reddit_archive_{now.day}_{now.month}_{now.year}.txt",
                 "w",
                 encoding="utf-8",
             ) as fp:  # pylint: disable = invalid-name
@@ -132,7 +132,7 @@ def main():  # pylint: disable=missing-function-docstring
                     fp.write(
                         f"""
 ======
-{comment['permalink']}
+http://reddit.com{comment['permalink']}
 {comment['human_time']} ({comment['ups']})
 ======
 {comment['parent_body']}
