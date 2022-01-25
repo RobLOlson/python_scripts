@@ -24,7 +24,7 @@ DEBUG = False
 HANDLE_MISC = True
 
 THIS_FILE = Path(sys.argv[0])
-with (open(THIS_FILE.parent / "clean.yaml", "r")) as fp:
+with (open(THIS_FILE.parent / "config" / "clean.yaml", "r")) as fp:
     SETTINGS = yaml.safe_load(fp)
 
 # Number of files in a folder that prompts more sorting
