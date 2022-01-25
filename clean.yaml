@@ -38,6 +38,7 @@ FILE_TYPES:
   - .apk
   - .jonsl
   - .xml
+  - .autoenv
   syslinks:
   - .lnk
   - .url
