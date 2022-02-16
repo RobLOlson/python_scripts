@@ -1,14 +1,11 @@
 import glob
-import subprocess
 import pathlib
 import os
 import time
-import shlex
 import asyncio
 import argparse
 import logging
 import sys
-import concurrent.futures
 
 import nest_asyncio
 
@@ -21,7 +18,7 @@ my_parser = argparse.ArgumentParser(
     prog=sys.argv[0],
     allow_abbrev=True,
     add_help=True,
-    description="List the content of a folder",
+    description="Concatenates audio files using ffmpeg.",
     epilog="(C) Rob",
 )
 
@@ -33,7 +30,7 @@ my_parser.add_argument(
     default=".mp3",
     action="store",
     type=str,
-    help="the path to list",
+    help="the filetype to concatenate, e.g., '.mp3'",
 )
 
 my_parser.add_argument(
@@ -43,7 +40,7 @@ my_parser.add_argument(
     default=".",
     action="store",
     type=str,
-    help="the path to list",
+    help="the path to files to be concatted",
 )
 
 # Execute the parse_args() method
@@ -54,8 +51,11 @@ FILETYPE = args.Filetype
 
 
 async def spin_up(folder):
+    """Spin up an ffmpeg process in target folder.
 
-    print(folder)
+    Args:
+        folder: path to folder that contains audio files
+    """
 
     os.chdir(folder)
     mp3s = glob.glob(f"*{FILETYPE}")
@@ -89,8 +89,8 @@ async def main():
     folders = set()
     os.chdir(PATH)
     for file in glob.glob(f"**/*{FILETYPE}", recursive=True):
-        FILE = pathlib.Path(file).absolute()
-        folders.add(FILE.parent)
+        target = pathlib.Path(file).absolute()
+        folders.add(target.parent)
 
     folders = sorted(list(folders))
 
@@ -100,7 +100,7 @@ async def main():
     input(
         f"Executing on \n * "
         + "\n * ".join([str(folder) for folder in folders])
-        + ". Ok?"
+        + ". \nOk?"
     )
 
     result = loop.run_until_complete(commands)

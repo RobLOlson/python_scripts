@@ -177,6 +177,9 @@ def main():
     # etc
 
     for file_type, extension_list in FILE_TYPES.items():
+        if not extension_list:
+            continue
+
         extension_pattern = re.compile(
             "(" + "|".join(extension_list) + ")$", re.IGNORECASE
         )
@@ -208,6 +211,9 @@ def main():
 
     # Handles all files in file_groups
     for file_type, file_group in file_groups.items():
+        if not file_group:
+            continue
+
         handle_files(file_group, file_type)
 
         # Each file-type-folder should have one or more year folders (e.g., 'media/2020')
