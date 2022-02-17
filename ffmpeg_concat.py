@@ -6,6 +6,7 @@ import asyncio
 import argparse
 import logging
 import sys
+import subprocess
 
 import nest_asyncio
 
@@ -47,10 +48,10 @@ my_parser.add_argument(
 )
 
 # Execute the parse_args() method
-args = my_parser.parse_args()
+_ARGS = my_parser.parse_args()
 
-PATH = args.path
-FILETYPE = args.filetype
+_PATH = _ARGS.path
+_FILETYPE = _ARGS.filetype
 
 
 async def spin_up(folder):
@@ -61,7 +62,7 @@ async def spin_up(folder):
     """
 
     os.chdir(folder)
-    mp3s = glob.glob(f"*{FILETYPE}")
+    mp3s = glob.glob(f"*{_FILETYPE}")
     concated = "|".join(mp3s)
     command = [
         "ffmpeg",
@@ -76,22 +77,23 @@ async def spin_up(folder):
         f"{pathlib.Path(mp3s[0]).stem}.m4b",
     ]
     print("Running the following command:\n" + " ".join(command))
-    proc = await asyncio.create_subprocess_shell(
-        " ".join(command),
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        stdin=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
+    subprocess.run(command, shell=True)
 
-    return stdout.decode().strip()
-    # subprocess.run(command, shell=True)
+    # proc = await asyncio.create_subprocess_shell(
+    #     " ".join(command),
+    #     stdout=asyncio.subprocess.PIPE,
+    #     stderr=asyncio.subprocess.PIPE,
+    #     stdin=asyncio.subprocess.PIPE,
+    # )
+    # stdout, stderr = await proc.communicate()
+
+    # return stdout.decode().strip()
 
 
 async def main():
     folders = set()
-    os.chdir(PATH)
-    for file in glob.glob(f"**/*{FILETYPE}", recursive=True):
+    os.chdir(_PATH)
+    for file in glob.glob(f"**/*{_FILETYPE}", recursive=True):
         target = pathlib.Path(file).absolute()
         folders.add(target.parent)
 
