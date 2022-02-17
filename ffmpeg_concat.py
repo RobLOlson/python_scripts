@@ -9,6 +9,7 @@ import sys
 
 import nest_asyncio
 
+# Hack needed to make asyncio loop compatible with other loops that may be running
 nest_asyncio.apply()
 
 logging.getLogger("asyncio").setLevel(logging.INFO)
@@ -24,8 +25,9 @@ my_parser = argparse.ArgumentParser(
 
 # Add the arguments
 my_parser.add_argument(
-    "Filetype",
-    metavar="type",
+    "-f",
+    "--filetype",
+    metavar="filetype",
     nargs="?",
     default=".mp3",
     action="store",
@@ -34,7 +36,8 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
-    "Path",
+    "-p",
+    "--path",
     metavar="path",
     nargs="?",
     default=".",
@@ -46,8 +49,8 @@ my_parser.add_argument(
 # Execute the parse_args() method
 args = my_parser.parse_args()
 
-PATH = args.Path
-FILETYPE = args.Filetype
+PATH = args.path
+FILETYPE = args.filetype
 
 
 async def spin_up(folder):
