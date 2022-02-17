@@ -7,13 +7,11 @@ import argparse
 import logging
 import sys
 import subprocess
+import multiprocessing
 
-import nest_asyncio
+from concurrent.futures import ProcessPoolExecutor
 
-# Hack needed to make asyncio loop compatible with other loops that may be running
-nest_asyncio.apply()
-
-logging.getLogger("asyncio").setLevel(logging.INFO)
+import pydub
 
 # Create the parser
 my_parser = argparse.ArgumentParser(
@@ -29,8 +27,9 @@ my_parser.add_argument(
     "-f",
     "--filetype",
     metavar="filetype",
-    nargs="?",
+    nargs=1,
     default=".mp3",
+    choices=[".mp3", ".wav", ".ogg"],
     action="store",
     type=str,
     help="the filetype to concatenate, e.g., '.mp3'",
@@ -40,21 +39,28 @@ my_parser.add_argument(
     "-p",
     "--path",
     metavar="path",
-    nargs="?",
+    nargs=1,
     default=".",
     action="store",
     type=str,
     help="the path to files to be concatted",
 )
 
+my_parser.add_argument('-o',
+                       '--overwrite',
+                       # metavar="overwrite",
+                       action='store_true',
+                       help='force ffmpeg to overwrite existing files')
+
 # Execute the parse_args() method
 _ARGS = my_parser.parse_args()
 
 _PATH = _ARGS.path
 _FILETYPE = _ARGS.filetype
+_OVERWRITE = _ARGS.overwrite
 
 
-async def spin_up(folder):
+def spin_up(folder):
     """Spin up an ffmpeg process in target folder.
 
     Args:
@@ -63,11 +69,39 @@ async def spin_up(folder):
 
     os.chdir(folder)
     mp3s = glob.glob(f"*{_FILETYPE}")
-    concated = "|".join(mp3s)
+    # concated = "|".join(mp3s)
+
+    if _OVERWRITE:
+        try:
+            os.remove(f"{pathlib.Path(mp3s[0]).stem}.m4b")
+        except FileNotFoundError as e:
+            pass
+
+    # Merge audio files
+    combined = pydub.AudioSegment.empty()
+
+    match _FILETYPE:
+        case ".mp3":
+            for file in mp3s:
+                combined += pydub.AudioSegment.from_mp3(file)
+
+        case ".wav":
+            for file in mp3s:
+                combined += pydub.AudioSegment.from_wav(file)
+
+        case ".ogg":
+            for file in mp3s:
+                combined += pydub.AudioSegment.from_ogg(file)
+
+    combined.export(f"{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}")
+    # End of Merge audio files
+
+    # Convert audio files
     command = [
         "ffmpeg",
         "-i",
-        f"concat:{concated}",
+        # f"concat:{concated}",
+        f"{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
         "-movflags",
         "use_metadata_tags",
         "-c:a",
@@ -76,21 +110,16 @@ async def spin_up(folder):
         "copy",
         f"{pathlib.Path(mp3s[0]).stem}.m4b",
     ]
+
     print("Running the following command:\n" + " ".join(command))
     subprocess.run(command, shell=True)
+    # End of Convert audio files
 
-    # proc = await asyncio.create_subprocess_shell(
-    #     " ".join(command),
-    #     stdout=asyncio.subprocess.PIPE,
-    #     stderr=asyncio.subprocess.PIPE,
-    #     stdin=asyncio.subprocess.PIPE,
-    # )
-    # stdout, stderr = await proc.communicate()
-
-    # return stdout.decode().strip()
+    # Clean up temporary files
+    os.remove(f"{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}")
 
 
-async def main():
+def main():
     folders = set()
     os.chdir(_PATH)
     for file in glob.glob(f"**/*{_FILETYPE}", recursive=True):
@@ -99,18 +128,14 @@ async def main():
 
     folders = sorted(list(folders))
 
-    loop = asyncio.get_running_loop()
-    commands = asyncio.gather(*[spin_up(folder) for folder in folders])
-
     input(
         f"Executing on \n * "
         + "\n * ".join([str(folder) for folder in folders])
         + ". \nOk?"
     )
 
-    result = loop.run_until_complete(commands)
-    print(f"{result=}")
-
+    with multiprocessing.Pool(5) as pool:
+        pool.map_async(spin_up, folders).get()
 
 if __name__ == "__main__":
-    asyncio.run(main(), debug=True)
+    main()
