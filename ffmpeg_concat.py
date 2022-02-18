@@ -9,9 +9,8 @@ import sys
 import subprocess
 import multiprocessing
 
-from concurrent.futures import ProcessPoolExecutor
-
 import pydub
+from pydub.utils import mediainfo
 
 # Create the parser
 my_parser = argparse.ArgumentParser(
@@ -48,7 +47,6 @@ my_parser.add_argument(
 
 my_parser.add_argument('-o',
                        '--overwrite',
-                       # metavar="overwrite",
                        action='store_true',
                        help='force ffmpeg to overwrite existing files')
 
@@ -69,7 +67,9 @@ def spin_up(folder):
 
     os.chdir(folder)
     mp3s = glob.glob(f"*{_FILETYPE}")
-    # concated = "|".join(mp3s)
+    mp3s = [elem for elem in mp3s if elem[0] != '~']
+
+    bit_rate = mediainfo(mp3s[0])['bit_rate']
 
     if _OVERWRITE:
         try:
@@ -93,7 +93,7 @@ def spin_up(folder):
             for file in mp3s:
                 combined += pydub.AudioSegment.from_ogg(file)
 
-    combined.export(f"{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}")
+    combined.export(f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}", bitrate=bit_rate)
     # End of Merge audio files
 
     # Convert audio files
@@ -101,11 +101,13 @@ def spin_up(folder):
         "ffmpeg",
         "-i",
         # f"concat:{concated}",
-        f"{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
-        "-movflags",
+        f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
+        "-movflags", # Carry metadata over
         "use_metadata_tags",
-        "-c:a",
+        "-c:a", # audio cocec
         "aac",
+        "-b:a", # bitrate
+        "64k",
         "-c:v",
         "copy",
         f"{pathlib.Path(mp3s[0]).stem}.m4b",
@@ -114,10 +116,6 @@ def spin_up(folder):
     print("Running the following command:\n" + " ".join(command))
     subprocess.run(command, shell=True)
     # End of Convert audio files
-
-    # Clean up temporary files
-    os.remove(f"{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}")
-
 
 def main():
     folders = set()
