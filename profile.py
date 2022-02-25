@@ -8,8 +8,6 @@ from functools import reduce
 import rich.traceback
 from rich import pretty
 
-from ptpython.repl import embed
-
 pretty.install()
 
 rich.traceback.install(show_locals=True)
@@ -22,4 +20,9 @@ def compose(*functions):
     return reduce(lambda f, g: lambda x: g(f(x)), functions)
 
 
-embed(globals(), locals())
+try:
+    from ptpython.repl import embed
+except ImportError:
+    print("ptpython is not available: falling back to standard prompt")
+else:
+    embed(globals(), locals())

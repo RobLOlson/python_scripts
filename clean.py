@@ -37,6 +37,7 @@ FILE_TYPES = SETTINGS["FILE_TYPES"]
 EXCLUSIONS = SETTINGS["EXCLUSIONS"]
 
 MONTHS = SETTINGS["MONTHS"]
+MONTHS.insert(0, None)
 
 PROMPT = "(CLN)> "
 
@@ -194,7 +195,10 @@ def main():
 
     # Any file-types not explicitly handled are moved to the miscellaneous folder
     if HANDLE_MISC and all_files:
-        file_groups["misc"].extend(all_files)
+        try:
+            file_groups["misc"].extend(all_files)
+        except KeyError:
+            file_groups["misc"] = all_files
         print(f"moved {all_files}")
 
     # Do not target THIS file

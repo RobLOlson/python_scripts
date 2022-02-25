@@ -26,6 +26,8 @@ FILE_TYPES:
   - .gsheet
   - .docx
   - .odt
+  - .m4b
+  - .m4a
   misc: []
   programming:
   - .py
@@ -49,7 +51,6 @@ FILE_TYPES:
   - .rar
   - .gz
 MONTHS:
-  - null
   - Jan
   - Feb
   - March
