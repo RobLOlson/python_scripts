@@ -1,7 +1,7 @@
 """(C) Rob Olson"""
 # pylint: disable = C0330
 # pylint: disable = multiple-imports
-import os, shelve, sys, datetime, argparse
+import os, shelve, sys, datetime, argparse, subprocess
 
 from rich.progress import track
 
@@ -38,7 +38,8 @@ _ARGPARSER.add_argument(
 
 _ARGPARSER.add_argument(
     "-p",
-    "--pwd",
+    # "--pwd",
+    "--password",
     metavar="pwd",
     nargs=1,
     action="store",
@@ -46,15 +47,54 @@ _ARGPARSER.add_argument(
     help="specify password",
 )
 
+_ARGPARSER.add_argument(
+    "-f",
+    "--full",
+    action="store_true",
+    help="Include 'top' and 'controversial' posts in praw request.",
+)
+
+_ARGPARSER.add_argument(
+    "-c",
+    "--config",
+    action="store_true",
+    help="Manually configure reddit credentials for this user agent.",
+)
+
 _ARGS = _ARGPARSER.parse_args()
 
-# located at https://www.reddit.com/prefs/apps
-_REDDIT_ID = os.environ["REDDIT_ID"]
-_REDDIT_SECRET = os.environ["REDDIT_SECRET"]
+if _ARGS.config:
+    _REDDIT_ID = input("\nEnter a reddit account ID.\n> ")
+    _REDDIT_SECRET = input(
+        "\nEnter the reddit secret for this account\n(located at https://www.reddit.com/perfs/apps)\n> "
+    )
+    choice = input("Save credentials? Y/N\n>")
+    if choice in ["yes", "y", "Y"]:
+        subprocess.run(["setx", "REDDIT_ID", _REDDIT_ID])
+        subprocess.run(["setx", "REDDIT_SECRET", _REDDIT_SECRET])
 
-if not _ARGS.pwd or not _ARGS.user:
-    _REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
-    _REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+else:
+    # located at https://www.reddit.com/prefs/apps
+    _REDDIT_ID = os.environ["REDDIT_ID"]
+    _REDDIT_SECRET = os.environ["REDDIT_SECRET"]
+
+match (_ARGS.user, _ARGS.password):
+    case (None, None) | (_, None) | (None, _):
+        try:
+            _REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
+            _REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+        except KeyError:
+            _REDDIT_USERNAME = input("Enter reddit username: ")
+            _REDDIT_PASSWORD = input("Enter reddit password: ")
+            choice = input("\nSave login info (WARNING: NOT SECURE)? Y/N\n> ")
+            if choice in ["yes", "YES", "y", "Y"]:
+                subprocess.run(["setx", "REDDIT_USERNAME", _REDDIT_USERNAME])
+                subprocess.run(["setx", "REDDIT_PASSWORD", _REDDIT_PASSWORD])
+    case (u, p) if u and p:
+        _REDDIT_USERNAME = u
+        _REDDIT_PASSWORD = p
+    case _:
+        print("DUH")
 
 
 _REDDIT = praw.Reddit(
@@ -67,7 +107,6 @@ _REDDIT = praw.Reddit(
 
 
 def generate_text():
-    breakpoint()
     now = datetime.datetime.now()
     with shelve.open(f"{_THIS_FILE.parent}/db/comments.db") as db, open(
         f"reddit_archive_{now.day}_{now.month}_{now.year}.txt",
@@ -102,12 +141,15 @@ http://reddit.com{comment['permalink']}
 def main():  # pylint: disable=missing-function-docstring
     if _ARGS.text:
         generate_text()
-        exit()
+        exit(0)
 
-    me = _REDDIT.user.me()  # pylint: disable=invalid-name
+    try:
+        me = _REDDIT.user.me()  # pylint: disable=invalid-name
+    except BaseException:
+        input("Invalid login credentials.")
+        exit(1)
 
     new = me.comments.new(limit=None)
-    breakpoint()
     top = me.comments.top(limit=None)
     contro = me.comments.controversial(limit=None)
 
@@ -128,7 +170,6 @@ def main():  # pylint: disable=missing-function-docstring
 
             if comment.id not in prev and len(comment.body) > 100:
                 parent = comment.parent()
-                breakpoint()
                 db[comment.id] = {
                     "id": comment.id,
                     "body": comment.body,
@@ -142,6 +183,10 @@ def main():  # pylint: disable=missing-function-docstring
                         comment.created_utc
                     ).isoformat(),
                 }
+
+        if not _ARGS.full:
+            generate_text()
+            exit(0)
 
         print("Archiving 'top'...")
         count = 0
