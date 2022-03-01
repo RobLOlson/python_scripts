@@ -1,7 +1,7 @@
 *
 !.gitignore
 !clean.py
-!clean.yaml
+# !clean.toml
 !textframe.py
 !hierarchy.py
 !testtextframe.py
@@ -10,3 +10,5 @@
 !reddit_archive.py
 !ffmpeg_concat.py
 !config
+!poetry.lock
+!pyproject.toml
