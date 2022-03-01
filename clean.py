@@ -15,6 +15,7 @@ import json
 import rich.traceback
 import rich
 import yaml
+import toml
 
 from pathlib import Path
 
@@ -24,8 +25,11 @@ DEBUG = False
 HANDLE_MISC = True
 
 THIS_FILE = Path(sys.argv[0])
-with (open(THIS_FILE.parent / "config" / "clean.yaml", "r")) as fp:
-    SETTINGS = yaml.safe_load(fp)
+
+with (open(THIS_FILE.parent / "config" / "clean.toml", "r")) as fp:
+    SETTINGS = toml.load(fp)
+
+# breakpoint()
 
 # Number of files in a folder that prompts more sorting
 CROWDED_FOLDER = SETTINGS["CROWDED_FOLDER"]
@@ -63,10 +67,11 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             target_folder = os.path.join(
                 target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}"
             )
-        try:
-            os.makedirs(target_folder, exist_ok=True)
-        except:
-            pass
+        os.makedirs(target_folder, exist_ok=True)
+        # try:
+        #     os.makedirs(target_folder, exist_ok=True)
+        # except:
+        #     pass
 
         while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
             choice = input(
@@ -247,8 +252,8 @@ def main():
     move_folders = False
     if extra_folders:
         choice = input(
-            "{}\nExtra folders detected.  Move them (y/n)?\n{}".format(
-                "\n".join(extra_folders), PROMPT
+            "\nNon-archive folders detected.\n* {}\nArchive them (y/n)?\n{}".format(
+                "\n* ".join(extra_folders), PROMPT
             )
         )
         if choice in ["y", "yes"]:

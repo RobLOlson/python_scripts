@@ -1,5 +1,5 @@
-# Robert Olson
-# python interpreter profile
+"""python interpreter profile
+Point your $PYTHONSTARTUP environment variable at this file."""
 
 import os
 
