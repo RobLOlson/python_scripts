@@ -14,7 +14,6 @@ import json
 
 import rich.traceback
 import rich
-import yaml
 import toml
 
 from pathlib import Path

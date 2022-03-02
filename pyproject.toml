@@ -1,8 +1,12 @@
 [tool.poetry]
 name = "robolson"
-version = "0.1.0"
+version = "0.3.5"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
+include = ["robolson/config/clean.toml"]
+packages = [
+    {include="*.py"},
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"

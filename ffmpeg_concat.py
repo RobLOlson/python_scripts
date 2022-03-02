@@ -93,7 +93,7 @@ def spin_up(folder):
             for file in mp3s:
                 combined += pydub.AudioSegment.from_ogg(file)
 
-    combined.export(f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}", bitrate=bit_rate)
+    combined.export(f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}", tags={"test":"TEST"}, bitrate=bit_rate)
     # End of Merge audio files
 
     # Convert audio files
