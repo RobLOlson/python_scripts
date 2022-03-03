@@ -11,6 +11,8 @@ import sys
 import re
 import argparse
 import json
+import appdirs
+import shutil
 
 import rich.traceback
 import rich
@@ -23,10 +25,21 @@ rich.traceback.install(show_locals=True)
 DEBUG = False
 HANDLE_MISC = True
 
-THIS_FILE = Path(sys.argv[0])
+THIS_FILE = Path(__file__)
 
-with (open(THIS_FILE.parent / "config" / "clean.toml", "r")) as fp:
-    SETTINGS = toml.load(fp)
+CONFIG_FILE = Path(appdirs.user_config_dir()) / "robolson" / "config" / "clean.toml"
+
+if CONFIG_FILE.exists():
+    with (open(CONFIG_FILE, "r")) as fp:
+        SETTINGS = toml.load(fp)
+
+else:
+    breakpoint()
+    base_config = Path(__file__).parent / ".." / "config" / "clean.toml"
+    os.makedirs(CONFIG_FILE.parent, exist_ok=True)
+    shutil.copyfile(base_config, CONFIG_FILE)
+    with (open(CONFIG_FILE, "r")) as fp:
+        SETTINGS = toml.load(fp)
 
 # breakpoint()
 

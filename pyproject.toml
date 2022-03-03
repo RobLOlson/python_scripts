@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.5"
+version = "0.3.8"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
-include = ["robolson/config/clean.toml"]
+include = ["config/clean.toml", "rob/config/clean.toml"]
 packages = [
-    {include="*.py"},
+    {include="*.py", from="rob"},{include="config/clean.toml"}
 ]
 
 [tool.poetry.dependencies]
