@@ -1,7 +1,7 @@
 """(C) Rob Olson"""
 # pylint: disable = C0330
 # pylint: disable = multiple-imports
-import os, shelve, sys, datetime, argparse, subprocess
+import os, shelve, sys, datetime, argparse, subprocess, appdirs
 
 from rich.progress import track
 
@@ -10,6 +10,10 @@ from pathlib import Path
 import praw
 
 _THIS_FILE = Path(sys.argv[0])
+_DB_FILE = Path(appdirs.user_data_dir()) / "robolson" / "reddit_archive" / "comments.db"
+
+if not _DB_FILE.exists():
+    os.makedirs(_DB_FILE.parent, exist_ok=True)
 
 # Create the parser
 _ARGPARSER = argparse.ArgumentParser(
@@ -108,7 +112,7 @@ _REDDIT = praw.Reddit(
 
 def generate_text():
     now = datetime.datetime.now()
-    with shelve.open(f"{_THIS_FILE.parent}/db/comments.db") as db, open(
+    with shelve.open(str(_DB_FILE)) as db, open(
         f"reddit_archive_{now.day}_{now.month}_{now.year}.txt",
         "w",
         encoding="utf-8",
@@ -153,9 +157,7 @@ def main():  # pylint: disable=missing-function-docstring
     top = me.comments.top(limit=None)
     contro = me.comments.controversial(limit=None)
 
-    with shelve.open(
-        f"{_THIS_FILE.parent}/db/comments.db"
-    ) as db:  # pylint: disable=invalid-name
+    with shelve.open(str(_DB_FILE)) as db:  # pylint: disable=invalid-name
         prev = db.keys()
         print("Archiving 'new'...")
         count = 0

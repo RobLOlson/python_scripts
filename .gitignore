@@ -12,3 +12,5 @@
 !config
 !poetry.lock
 !pyproject.toml
+!*.toml
+!rob/*.py

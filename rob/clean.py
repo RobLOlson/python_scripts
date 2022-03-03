@@ -34,7 +34,6 @@ if CONFIG_FILE.exists():
         SETTINGS = toml.load(fp)
 
 else:
-    breakpoint()
     base_config = Path(__file__).parent / ".." / "config" / "clean.toml"
     os.makedirs(CONFIG_FILE.parent, exist_ok=True)
     shutil.copyfile(base_config, CONFIG_FILE)
