@@ -1,19 +1,11 @@
 *
 !.gitignore
-!clean.py
-# !clean.toml
 !textframe.py
-!hierarchy.py
 !testtextframe.py
 !testhierarchy.py
 !robai.py
-!reddit_archive.py
-!ffmpeg_concat.py
 !config
 !poetry.lock
 !pyproject.toml
 !*.toml
-!rob/*.py
-!rob/**
-!rob/ffmpeg_concat.py
-!rob/help.py
+!rob
