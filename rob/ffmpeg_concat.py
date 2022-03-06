@@ -45,6 +45,17 @@ my_parser.add_argument(
     help="the path to files to be concatted",
 )
 
+my_parser.add_argument(
+    "-c",
+    "--cpus",
+    metavar="cpus",
+    nargs=1,
+    default=1,
+    action="store",
+    type=int,
+    help="the number of processor cores to utilize",
+)
+
 my_parser.add_argument('-o',
                        '--overwrite',
                        action='store_true',
@@ -56,6 +67,7 @@ _ARGS = my_parser.parse_args()
 _PATH = _ARGS.path
 _FILETYPE = _ARGS.filetype
 _OVERWRITE = _ARGS.overwrite
+_CPUS = _ARGS.cpus
 
 
 def spin_up(folder):
@@ -68,6 +80,9 @@ def spin_up(folder):
     os.chdir(folder)
     mp3s = glob.glob(f"*{_FILETYPE}")
     mp3s = [elem for elem in mp3s if elem[0] != '~']
+
+    if not mp3s:
+        return
 
     bit_rate = mediainfo(mp3s[0])['bit_rate']
 
@@ -132,7 +147,7 @@ def main():
         + ". \nOk?"
     )
 
-    with multiprocessing.Pool(5) as pool:
+    with multiprocessing.Pool(_CPUS[0]) as pool:
         pool.map_async(spin_up, folders).get()
 
 if __name__ == "__main__":
