@@ -52,7 +52,7 @@ EXCLUSIONS = SETTINGS["EXCLUSIONS"]
 MONTHS = SETTINGS["MONTHS"]
 MONTHS.insert(0, None)
 
-PROMPT = "(CLN)> "
+PROMPT = f"rob.{Path(__file__).stem}> "
 
 
 def handle_files(files: list, folder: str = "misc", month: bool = False):

@@ -1,19 +1,5 @@
-MONTHS = [
-  "Jan",
-  "Feb",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "Aug",
-  "Sept",
-  "Oct",
-  "Nov",
-  "Dec"
-]
 EXCLUSIONS = [ "desktop.ini" ]
-CROWDED_FOLDER = 24
+CROWDED_FOLDER = 24 # Number of files before a yearly archive is turned into a monthly archive
 
 [FILE_TYPES]
 Large_Files = [ ]
@@ -60,3 +46,19 @@ programming = [
 ]
 syslinks = [ ".lnk", ".url" ]
 "zip files" = [ ".zip", ".7z", ".tar", ".rar", ".gz" ]
+
+
+MONTHS = [
+  "Jan",
+  "Feb",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "Aug",
+  "Sept",
+  "Oct",
+  "Nov",
+  "Dec"
+]
