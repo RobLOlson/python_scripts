@@ -34,13 +34,11 @@ if CONFIG_FILE.exists():
         SETTINGS = toml.load(fp)
 
 else:
-    base_config = Path(__file__).parent / ".." / "config" / "clean.toml"
+    base_config = Path(__file__).parent / "config" / "clean.toml"
     os.makedirs(CONFIG_FILE.parent, exist_ok=True)
     shutil.copyfile(base_config, CONFIG_FILE)
     with (open(CONFIG_FILE, "r")) as fp:
         SETTINGS = toml.load(fp)
-
-# breakpoint()
 
 # Number of files in a folder that prompts more sorting
 CROWDED_FOLDER = SETTINGS["CROWDED_FOLDER"]
