@@ -11,10 +11,12 @@ import sys
 import re
 import argparse
 import json
+import appdirs
+import shutil
 
 import rich.traceback
 import rich
-import yaml
+import toml
 
 from pathlib import Path
 
@@ -23,9 +25,20 @@ rich.traceback.install(show_locals=True)
 DEBUG = False
 HANDLE_MISC = True
 
-THIS_FILE = Path(sys.argv[0])
-with (open(THIS_FILE.parent / "clean.yaml", "r")) as fp:
-    SETTINGS = yaml.safe_load(fp)
+THIS_FILE = Path(__file__)
+
+CONFIG_FILE = Path(appdirs.user_config_dir()) / "robolson" / "config" / "clean.toml"
+
+if CONFIG_FILE.exists():
+    with (open(CONFIG_FILE, "r")) as fp:
+        SETTINGS = toml.load(fp)
+
+else:
+    base_config = Path(__file__).parent / "config" / "clean.toml"
+    os.makedirs(CONFIG_FILE.parent, exist_ok=True)
+    shutil.copyfile(base_config, CONFIG_FILE)
+    with (open(CONFIG_FILE, "r")) as fp:
+        SETTINGS = toml.load(fp)
 
 # Number of files in a folder that prompts more sorting
 CROWDED_FOLDER = SETTINGS["CROWDED_FOLDER"]
@@ -37,10 +50,9 @@ FILE_TYPES = SETTINGS["FILE_TYPES"]
 EXCLUSIONS = SETTINGS["EXCLUSIONS"]
 
 MONTHS = SETTINGS["MONTHS"]
+MONTHS.insert(0, None)
 
 PROMPT = "(CLN)> "
-
-breakpoint()
 
 
 def handle_files(files: list, folder: str = "misc", month: bool = False):
@@ -64,10 +76,11 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             target_folder = os.path.join(
                 target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}"
             )
-        try:
-            os.makedirs(target_folder, exist_ok=True)
-        except:
-            pass
+        os.makedirs(target_folder, exist_ok=True)
+        # try:
+        #     os.makedirs(target_folder, exist_ok=True)
+        # except:
+        #     pass
 
         while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
             choice = input(
@@ -179,6 +192,9 @@ def main():
     # etc
 
     for file_type, extension_list in FILE_TYPES.items():
+        if not extension_list:
+            continue
+
         extension_pattern = re.compile(
             "(" + "|".join(extension_list) + ")$", re.IGNORECASE
         )
@@ -193,7 +209,10 @@ def main():
 
     # Any file-types not explicitly handled are moved to the miscellaneous folder
     if HANDLE_MISC and all_files:
-        file_groups["misc"].extend(all_files)
+        try:
+            file_groups["misc"].extend(all_files)
+        except KeyError:
+            file_groups["misc"] = all_files
         print(f"moved {all_files}")
 
     # Do not target THIS file
@@ -210,6 +229,9 @@ def main():
 
     # Handles all files in file_groups
     for file_type, file_group in file_groups.items():
+        if not file_group:
+            continue
+
         handle_files(file_group, file_type)
 
         # Each file-type-folder should have one or more year folders (e.g., 'media/2020')
@@ -239,8 +261,8 @@ def main():
     move_folders = False
     if extra_folders:
         choice = input(
-            "{}\nExtra folders detected.  Move them (y/n)?\n{}".format(
-                "\n".join(extra_folders), PROMPT
+            "\nNon-archive folders detected.\n* {}\nArchive them (y/n)?\n{}".format(
+                "\n* ".join(extra_folders), PROMPT
             )
         )
         if choice in ["y", "yes"]:

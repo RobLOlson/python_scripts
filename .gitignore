@@ -1,8 +1,11 @@
 *
 !.gitignore
-!clean.py
 !textframe.py
-!hierarchy.py
 !testtextframe.py
 !testhierarchy.py
 !robai.py
+!config
+!poetry.lock
+!pyproject.toml
+!*.toml
+!rob
