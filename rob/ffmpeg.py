@@ -9,6 +9,8 @@ import sys
 import subprocess
 import multiprocessing
 import time
+import appdirs
+import random
 
 import pydub
 import rich
@@ -133,8 +135,11 @@ def spin_up(folder):
             for file in track(mp3s):
                 combined += pydub.AudioSegment.from_ogg(file)
 
+    salt = ""
     if _ARGS.local:
-        _temp_file = Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
+        salt = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+        os.makedirs(pathlib.Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp", exist_ok=True)
+        _temp_file = pathlib.Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"/ f"{salt}~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
     else:
         _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
 
@@ -156,8 +161,7 @@ def spin_up(folder):
     command = [
         "ffmpeg",
         "-i",
-        # f"concat:{concated}",
-        f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
+        str(_temp_file), # f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
         "-movflags", # Carry metadata over
         "use_metadata_tags",
         "-c:a", # audio cocec
@@ -172,6 +176,9 @@ def spin_up(folder):
     rich.print("\nRunning the following command:\n[yellow]" + " ".join(command) + "[/yellow]\n")
     subprocess.run(command, shell=True)
     # End of Convert audio files
+
+    if salt:
+        os.remove(_temp_file)
 
     rich.print(f"[green]Finished {folder}.\n")
 
@@ -253,8 +260,6 @@ def main():
         folders.add(target.parent)
 
     folders = sorted(list(folders))
-
-    breakpoint()
 
     if _ARGS.number[0]:
         folders = folders[:_ARGS.number[0]]
