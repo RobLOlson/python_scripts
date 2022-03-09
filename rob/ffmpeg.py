@@ -60,6 +60,17 @@ my_parser.add_argument(
     help="the number of processor cores to utilize",
 )
 
+my_parser.add_argument(
+    "-n",
+    "--number",
+    metavar="number",
+    nargs=1,
+    default=[0],
+    action="store",
+    type=int,
+    help="the number of folders to limit execution on",
+)
+
 my_parser.add_argument('-o',
                        '--overwrite',
                        action='store_true',
@@ -69,6 +80,11 @@ my_parser.add_argument('-i',
                        '--interactive',
                        action='store_true',
                        help='supply arguments manually via prompt')
+
+my_parser.add_argument('-l',
+                       '--local',
+                       action='store_true',
+                       help='store temporary files on local machine')
 
 # Execute the parse_args() method
 _ARGS = my_parser.parse_args()
@@ -117,7 +133,10 @@ def spin_up(folder):
             for file in track(mp3s):
                 combined += pydub.AudioSegment.from_ogg(file)
 
-    _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
+    if _ARGS.local:
+        _temp_file = Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
+    else:
+        _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
 
     combined.export(_temp_file, tags={"test":"TEST"}, bitrate=bit_rate)
     # End of Merge audio files
@@ -234,6 +253,11 @@ def main():
         folders.add(target.parent)
 
     folders = sorted(list(folders))
+
+    breakpoint()
+
+    if _ARGS.number[0]:
+        folders = folders[:_ARGS.number[0]]
 
     input(
         f"Executing on \n * "
