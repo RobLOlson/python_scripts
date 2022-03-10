@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.33"
+version = "0.3.34"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "pyproject.toml"]

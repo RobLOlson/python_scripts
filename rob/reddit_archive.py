@@ -113,7 +113,7 @@ _REDDIT = praw.Reddit(
 def generate_text():
     now = datetime.datetime.now()
     with shelve.open(str(_DB_FILE)) as db, open(
-        f"reddit_archive_{now.day}_{now.month}_{now.year}.txt",
+        f"reddit_archive_{now.year}_{now.month}_{now.day}.txt",
         "w",
         encoding="utf-8",
     ) as fp:
