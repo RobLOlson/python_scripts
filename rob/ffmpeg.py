@@ -55,8 +55,7 @@ my_parser.add_argument(
     "-c",
     "--cpus",
     metavar="cpus",
-    nargs=1,
-    default=[1],
+    default=1,
     action="store",
     type=int,
     help="the number of processor cores to utilize",
@@ -226,19 +225,19 @@ def interact():
 
     rich.print(f"[yellow]Working on {_FILETYPE}'s.\n")
 
-    choice = input(f"How many CPU cores to use [default: {_CPUS[0]}]?\n{_PROMPT}")
+    choice = input(f"How many CPU cores to use [default: {_CPUS}]?\n{_PROMPT}")
     while True:
         try:
             if not choice:
                 break
             else:
-                _CPUS = [int(choice)]
+                _CPUS = int(choice)
                 break
         except (TypeError, ValueError):
-            rich.print(f"[red]Must supply an integer.[/red]\nHow many CPU cores to use \[default: {_CPUS[0]}]?\n")
+            rich.print(f"[red]Must supply an integer.[/red]\nHow many CPU cores to use \[default: {_CPUS}]?\n")
             choice = input(f"{_PROMPT}")
 
-    rich.print(f"[yellow]Using {_CPUS[0]} core{'s' if _CPUS[0]>1 else ''}.\n")
+    rich.print(f"[yellow]Using {_CPUS} core{'s' if _CPUS>1 else ''}.\n")
 
 def main():
     folders = set()
@@ -270,7 +269,7 @@ def main():
         + ". \nOk?"
     )
 
-    with multiprocessing.Pool(_CPUS[0]) as pool:
+    with multiprocessing.Pool(_CPUS) as pool:
         pool.map_async(spin_up, folders).get()
 
 if __name__ == "__main__":

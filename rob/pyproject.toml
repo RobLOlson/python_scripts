@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.34"
+version = "0.3.35"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "pyproject.toml"]
@@ -16,6 +16,7 @@ toml = "^0.10.2"
 praw = "^7.5.0"
 openai = "^0.15.0"
 pydub = "^0.25.1"
+appdirs = "^1.4.4"
 
 [tool.poetry.dev-dependencies]
 
