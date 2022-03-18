@@ -2,10 +2,7 @@ import glob
 import pathlib
 import os
 import time
-import asyncio
 import argparse
-import logging
-import sys
 import subprocess
 import multiprocessing
 import time
@@ -20,7 +17,8 @@ from pydub.utils import mediainfo
 
 # Create the parser
 my_parser = argparse.ArgumentParser(
-    prog=sys.argv[0],
+    # prog=sys.argv[0],
+    prog="py -m rob."+pathlib.Path(__file__).stem,
     allow_abbrev=True,
     add_help=True,
     description="Concatenates audio files to m4b using ffmpeg.",
@@ -83,6 +81,7 @@ my_parser.add_argument(
 
 my_parser.add_argument('--safe',
                        action='store_true',
+                       default=False,
                        help='force ffmpeg to ask for overwrite permissions')
 
 my_parser.add_argument('--command',
@@ -102,13 +101,14 @@ my_parser.add_argument('-l',
 # Execute the parse_args() method
 _ARGS = my_parser.parse_args()
 
-_PROMPT = f"rob.{pathlib.Path(__file__).stem}> "
-
 _PATH = pathlib.Path(_ARGS.path)
 _FILETYPE = _ARGS.filetype
 _SAFE = _ARGS.safe
 _CPUS = _ARGS.cpus
 _COMMAND = _ARGS.command
+
+_PROMPT = f"rob.{pathlib.Path(__file__).stem}> "
+_PROMPT_STYLE = "white on blue"
 _TEMP_FOLDER = pathlib.Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"
 _COMMAND_FILE = pathlib.Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
@@ -260,28 +260,23 @@ def interact():
     global _CPUS
     global _COMMAND
 
-    choice = input(f"Enter path to work on [default: {_PATH.absolute()}].\n{_PROMPT}")
-    if choice:
-        _PATH = pathlib.Path(choice)
+    final_choice = False
+    valid = True
+    while not final_choice:
+        rich.print(f"[{_PROMPT_STYLE if valid else 'red on red'}]Enter the path to work on.[/{_PROMPT_STYLE if valid else 'red on red'}]\n\[default: {_PATH.parent.absolute()}]")
+        choice = input(f"{_PROMPT}")
+
+        if pathlib.Path(choice).exists():
+            _PATH = pathlib.Path(choice)
+            final_choice = True
+
+        valid = False
 
     rich.print(f"[yellow]Working on '{_PATH.absolute()}'.\n")
 
+    rich.print(f"[{_PROMPT_STYLE}]Which file type to work on?[/{_PROMPT_STYLE}] \[default: {_FILETYPE}]\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg")
+    choice = input(f"{_PROMPT}")
 
-    choice = input(f"Automatically overwrite existing files [default: {_SAFE}]? y/n\n{_PROMPT}")
-    if choice in ['y', "Y", 'yes', "YES"]:
-        _SAFE = False
-
-    elif not choice:
-        pass
-    else:
-        _SAFE = True
-
-    if not _SAFE:
-        rich.print("[red]Overwriting...\n")
-    else:
-        rich.print("[green]NOT overwriting...\n")
-
-    choice = input(f"Which file type to work on [default: {_FILETYPE}]?\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg\n{_PROMPT}")
     match choice:
         case "1" | "*.mp3" | ".mp3" | "mp3":
             _FILETYPE = ".mp3"
@@ -311,40 +306,38 @@ def interact():
     all_folders = sorted(list(folders))
     folders = all_folders[:]
 
-    final_choice = True
-    while final_choice:
-        rich.print(f"Found folders with {_FILETYPE}'s:")
+    final_choice = False
+    invalid = False
+    while not final_choice:
+        rich.print(f"Folders with {_FILETYPE}'s:")
         for count, folder in enumerate(all_folders):
             if folder in folders:
-                rich.print(f"[green]{count+1}.) {folder}")
+                rich.print(f" [green]{count+1}.) {folder}")
             else:
-                rich.print(f"[red]{count+1}.) {folder}")
+                rich.print(f" [red]{count+1}.) {folder}")
 
-        choice = input(f"Toggle execution of folders by number or press Enter to continue.\n{_PROMPT}")
+        rich.print(f"\n[{'red on red' if invalid else _PROMPT_STYLE}]Toggle execution of folders by number or press Enter to continue.")
+        choice = input(f"{_PROMPT}")
+        invalid = False
         try:
+            if not choice:
+                final_choice = True
+
             choice = int(choice)
-            if choice <= len(all_folders):
+            if 1 <= choice <= len(all_folders):
                 if all_folders[choice-1] in folders:
                     folders.remove(all_folders[choice-1])
                 else:
                     folders.insert(choice-1, all_folders[choice-1])
             else:
-                rich.print(f"Found folders with {_FILETYPE}'s:")
-                for count, folder in enumerate(all_folders):
-                    if folder in folders:
-                        rich.print(f"[green]{count+1}.) {folder}")
-                    else:
-                        rich.print(f"[red]{count+1}.) {folder}")
-                final_choice = input(f"Continue? (y/n)\n{_PROMPT}")
-                if final_choice not in ["n", "no", "N", "No", "NO"]:
-                    final_choice = False
+                invalid = True
 
         except (SyntaxError, ValueError):
-            final_choice = input(f"Continue? (y/n)\n{_PROMPT}")
-            if final_choice not in ["n", "no", "N", "No", "NO"]:
-                final_choice = False
+            invalid = True
 
-    choice = input(f"How many CPU cores to use [default: {_CPUS}]?\n{_PROMPT}")
+    rich.print(f"[{_PROMPT_STYLE}]How many CPU cores to use?[/{_PROMPT_STYLE}] \[default: {_CPUS}]")
+    choice = input(f"{_PROMPT}")
+
     while True:
         try:
             if not choice:
@@ -358,11 +351,13 @@ def interact():
 
     rich.print(f"[yellow]Using {_CPUS} core{'s' if _CPUS>1 else ''}.\n")
 
-    choice = input(f"(1) Execute commands or (2) Generate command file [default {'1' if _COMMAND else '1'}]?\n{_PROMPT}")
+    rich.print(f"[{_PROMPT_STYLE}](1) Execute commands or \n(2) Generate command file?[/{_PROMPT_STYLE}]\n\[default {'1' if _COMMAND else '1'}]")
+    choice = input(f"{_PROMPT}")
+
     match choice:
-        case '1':
+        case '1' | 'execute':
             _COMMAND = False
-        case '2':
+        case '2' | 'generate' | 'file':
             _COMMAND = True
             open(_COMMAND_FILE, "w").close()
         case _:
@@ -373,18 +368,16 @@ def interact():
 def main():
     folders = set()
 
-    global _SAFE
-
     if _COMMAND:
         open(_COMMAND_FILE, "w").close()
 
-    if _ARGS.interactive:
+    if _ARGS.interact:
         folders = interact()
 
     else:
         os.chdir(_PATH)
         for file in glob.glob(f"**/*{_FILETYPE}", recursive=True):
-            if _SAFE:
+            if not _SAFE:
                 try:
                     os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
                 except FileNotFoundError as e:
@@ -405,11 +398,13 @@ def main():
             case _:
                 pass
 
-    input(
-        f"{'Compiling' if _COMMAND else 'Executing'} on \n * "
+    rich.print(
+        f"[{_PROMPT_STYLE}]{'Compiling' if _COMMAND else 'Executing'} on[/{_PROMPT_STYLE}]\n * "
         + "\n * ".join([str(folder) for folder in folders])
-        + f". \n Using {_CPUS} core. Ok?\n{_PROMPT}"
+        + f". \n[{_PROMPT_STYLE}]Using {_CPUS} core. Ok?"
     )
+    input(f"{_PROMPT}")
+
 
     if _COMMAND:
         with multiprocessing.Pool(_CPUS) as pool:
