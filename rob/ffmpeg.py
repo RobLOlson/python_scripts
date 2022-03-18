@@ -13,6 +13,7 @@ import pydub
 import rich
 
 from rich.progress import track
+from rich.console import Console
 from pydub.utils import mediainfo
 
 # Create the parser
@@ -115,6 +116,8 @@ _COMMAND_FILE = pathlib.Path(os.getcwd()) / "ffmpeg_commands.ps1"
 def command_only(folder):
     os.chdir(folder)
 
+    console = Console()
+
     mp3s = glob.glob(f"*{_FILETYPE}")
     mp3s = [pathlib.Path(elem) for elem in mp3s if elem[0] != '~']
 
@@ -138,11 +141,13 @@ def command_only(folder):
         "-y",
     ]
 
+    if _SAFE:
+        command.remove("-y")
 
     with open(_COMMAND_FILE, "a") as fp:
         fp.write(" ".join(command)+"\n")
 
-    rich.print("[green]"+" ".join(command))
+    console.out(" ".join(command))
 
     return
 
