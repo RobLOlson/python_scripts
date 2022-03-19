@@ -13,8 +13,14 @@ import pydub
 import rich
 
 from rich.progress import track
-from rich.console import Console
 from pydub.utils import mediainfo
+
+import rich.traceback
+from rich import pretty
+
+pretty.install()
+
+rich.traceback.install()
 
 # Create the parser
 my_parser = argparse.ArgumentParser(
@@ -116,8 +122,6 @@ _COMMAND_FILE = pathlib.Path(os.getcwd()) / "ffmpeg_commands.ps1"
 def command_only(folder):
     os.chdir(folder)
 
-    console = Console()
-
     mp3s = glob.glob(f"*{_FILETYPE}")
     mp3s = [pathlib.Path(elem) for elem in mp3s if elem[0] != '~']
 
@@ -147,11 +151,11 @@ def command_only(folder):
     with open(_COMMAND_FILE, "a") as fp:
         fp.write(" ".join(command)+"\n")
 
-    console.out(" ".join(command))
+    print(" ".join(command))
 
     return
 
-def spin_up(folder):
+def concat_and_convert(folder):
     """Spin up an ffmpeg process in target folder.
 
     Args:
@@ -168,38 +172,6 @@ def spin_up(folder):
 
     if not mp3s:
         return
-
-    concated = "|".join([str(elem.absolute()) for elem in mp3s])
-
-    salt = ""
-    if _ARGS.local:
-        salt = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
-        os.makedirs(_TEMP_FOLDER, exist_ok=True)
-        _temp_file = _TEMP_FOLDER / f"{salt}~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
-    else:
-        _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
-
-
-    command = [
-        "ffmpeg",
-        "-i",
-        str(_temp_file), # f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
-        "-movflags", # Carry metadata over
-        "use_metadata_tags",
-        "-c:a", # audio cocec
-        "aac",
-        "-b:a", # bitrate
-        "64k",
-        "-c:v",
-        "copy",
-        f"{pathlib.Path(mp3s[0]).stem}.m4b",
-        "-y"
-    ]
-
-    if _SAFE:
-        command.remove('-y')
-
-    bit_rate = mediainfo(mp3s[0])['bit_rate']
 
     # Merge audio files
 
@@ -222,12 +194,22 @@ def spin_up(folder):
                 for file in track(mp3s):
                     combined += pydub.AudioSegment.from_ogg(file)
 
+    salt = ""
+    if _ARGS.local:
+        salt = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+        os.makedirs(_TEMP_FOLDER, exist_ok=True)
+        _temp_file = _TEMP_FOLDER / f"{salt}~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
+    else:
+        _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
+
+    bit_rate = mediainfo(mp3s[0])['bit_rate']
+
     rich.print(f"[yellow]Writing temp file ({pathlib.Path(_temp_file).absolute()}) to disk.")
     # combined.export(_temp_file, tags={"test":"TEST"}, bitrate=bit_rate)
     combined.export(
     _temp_file,
     format="ipod",
-    # bitrate=bit_rate,
+    bitrate=bit_rate,
     parameters=["-movflags", "use_metadata_tags", "-c:a", "aac", "-c:v", "copy", "-b:a", "64k"],
 )
 
@@ -245,6 +227,25 @@ def spin_up(folder):
     rich.print(f"\n[green]Merged file ({pathlib.Path(_temp_file).absolute()}) created.[/green]\n")
 
     # Convert audio files
+
+    command = [
+        "ffmpeg",
+        "-i",
+        str(_temp_file), # f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
+        "-movflags", # Carry metadata over
+        "use_metadata_tags",
+        "-c:a", # audio cocec
+        "aac",
+        "-b:a", # bitrate
+        "64k",
+        "-c:v",
+        "copy",
+        f"{pathlib.Path(mp3s[0]).stem}.m4b",
+        "-y"
+    ]
+
+    if _SAFE:
+        command.remove('-y')
 
     rich.print("\nRunning the following command:\n[yellow]" + " ".join(command) + "[/yellow]\n")
     subprocess.run(command, shell=True)
@@ -303,7 +304,7 @@ def interact():
         if _SAFE:
             try:
                 os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 pass
         target = pathlib.Path(file).absolute()
         folders.add(target.parent)
@@ -385,7 +386,7 @@ def main():
             if not _SAFE:
                 try:
                     os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
-                except FileNotFoundError as e:
+                except FileNotFoundError:
                     pass
             target = pathlib.Path(file).absolute()
             folders.add(target.parent)
@@ -416,7 +417,7 @@ def main():
             pool.map_async(command_only, folders).get()
     else:
         with multiprocessing.Pool(_CPUS) as pool:
-            pool.map_async(spin_up, folders).get()
+            pool.map_async(concat_and_convert, folders).get()
 
 if __name__ == "__main__":
     main()

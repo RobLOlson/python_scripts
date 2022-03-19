@@ -10,7 +10,7 @@ from rich import pretty
 
 pretty.install()
 
-rich.traceback.install(show_locals=True)
+rich.traceback.install()
 
 os.environ["PYTHONBREAKPOINT"] = "pdbr.set_trace"
 
@@ -25,4 +25,5 @@ try:
 except ImportError:
     print("ptpython is not available: falling back to standard prompt")
 else:
-    embed(globals(), locals())
+    # embed(globals(), locals())
+    pass
