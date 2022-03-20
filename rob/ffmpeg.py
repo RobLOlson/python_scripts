@@ -10,7 +10,7 @@ import appdirs
 import random
 import sys
 
-import pydub
+# import pydub
 import rich
 
 from rich.progress import track
@@ -132,7 +132,7 @@ def command_only(folder):
     command = [
         "ffmpeg",
         "-i",
-        f"'concat:{concated}'",
+        f'''"concat:{concated}"''',
         "-movflags", # Carry metadata over
         "use_metadata_tags",
         "-c:a", # audio cocec
@@ -175,43 +175,82 @@ def concat_and_convert(folder):
 
     # Merge audio files
 
-    if len(mp3s)==1:
-        combined = pydub.AudioSegment.from_mp3(mp3s[0])
+    # if len(mp3s)==-1:
+    #     combined = pydub.AudioSegment.from_mp3(mp3s[0])
 
-    else:
-        combined = pydub.AudioSegment.empty()
-        match _FILETYPE:
-            case ".mp3":
-                for file in track(mp3s):
-                    combined += pydub.AudioSegment.from_mp3(file)
-                    # combined += pydub.AudioSegment.from_file(file, "mp3")
 
-            case ".wav":
-                for file in track(mp3s):
-                    combined += pydub.AudioSegment.from_wav(file)
+    fp = open("files.txt", "w")
+    for file in track(mp3s):
+        fp.write(f"file '{file}'\n")
+        # combined += pydub.AudioSegment.from_mp3(file)
+    fp.close()
 
-            case ".ogg":
-                for file in track(mp3s):
-                    combined += pydub.AudioSegment.from_ogg(file)
+    # combined = pydub.AudioSegment.empty()
+    # match _FILETYPE:
+    #     case ".mp3":
 
-    salt = ""
-    if _ARGS.local:
-        salt = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
-        os.makedirs(_TEMP_FOLDER, exist_ok=True)
-        _temp_file = _TEMP_FOLDER / f"{salt}~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
-    else:
-        _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
+    #     case ".wav":
+    #         for file in track(mp3s):
+    #             combined += pydub.AudioSegment.from_wav(file)
+
+    #     case ".ogg":
+    #         for file in track(mp3s):
+    #             combined += pydub.AudioSegment.from_ogg(file)
+
+    # salt = ""
+    # if _ARGS.local:
+    #     salt = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+    #     os.makedirs(_TEMP_FOLDER, exist_ok=True)
+    #     _temp_file = _TEMP_FOLDER / f"{salt}~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
+    # else:
+    #     _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
 
     bit_rate = mediainfo(mp3s[0])['bit_rate']
 
-    rich.print(f"[yellow]Writing temp file ({pathlib.Path(_temp_file).absolute()}) to disk.")
+    # rich.print(f"[yellow]Writing temp file ({pathlib.Path(_temp_file).absolute()}) to disk.")
+
+    # concated = "|".join([str(pathlib.Path(f"~TEST~{elem}.m4b")) for elem in range(1, len(mp3s)+1)])
+    # ffmpeg -f lavfi -i color=c=blue:s=1280x720 -i input.mp3 -shortest -fflags +shortest output.mp4
+    command = [
+        "ffmpeg",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        "files.txt",
+        "-movflags", # Carry metadata over
+        "use_metadata_tags",
+        "-c:a", # audio cocec
+        "aac",
+        "-b:a", # bitrate
+        f"{bit_rate}",
+        # "64k",
+        # "-c:v",
+        # "copy",
+        "-vn",
+        "-y",
+        f"""{pathlib.Path(mp3s[0]).stem}.m4b""",
+    ]
+
+    if _SAFE:
+        command.remove("-y")
+
+
+    rich.print("[green]Executing:\n[yellow]"+" ".join(command))
+    subprocess.run(command, shell=True)
+
+    os.remove("files.txt")
+
+    return
+
     # combined.export(_temp_file, tags={"test":"TEST"}, bitrate=bit_rate)
-    combined.export(
-    _temp_file,
-    format="ipod",
-    bitrate=bit_rate,
-    parameters=["-movflags", "use_metadata_tags", "-c:a", "aac", "-c:v", "copy", "-b:a", "64k"],
-)
+#     combined.export(
+#     _temp_file,
+#     format="ipod",
+#     bitrate=bit_rate,
+#     parameters=["-movflags", "use_metadata_tags", "-c:a", "aac", "-c:v", "copy", "-b:a", "64k"],
+# )
 
     # End of Merge audio files
 
@@ -240,7 +279,7 @@ def concat_and_convert(folder):
         "64k",
         "-c:v",
         "copy",
-        f"'{pathlib.Path(mp3s[0]).stem}.m4b'",
+        f"""{pathlib.Path(mp3s[0]).stem}.m4b""",
         "-y"
     ]
 
@@ -325,7 +364,7 @@ def interact():
             else:
                 rich.print(f" [red]{count+1}.) {folder}")
 
-        style = _PROMPT_STYLE if valid else 'bright_red on red'
+        style = _PROMPT_STYLE if not invalid else 'bright_red on red'
         rich.print(f"\n[{style}]Toggle execution of folders by number or press Enter to continue.")
         choice = input(f"{_PROMPT}")
         invalid = False

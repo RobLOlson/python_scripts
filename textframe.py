@@ -25,6 +25,8 @@ Rob Olson
 
 import re, operator, math, hierarchy, sys
 
+import robo
+
 try:
     from testtextframe import *
 except ImportError:
