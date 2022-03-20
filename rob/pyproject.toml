@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.40"
+version = "0.3.43"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "pyproject.toml"]
@@ -19,6 +19,11 @@ pydub = "^0.25.1"
 appdirs = "^1.4.4"
 
 [tool.poetry.dev-dependencies]
+venvPath = "C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robolson-tTkljxzG-py3.10\\Lib\\site-packages"
+
+[tool.pyright]
+include = ["C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robolson-tTkljxzG-py3.10\\Lib\\site-packages"]
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

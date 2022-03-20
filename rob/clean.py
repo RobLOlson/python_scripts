@@ -10,7 +10,6 @@ import shutil
 import sys
 import re
 import argparse
-import json
 import appdirs
 import shutil
 

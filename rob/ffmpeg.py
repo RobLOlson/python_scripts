@@ -8,6 +8,7 @@ import multiprocessing
 import time
 import appdirs
 import random
+import sys
 
 import pydub
 import rich
@@ -19,7 +20,6 @@ import rich.traceback
 from rich import pretty
 
 pretty.install()
-
 rich.traceback.install()
 
 # Create the parser
@@ -28,7 +28,7 @@ my_parser = argparse.ArgumentParser(
     prog="py -m rob."+pathlib.Path(__file__).stem,
     allow_abbrev=True,
     add_help=True,
-    description="Concatenates audio files to m4b using ffmpeg.",
+    description="Concatenates audio files to a single .m4b using ffmpeg.",
     epilog="(C) Rob",
 )
 
@@ -141,7 +141,7 @@ def command_only(folder):
         "64k",
         "-c:v",
         "copy",
-        f"{pathlib.Path(mp3s[0]).stem}.m4b",
+        f"'{pathlib.Path(mp3s[0]).stem}.m4b'",
         "-y",
     ]
 
@@ -232,7 +232,7 @@ def concat_and_convert(folder):
         "ffmpeg",
         "-i",
         str(_temp_file), # f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
-        "-movflags", # Carry metadata over
+        "-movflags", #  Carry metadata over
         "use_metadata_tags",
         "-c:a", # audio cocec
         "aac",
@@ -240,7 +240,7 @@ def concat_and_convert(folder):
         "64k",
         "-c:v",
         "copy",
-        f"{pathlib.Path(mp3s[0]).stem}.m4b",
+        f"'{pathlib.Path(mp3s[0]).stem}.m4b'",
         "-y"
     ]
 
@@ -259,6 +259,7 @@ def concat_and_convert(folder):
 
     return
 
+
 def interact():
     global _PATH
     global _FILETYPE
@@ -269,7 +270,9 @@ def interact():
     final_choice = False
     valid = True
     while not final_choice:
-        rich.print(f"[{_PROMPT_STYLE if valid else 'red on red'}]Enter the path to work on.[/{_PROMPT_STYLE if valid else 'red on red'}]\n\[default: {_PATH.parent.absolute()}]")
+        style = _PROMPT_STYLE if valid else 'bright_red on red'
+        rich.print(f"""[{style}]Enter the path to work on.[/{style}]
+\[default: {_PATH.parent.absolute()}]""")
         choice = input(f"{_PROMPT}")
 
         if pathlib.Path(choice).exists():
@@ -322,7 +325,8 @@ def interact():
             else:
                 rich.print(f" [red]{count+1}.) {folder}")
 
-        rich.print(f"\n[{'red on red' if invalid else _PROMPT_STYLE}]Toggle execution of folders by number or press Enter to continue.")
+        style = _PROMPT_STYLE if valid else 'bright_red on red'
+        rich.print(f"\n[{style}]Toggle execution of folders by number or press Enter to continue.")
         choice = input(f"{_PROMPT}")
         invalid = False
         try:
@@ -403,6 +407,10 @@ def main():
                 folders = folders[_ARGS.start-1:_ARGS.start-1+_ARGS.number]
             case _:
                 pass
+
+    if not folders:
+        rich.print(f"[bright_red on red]No {_FILETYPE}'s found.")
+        sys.exit(1)
 
     rich.print(
         f"[{_PROMPT_STYLE}]{'Compiling' if _COMMAND else 'Executing'} on[/{_PROMPT_STYLE}]\n * "

@@ -7,10 +7,13 @@ from functools import reduce
 
 import rich.traceback
 from rich import pretty
+from rich import inspect
 
 pretty.install()
 
 rich.traceback.install()
+
+dir = inspect
 
 os.environ["PYTHONBREAKPOINT"] = "pdbr.set_trace"
 
@@ -25,5 +28,4 @@ try:
 except ImportError:
     print("ptpython is not available: falling back to standard prompt")
 else:
-    # embed(globals(), locals())
-    pass
+    embed(globals(), locals())
