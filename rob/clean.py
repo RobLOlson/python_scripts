@@ -145,13 +145,13 @@ def main():
 
     # Add the arguments
     my_parser.add_argument(
-        "Path",
-        metavar="path",
-        nargs="?",
+        "-p",
+        "--path",
+        metavar="dir",
         default=".",
         action="store",
         type=str,
-        help="the path to list",
+        help="the directory to clean",
     )
 
     args = my_parser.parse_args()

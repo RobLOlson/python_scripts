@@ -116,6 +116,7 @@ _COMMAND = _ARGS.command
 
 _PROMPT = f"rob.{pathlib.Path(__file__).stem}> "
 _PROMPT_STYLE = "white on blue"
+_ERROR_STYLE = "red on black"
 _TEMP_FOLDER = pathlib.Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"
 _COMMAND_FILE = pathlib.Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
@@ -309,7 +310,7 @@ def interact():
     final_choice = False
     valid = True
     while not final_choice:
-        style = _PROMPT_STYLE if valid else 'bright_red on red'
+        style = _PROMPT_STYLE if valid else _ERROR_STYLE
         rich.print(f"""[{style}]Enter the path to work on.[/{style}]
 \[default: {_PATH.parent.absolute()}]""")
         choice = input(f"{_PROMPT}")
@@ -364,7 +365,7 @@ def interact():
             else:
                 rich.print(f" [red]{count+1}.) {folder}")
 
-        style = _PROMPT_STYLE if not invalid else 'bright_red on red'
+        style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
         rich.print(f"\n[{style}]Toggle execution of folders by number or press Enter to continue.")
         choice = input(f"{_PROMPT}")
         invalid = False
@@ -448,7 +449,7 @@ def main():
                 pass
 
     if not folders:
-        rich.print(f"[bright_red on red]No {_FILETYPE}'s found.")
+        rich.print(f"[{_ERROR_STYLE}]No {_FILETYPE}'s found.")
         sys.exit(1)
 
     rich.print(
