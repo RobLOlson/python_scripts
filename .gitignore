@@ -5,3 +5,5 @@ dist
 .tmp*
 __pycache__
 db
+*.autoenv
+*.autoenv.leave
