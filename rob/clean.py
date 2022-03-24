@@ -12,6 +12,7 @@ import re
 import argparse
 import appdirs
 import shutil
+import shelve
 
 import rich.traceback
 import rich
@@ -19,38 +20,90 @@ import toml
 
 from pathlib import Path
 
-rich.traceback.install(show_locals=True)
+rich.traceback.install()
+
+# Create the parser
+my_parser = argparse.ArgumentParser(
+    description="Clean up a folder.",
+    add_help=True,
+    epilog="(C) Rob",
+)
+
+# Add the arguments
+my_parser.add_argument(
+    "-p",
+    "--path",
+    metavar="dir",
+    default=".",
+    action="store",
+    type=str,
+    help="the directory to clean",
+)
+
+my_parser.add_argument(
+    "-y",
+    "--yes",
+    default=False,
+    action="store_true",
+    help="skip all interactive prompts by answering 'yes'",
+)
+
+alt_mode = my_parser.add_mutually_exclusive_group(required=False)
+
+alt_mode.add_argument(
+    "-u",
+    "--undo",
+    default=False,
+    action="store_true",
+    help="undo the previous execution in target directory",
+)
+
+alt_mode.add_argument(
+    "--config",
+    default=False,
+    action="store_true",
+    help="create a config file",
+)
+
+
+_ARGS = my_parser.parse_args()
+
+_CLI_PATH = _ARGS.path
 
 DEBUG = False
 HANDLE_MISC = True
 
 THIS_FILE = Path(__file__)
 
-CONFIG_FILE = Path(appdirs.user_config_dir()) / "robolson" / "config" / "clean.toml"
+_USER_CONFIG_FILE = (
+    Path(appdirs.user_config_dir()) / "robolson" / "clean" / "config" / "clean.toml"
+)
+_DATA_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "undo.db"
 
-if CONFIG_FILE.exists():
-    with (open(CONFIG_FILE, "r")) as fp:
-        SETTINGS = toml.load(fp)
+if not _DATA_FILE.exists():
+    os.makedirs(_DATA_FILE.parent, exist_ok=True)
+    db = shelve.open(str(_DATA_FILE))
+    db.close()
 
-else:
-    base_config = THIS_FILE.parent / "config" / "clean.toml"
-    os.makedirs(CONFIG_FILE.parent, exist_ok=True)
-    shutil.copyfile(base_config, CONFIG_FILE)
-    with (open(CONFIG_FILE, "r")) as fp:
-        SETTINGS = toml.load(fp)
+_BASE_CONFIG_FILE = THIS_FILE.parent / "config" / "clean.toml"
+with open(_BASE_CONFIG_FILE, "r") as fp:
+    SETTINGS = toml.load(fp)
 
-# Number of files in a folder that prompts more sorting
-CROWDED_FOLDER = SETTINGS["CROWDED_FOLDER"]
+if _USER_CONFIG_FILE.exists():
+    with (open(_USER_CONFIG_FILE, "r")) as fp:
+        USER_SETTINGS = toml.load(fp)
 
+SETTINGS.update(USER_SETTINGS)
 
-FILE_TYPES = SETTINGS["FILE_TYPES"]
-
-EXCLUSIONS = SETTINGS["EXCLUSIONS"]
-
-MONTHS = SETTINGS["MONTHS"]
+CROWDED_FOLDER = SETTINGS["CROWDED_FOLDER"]  # number of files that is 'crowded'
+FILE_TYPES = SETTINGS["FILE_TYPES"]  # dictionary of (folder, file-types) pairs
+ARCHIVE_FOLDERS = list(FILE_TYPES.keys())
+EXCLUSIONS = SETTINGS["EXCLUSIONS"]  # list of files to totally ignore
+MONTHS = SETTINGS["MONTHS"]  # strings to use when writing names of months
 MONTHS.insert(0, None)
 
 PROMPT = f"rob.{THIS_FILE.stem}> "
+_COMMANDS = []
 
 
 def handle_files(files: list, folder: str = "misc", month: bool = False):
@@ -81,13 +134,16 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
         #     pass
 
         while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
-            choice = input(
-                f"mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n(y)es/(n)o/yes_to_(a)ll/(d)el?\n{PROMPT}"
+            rich.print(
+                f"[yellow]mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
             )
+            choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
 
         if choice in ["y", "yes"]:
+            _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
             try:
-                shutil.move(file, target_folder)
+                choice = ""
+                # shutil.move(file, target_folder)
 
             # File of Same Name Has Already Been Moved To Folder
             except shutil.Error:
@@ -102,14 +158,16 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
                 choice = ""
 
         elif choice in ["a", "all"]:
-            shutil.move(file, target_folder)
+            _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
+            # shutil.move(file, target_folder)
 
         elif choice in ["n", "no"]:
             choice = ""
 
         elif choice in ["d", "del"]:
             os.makedirs("delete_me", exist_ok=True)
-            shutil.move(file, os.path.normpath(f"delete_me/{file}"))
+            _COMMANDS.append((f"mv", Path(file), Path(f"delete_me") / Path(file)))
+            # shutil.move(file, os.path.normpath(f"delete_me/{file}"))
             # os.remove(file)
             choice = ""
 
@@ -140,33 +198,24 @@ def remove_empty_dirs(path: str | Path):
 # MAIN()
 def main():
 
-    # Create the parser
-    my_parser = argparse.ArgumentParser(description="Clean up a folder.")
-
-    # Add the arguments
-    my_parser.add_argument(
-        "-p",
-        "--path",
-        metavar="dir",
-        default=".",
-        action="store",
-        type=str,
-        help="the directory to clean",
-    )
-
-    args = my_parser.parse_args()
-
-    CLI_path = args.Path
-
-    if not os.path.isdir(CLI_path):
-        rich.print(f"[red on black]The specified path ({CLI_path}) does not exist.")
+    if not os.path.isdir(_CLI_PATH):
+        rich.print(f"[red on black]The specified path ({_CLI_PATH}) does not exist.")
         exit(1)
-        root = input(
-            f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}"
-        )
+        # root = input(
+        #     f"Clean current directory ({os.getcwd()})?\nPress Enter to continue or enter a new path to clean.\n{PROMPT}"
+        # )
 
     else:
-        root = CLI_path
+        root = _CLI_PATH
+
+    if _ARGS.undo:
+        undo()
+        clean_up()
+        exit(0)
+
+    if _ARGS.config:
+        create_config()
+        exit(0)
 
     root = os.path.normpath(root)
 
@@ -179,8 +228,6 @@ def main():
             all_files.remove(file_name)
 
     file_groups = {}
-
-    ARCHIVE_FOLDERS = list(FILE_TYPES.keys())
 
     # put all files with same extension group into one list
     # and put that list in the file_groups dictionary
@@ -243,9 +290,10 @@ def main():
             if sorted_files and (
                 len(sorted_files) + len(pre_sorted_files) > CROWDED_FOLDER
             ):
-                choice = input(
-                    f"{year} has {len(sorted_files)} top-level files and {len(pre_sorted_files)} already sorted files.  Sort by month (y/n)?\n{PROMPT}"
+                rich.print(
+                    f"{year} has {len(sorted_files)} top-level files and {len(pre_sorted_files)} already sorted files.  Sort by month (y/n)?"
                 )
+                choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
                 if choice in ["y", "yes"]:
                     handle_files(sorted_files, file_type, month=True)
 
@@ -258,43 +306,122 @@ def main():
 
     move_folders = False
     if extra_folders:
-        choice = input(
-            "\nNon-archive folders detected.\n* {}\nArchive them (y/n)?\n{}".format(
-                "\n* ".join(extra_folders), PROMPT
+        rich.print(
+            "\n[yellow]Non-archive folders detected.[green]\n * {}\n[yellow]Archive them (y/n)?".format(
+                " \n * ".join(extra_folders)
             )
         )
+        choice = input(f"{PROMPT}") if not _ARGS.yes else "n"
+
         if choice in ["y", "yes"]:
             move_folders = True
 
     if move_folders:
         for extra_folder in extra_folders:
-            choice = input(f"{Path(extra_folder).resolve()}\nMove (y/n)?\n{PROMPT}")
+            rich.print(f"[yellow]{Path(extra_folder).resolve()}\nMove (y/n)?")
+            choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
 
             if choice in ["y", "yes"]:
+                rich.print("[yellow]Archive Folders:")
                 for i, default_folder in enumerate(ARCHIVE_FOLDERS):
-                    print(f"\n{i+1}.) {default_folder}")
-                target_folder = input(
-                    f"\nmv '{extra_folder}' ???\nDestination?\n{PROMPT}"
+                    rich.print(f"[green] {i+1}.) {default_folder}")
+
+                rich.print(
+                    f"[yellow]mv '{extra_folder}' ???\nDestination (enter number)?"
                 )
+                target_folder = input(f"{PROMPT}")
                 try:
-                    if int(target_folder) in list(range(1, len(ARCHIVE_FOLDERS) + 1)):
+                    if 1 <= int(target_folder) < len(ARCHIVE_FOLDERS) + 1:
                         target_folder = ARCHIVE_FOLDERS[int(target_folder) - 1]
+
+                        # _COMMANDS.append(("mv", [extra_folder], target_folder))
+                        handle_files([extra_folder], folder=target_folder)
+                        choice = ""
                 except ValueError:
-                    pass
+                    break
 
-                handle_files([extra_folder], folder=target_folder)
-                choice = ""
+    rich.print("[red]Execute:")
+    for command, file, target in _COMMANDS:
+        rich.print(f"[yellow]mv {file} {target}")
+    rich.print("[red]Are you sure? (y/n)")
+    choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
+    if choice in ["y", "yes", "Y", "YES"]:
+        execute_commands()
+        with shelve.open(str(_DATA_FILE)) as db:
+            db[_CLI_PATH] = _COMMANDS
+            # pickle.dump(_COMMANDS, fp)
 
-    # Removes empty folders, except in programming because of git clone
-    for target_folder in ARCHIVE_FOLDERS:
-        remove_empty_dirs(os.path.join(root, target_folder))
-        # if target_folder != "programming":
-        #     remove_empty_dirs(os.path.join(root, target_folder))
-        # else:
-        #     remove_empty_dir(target_folder)
+    clean_up()
+    exit(0)
 
 
 # END OF MAIN()
+
+
+def clean_up():
+    for target_folder in ARCHIVE_FOLDERS:
+        remove_empty_dirs(os.path.join(_CLI_PATH, target_folder))
+
+
+def undo():
+    undo_commands = []
+
+    with shelve.open(str(_DATA_FILE)) as db:
+        try:
+            old_commands = db[_CLI_PATH]
+            for command, source, dest in old_commands:
+                # _COMMANDS.append((command, (dest / source).absolute(), source.absolute()))
+                undo_commands.append((command, dest, source))
+                _COMMANDS.append((command, dest, source))
+
+        except KeyError:
+            rich.print(
+                f"[red]No recorded commands executed on ({Path(_CLI_PATH).absolute()})."
+            )
+            exit(1)
+
+    rich.print("[red]Execute:")
+    for command, source, dest in undo_commands:
+        rich.print(f"[yellow]mv '{source}' '{dest}'")
+    rich.print("[red]Are you sure? (y/n)")
+    choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
+    if choice in ["y", "yes", "Y", "YES"]:
+        try:
+            execute_commands(undo_commands)
+
+        except Exception as e:
+            with shelve.open(str(_DATA_FILE)) as db:
+                del db[_CLI_PATH]
+            print(e)
+            exit(1)
+        with shelve.open(str(_DATA_FILE)) as db:
+            db[_CLI_PATH] = undo_commands
+
+            # pickle.dump(_COMMANDS, _DATA_FILE)
+
+
+def execute_commands(commands=_COMMANDS):
+    for command, source, dest in commands:
+        try:
+            os.makedirs(dest.parent.absolute(), exist_ok=True)
+            shutil.move(source.absolute(), dest.absolute())
+
+        # File of Same Name Has Already Been Moved To Folder
+        except shutil.Error as e:
+            print(e)
+
+
+def create_config():
+    os.makedirs(_USER_CONFIG_FILE.parent, exist_ok=True)
+    shutil.copyfile(_BASE_CONFIG_FILE, _USER_CONFIG_FILE)
+    with open(_USER_CONFIG_FILE, "r") as fp:
+        fp.seek(0)
+        lines = fp.readlines()
+        lines = ["# " + line for line in lines]
+    with open(_USER_CONFIG_FILE, "w") as fp:
+        fp.write("".join(lines))
+    print(f"User config file created at:\n{_USER_CONFIG_FILE}")
+
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,25 @@
+DEBUG = false
+
+HANDLE_MISC = true # Unrecognized extensions will be filed under 'misc'
+
 EXCLUSIONS = [ "desktop.ini" ]
+
 CROWDED_FOLDER = 24 # Number of files before a yearly archive is turned into a monthly archive
+
+MONTHS = [
+  "Jan",
+  "Feb",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "Aug",
+  "Sept",
+  "Oct",
+  "Nov",
+  "Dec"
+]
 
 [FILE_TYPES]
 Large_Files = [ ]
@@ -42,23 +62,12 @@ programming = [
   ".apk",
   ".jonsl",
   ".xml",
-  ".autoenv"
+  ".autoenv",
+  ".autoenv.leave",
+  ".ps1",
+  ".yml",
+  ".yaml",
+  ".toml"
 ]
 syslinks = [ ".lnk", ".url" ]
 "zip files" = [ ".zip", ".7z", ".tar", ".rar", ".gz" ]
-
-
-MONTHS = [
-  "Jan",
-  "Feb",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "Aug",
-  "Sept",
-  "Oct",
-  "Nov",
-  "Dec"
-]
