@@ -9,6 +9,7 @@ import time
 import appdirs
 import random
 import sys
+import shutil
 
 # import pydub
 import rich
@@ -37,9 +38,9 @@ my_parser.add_argument(
     "-f",
     "--filetype",
     metavar="filetype",
-    nargs=1,
-    default=".mp3",
-    choices=[".mp3", ".wav", ".ogg"],
+    nargs="+",
+    default=[".mp3", ".m4a", ".ogg"],
+    # choices=[".mp3", ".wav", ".ogg"],
     action="store",
     type=str,
     help="the filetype to concatenate (valid options: '.mp3', '.ogg' or '.wav')",
@@ -123,11 +124,17 @@ _COMMAND_FILE = pathlib.Path(os.getcwd()) / "ffmpeg_commands.ps1"
 def command_only(folder):
     os.chdir(folder)
 
-    mp3s = glob.glob(f"*{_FILETYPE}")
-    mp3s = [pathlib.Path(elem) for elem in mp3s if elem[0] != '~']
+    mp3s = []
+    for filetype in _FILETYPE:
+        temp = glob.glob(f"*{filetype}")
+        mp3s.extend([pathlib.Path(elem) for elem in temp if elem[0] != '~'])
 
     if not mp3s:
         return
+
+    for mp3 in mp3s:
+        if "'" in str(mp3.stem):
+            shutil.move(mp3, str(mp3))
 
     concated = "|".join([str(elem.absolute()) for elem in mp3s])
     command = [
@@ -167,17 +174,18 @@ def concat_and_convert(folder):
 
     global _SAFE
 
-    mp3s = glob.glob(f"*{_FILETYPE}")
-    mp3s = [pathlib.Path(elem) for elem in mp3s if elem[0] != '~']
+    mp3s = []
+    for filetype in _FILETYPE:
+       temp = glob.glob(f"*{filetype}")
+       mp3s.extend([pathlib.Path(elem) for elem in temp if elem[0] != '~'])
 
 
     if not mp3s:
         return
 
-    # Merge audio files
-
-    # if len(mp3s)==-1:
-    #     combined = pydub.AudioSegment.from_mp3(mp3s[0])
+    for mp3 in mp3s:
+        if "'" in str(mp3.stem):
+            shutil.move(mp3, str(mp3))
 
 
     fp = open("files.txt", "w")
@@ -255,49 +263,49 @@ def concat_and_convert(folder):
 
     # End of Merge audio files
 
-    count = 0
-    while not pathlib.Path(_temp_file).exists():
-        count += 1
-        rich.print(f"[red]Merged file not found.[/red]  Retry {count}/5 in 10s.", end="\r", flush=True)
-        if count > 6:
-            print("Merged file not found.  Exiting...")
-            exit(1)
-        time.sleep(10)
+    # count = 0
+    # while not pathlib.Path(_temp_file).exists():
+    #     count += 1
+    #     rich.print(f"[red]Merged file not found.[/red]  Retry {count}/5 in 10s.", end="\r", flush=True)
+    #     if count > 6:
+    #         print("Merged file not found.  Exiting...")
+    #         exit(1)
+    #     time.sleep(10)
 
-    rich.print(f"\n[green]Merged file ({pathlib.Path(_temp_file).absolute()}) created.[/green]\n")
+    # rich.print(f"\n[green]Merged file ({pathlib.Path(_temp_file).absolute()}) created.[/green]\n")
 
-    # Convert audio files
+    # # Convert audio files
 
-    command = [
-        "ffmpeg",
-        "-i",
-        str(_temp_file), # f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
-        "-movflags", #  Carry metadata over
-        "use_metadata_tags",
-        "-c:a", # audio cocec
-        "aac",
-        "-b:a", # bitrate
-        "64k",
-        "-c:v",
-        "copy",
-        f"""{pathlib.Path(mp3s[0]).stem}.m4b""",
-        "-y"
-    ]
+    # command = [
+    #     "ffmpeg",
+    #     "-i",
+    #     str(_temp_file), # f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
+    #     "-movflags", #  Carry metadata over
+    #     "use_metadata_tags",
+    #     "-c:a", # audio cocec
+    #     "aac",
+    #     "-b:a", # bitrate
+    #     "64k",
+    #     "-c:v",
+    #     "copy",
+    #     f"""{pathlib.Path(mp3s[0]).stem}.m4b""",
+    #     "-y"
+    # ]
 
-    if _SAFE:
-        command.remove('-y')
+    # if _SAFE:
+    #     command.remove('-y')
 
-    rich.print("\nRunning the following command:\n[yellow]" + " ".join(command) + "[/yellow]\n")
-    subprocess.run(command, shell=True)
-    # End of Convert audio files
+    # rich.print("\nRunning the following command:\n[yellow]" + " ".join(command) + "[/yellow]\n")
+    # subprocess.run(command, shell=True)
+    # # End of Convert audio files
 
-    if salt:
-        rich.print(f"[red]Removing temp file ({pathlib.Path(_temp_file).absolute()}).")
-        os.remove(_temp_file)
+    # if salt:
+    #     rich.print(f"[red]Removing temp file ({pathlib.Path(_temp_file).absolute()}).")
+    #     os.remove(_temp_file)
 
-    rich.print(f"[green]Finished {folder}.\n")
+    # rich.print(f"[green]Finished {folder}.\n")
 
-    return
+    # return
 
 
 def interact():
@@ -323,34 +331,35 @@ def interact():
 
     rich.print(f"[yellow]Working on '{_PATH.absolute()}'.\n")
 
-    rich.print(f"[{_PROMPT_STYLE}]Which file type to work on?[/{_PROMPT_STYLE}] \[default: {_FILETYPE}]\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg")
-    choice = input(f"{_PROMPT}")
+    # rich.print(f"[{_PROMPT_STYLE}]Which file type to work on?[/{_PROMPT_STYLE}] \[default: {_FILETYPE}]\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg")
+    # choice = input(f"{_PROMPT}")
 
-    match choice:
-        case "1" | "*.mp3" | ".mp3" | "mp3":
-            _FILETYPE = ".mp3"
+    # match choice:
+    #     case "1" | "*.mp3" | ".mp3" | "mp3":
+    #         _FILETYPE = ".mp3"
 
-        case "2" | "*.wav" | ".wav" | "wav":
-            _FILETYPE = ".wav"
+    #     case "2" | "*.wav" | ".wav" | "wav":
+    #         _FILETYPE = ".wav"
 
-        case "3" | "*.ogg" | ".ogg" | "ogg":
-            _FILETYPE = ".ogg"
+    #     case "3" | "*.ogg" | ".ogg" | "ogg":
+    #         _FILETYPE = ".ogg"
 
-        case _:
-            pass
+    #     case _:
+    #         pass
 
     rich.print(f"[yellow]Working on {_FILETYPE}'s.\n")
 
     folders = set()
     os.chdir(_PATH)
-    for file in glob.glob(f"**/*{_FILETYPE}", recursive=True):
-        if _SAFE:
-            try:
-                os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
-            except FileNotFoundError:
-                pass
-        target = pathlib.Path(file).absolute()
-        folders.add(target.parent)
+    for filetype in _FILETYPE:
+        for file in glob.glob(f"**/*{filetype}", recursive=True):
+            if _SAFE and ".m4b" not in _FILETYPE:
+                try:
+                    os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
+                except FileNotFoundError:
+                    pass
+            target = pathlib.Path(file).absolute()
+            folders.add(target.parent)
 
     all_folders = sorted(list(folders))
     folders = all_folders[:]
@@ -426,14 +435,15 @@ def main():
 
     else:
         os.chdir(_PATH)
-        for file in glob.glob(f"**/*{_FILETYPE}", recursive=True):
-            if not _SAFE:
-                try:
-                    os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
-                except FileNotFoundError:
-                    pass
-            target = pathlib.Path(file).absolute()
-            folders.add(target.parent)
+        for filetype in _FILETYPE:
+            for file in glob.glob(f"**/*{filetype}", recursive=True):
+                if not _SAFE:
+                    try:
+                        os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
+                    except FileNotFoundError:
+                        pass
+                target = pathlib.Path(file).absolute()
+                folders.add(target.parent)
 
         folders = sorted(list(folders))
 
