@@ -128,10 +128,6 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
                 target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}"
             )
         os.makedirs(target_folder, exist_ok=True)
-        # try:
-        #     os.makedirs(target_folder, exist_ok=True)
-        # except:
-        #     pass
 
         while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
             rich.print(

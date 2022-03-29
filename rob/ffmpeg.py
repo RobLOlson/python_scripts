@@ -191,35 +191,11 @@ def concat_and_convert(folder):
     fp = open("files.txt", "w")
     for file in track(mp3s):
         fp.write(f"file '{file}'\n")
-        # combined += pydub.AudioSegment.from_mp3(file)
+
     fp.close()
-
-    # combined = pydub.AudioSegment.empty()
-    # match _FILETYPE:
-    #     case ".mp3":
-
-    #     case ".wav":
-    #         for file in track(mp3s):
-    #             combined += pydub.AudioSegment.from_wav(file)
-
-    #     case ".ogg":
-    #         for file in track(mp3s):
-    #             combined += pydub.AudioSegment.from_ogg(file)
-
-    # salt = ""
-    # if _ARGS.local:
-    #     salt = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
-    #     os.makedirs(_TEMP_FOLDER, exist_ok=True)
-    #     _temp_file = _TEMP_FOLDER / f"{salt}~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
-    # else:
-    #     _temp_file = f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}"
 
     bit_rate = mediainfo(mp3s[0])['bit_rate']
 
-    # rich.print(f"[yellow]Writing temp file ({pathlib.Path(_temp_file).absolute()}) to disk.")
-
-    # concated = "|".join([str(pathlib.Path(f"~TEST~{elem}.m4b")) for elem in range(1, len(mp3s)+1)])
-    # ffmpeg -f lavfi -i color=c=blue:s=1280x720 -i input.mp3 -shortest -fflags +shortest output.mp4
     command = [
         "ffmpeg",
         "-f",
@@ -234,9 +210,6 @@ def concat_and_convert(folder):
         "aac",
         "-b:a", # bitrate
         f"{bit_rate}",
-        # "64k",
-        # "-c:v",
-        # "copy",
         "-vn",
         "-y",
         f"""{pathlib.Path(mp3s[0]).stem}.m4b""",
@@ -252,60 +225,6 @@ def concat_and_convert(folder):
     os.remove("files.txt")
 
     return
-
-    # combined.export(_temp_file, tags={"test":"TEST"}, bitrate=bit_rate)
-#     combined.export(
-#     _temp_file,
-#     format="ipod",
-#     bitrate=bit_rate,
-#     parameters=["-movflags", "use_metadata_tags", "-c:a", "aac", "-c:v", "copy", "-b:a", "64k"],
-# )
-
-    # End of Merge audio files
-
-    # count = 0
-    # while not pathlib.Path(_temp_file).exists():
-    #     count += 1
-    #     rich.print(f"[red]Merged file not found.[/red]  Retry {count}/5 in 10s.", end="\r", flush=True)
-    #     if count > 6:
-    #         print("Merged file not found.  Exiting...")
-    #         exit(1)
-    #     time.sleep(10)
-
-    # rich.print(f"\n[green]Merged file ({pathlib.Path(_temp_file).absolute()}) created.[/green]\n")
-
-    # # Convert audio files
-
-    # command = [
-    #     "ffmpeg",
-    #     "-i",
-    #     str(_temp_file), # f"~{pathlib.Path(mp3s[0]).stem}-full{_FILETYPE}",
-    #     "-movflags", #  Carry metadata over
-    #     "use_metadata_tags",
-    #     "-c:a", # audio cocec
-    #     "aac",
-    #     "-b:a", # bitrate
-    #     "64k",
-    #     "-c:v",
-    #     "copy",
-    #     f"""{pathlib.Path(mp3s[0]).stem}.m4b""",
-    #     "-y"
-    # ]
-
-    # if _SAFE:
-    #     command.remove('-y')
-
-    # rich.print("\nRunning the following command:\n[yellow]" + " ".join(command) + "[/yellow]\n")
-    # subprocess.run(command, shell=True)
-    # # End of Convert audio files
-
-    # if salt:
-    #     rich.print(f"[red]Removing temp file ({pathlib.Path(_temp_file).absolute()}).")
-    #     os.remove(_temp_file)
-
-    # rich.print(f"[green]Finished {folder}.\n")
-
-    # return
 
 
 def interact():
