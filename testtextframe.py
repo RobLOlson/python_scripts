@@ -54,14 +54,14 @@ Human readable contents of the cache is produced by another top level function.
 """
         with open("text test calls.pkl","r") as f:
             verified = pickle.load(f)
-            
+
         result = []
         for text in TEXTS:
             for args in ARGS:
                 result.append(t.frame(text,**args))
 
         self.assertEqual("".join(verified),"".join(result))
-        
+
 
 class SimpleFramingCases(unittest.TestCase):
     def test_leading_whitespace(self):
@@ -87,7 +87,7 @@ class SimpleFramingCases(unittest.TestCase):
                            "1\n1\n1",
                            "11\n11\n11",
                            "+\n|\n+"))
-                         
+
 
 class ParallelizeCases(unittest.TestCase):
     def test_basic_input(self):
@@ -119,7 +119,7 @@ class ParallelizeCases(unittest.TestCase):
     def test_widths(self):
         words = ['12345', 'abcde', '09876', 'zyxwv']
         self.assertEqual(t.parallelize(words,[4,3,2,1]),"1234abc09z")
-    
+
 class TableCases(unittest.TestCase):
     pass
 
@@ -169,7 +169,7 @@ def find_difference():
             result.append(t.frame(text, **args))
 
     differences = []
-    
+
     for v_elem, r_elem in zip(verified, result):
         if v_elem != r_elem:
             differences.append((v_elem, r_elem))

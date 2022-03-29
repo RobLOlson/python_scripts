@@ -46,7 +46,7 @@ NOTE: The parser is flexible enough to handle any nested list, although the
       result may need tweaking if the original list was not properly structured.
       The hier_out(...) function will give you a visual indication of how the
       Hierarchy class will interpret any given nested list.
-      
+
 EXAMPLES:
 
 >>> print Hierarchy('A hierarchical singleton')
@@ -90,7 +90,7 @@ EXAMPLES:
 
             if temp._parent == self:
                 temp._parent = None
-                
+
             for k in temp.__dict__.keys():
                 setattr(self, k, getattr(temp, k))
 
@@ -101,7 +101,7 @@ EXAMPLES:
 
             if parent:
                 self.parent = parent
-        
+
     def __getitem__(self, name):
         """Experimenting with special syntax...
 A string index with the '=' symbol will be broken into two parts.
@@ -114,7 +114,7 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
 
         if isinstance(name, int):
             return self._daughters[name]
-        
+
         if name.count("=") > 1:
             raise HierarchyError("'=' can appear only once per index specifier.")
 
@@ -138,26 +138,26 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
 
         if "ID={}".format(value.ID) in self:
             raise HierarchyError("Cannot assign objects already in the hierarchy.")
-        
+
         if isinstance(value, Hierarchy):
-            
+
             if self[name]:
-                
+
                 if value._parent:
                     vp = value._parent
                     vp._daughters.remove(value)
                     for daughter in vp._daughters:
                         daughter._sisters.remove(value)
-                        
+
                 target = self[name]
                 tp = target._parent
                 tp._daughters.remove(target)
                 for daughter in tp._daughters:
                     daughter._sisters.remove(target)
-                
+
                 value.parent = tp
-                
-                
+
+
             else:
                 raise ValueError("'{}' was not found.".format(name))
         else:
@@ -174,7 +174,7 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
         dot_Index = class_Name.rindex('.')
         class_Name = class_Name[dot_Index+1:-2]
         #class_Name = re.search(r"\.([A-Za-z_]+)'>$", class_Name)[0]
-        
+
         return "{}('{}')".format(class_Name,self.name)
 
     def __str__(self):
@@ -196,7 +196,7 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
     def sisters(self):
         """Read only."""
         return self._sisters
-    
+
     @property
     def daughters(self):
         """Read only."""
@@ -205,7 +205,7 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
     def origin(self):
         """Read only."""
         return self._origin
-    
+
     @property
     def parent(self):
         return self._parent
@@ -214,7 +214,7 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
     def parent(self, target):
         """Removes self from current parent and makes target self's new parent.
 Also cleans up secondary references, lateral references, etc."""
-        
+
         try:
             self._traverse(self, target.ID, 'ID')
             raise HierarchyError("Cannot make a child element a parent.")
@@ -228,11 +228,11 @@ Also cleans up secondary references, lateral references, etc."""
                 daughter._sisters.remove(self)
 
         self._sisters = target._daughters[:]
-        
+
         if target._daughters:
             for daughter in target._daughters:
                 daughter._sisters.append(self)
-        
+
 
         target._daughters.append(self)
 
@@ -244,12 +244,12 @@ Also cleans up secondary references, lateral references, etc."""
         temp = self.__class__(self.name)
 
         temp.__dict__ = self.__dict__.copy()
-        
+
         if depth == 0:
             temp._daughters = []
-            
+
         if depth > 0 or depth == -1:
-            
+
             if depth > 0:
                 depth -= 1
 
@@ -261,7 +261,7 @@ Also cleans up secondary references, lateral references, etc."""
                 daughter._sisters = temp_daughters[:].remove(daughter)
                 daughter.parent = temp
 
-        return temp 
+        return temp
 
     def _propagate(self, root, attribute, value):
         """Assign value to root.attribute and all of root's daughter.attribute."""
@@ -282,10 +282,10 @@ Also cleans up secondary references, lateral references, etc."""
                     temp = self._traverse(daughter, target, attribute)
                     if temp:
                         return temp
-                    
+
         if root==self:
             raise ValueError("{} not found in the hierarchy.".format(target))
-    
+
     def _parse_list(self, nested_List):
         """Recursively turn a nested list/dictionary into a tree of Hierarchy objects."""
 
@@ -298,19 +298,19 @@ Also cleans up secondary references, lateral references, etc."""
         else:
             nested_list = nested_List[:]
 
-        
+
         sub_Lists = [elem for elem in nested_list if isinstance(elem, (list, tuple, dict))]
         extra_Args = [elem for elem in nested_list if not isinstance(elem, (list, tuple, dict))]
 
         temp = self.__class__(", ".join([str(elem) for elem in extra_Args]), self, *extra_Args)
-        
+
         daughters = [temp._parse_list(daughter) for daughter in sub_Lists]
-        
+
         temp._daughters = daughters
 
         for daughter in daughters:
             daughter._parent = temp
-        
+
         return temp
 
     def _list_depth(self, root):
@@ -344,9 +344,9 @@ Also cleans up secondary references, lateral references, etc."""
     def _stringify(self, attributes=[], depth = 0):
         """Recursively lay self out along one line for each level of nesting.
 TODO: Make indent and grouper variables to customize output style."""
-        
+
         from text import parallelize
-        
+
         if 'name' in attributes:
             attributes.remove('name')
 
@@ -354,26 +354,26 @@ TODO: Make indent and grouper variables to customize output style."""
         attrs = ", ".join([repr(getattr(self, attr, "Error")) for attr in attributes])
         if attrs:
             head += "({})".format(attrs)
-            
+
         foot = "\n"*depth + ">"
-        
+
         if self._daughters:
             head += "<"
-            
+
             canvas = [head]
             for daughter in self._daughters:
                 canvas.append(daughter._stringify(attributes = attributes,
                                                   depth = depth+1))
-                
+
                 if self._daughters.index(daughter) != len(self._daughters)-1:
                     canvas.append("\n"*(depth+1) + ", ")
             canvas.append(foot)
 
             return parallelize(canvas)
-        
+
         else:
             return head
-            
+
     def _verticalize(self, attributes = [], depth = 0):
         """Recursively lay self out on lines.
 TODO: Make indent and grouper variables to customize output style."""
@@ -384,7 +384,7 @@ TODO: Make indent and grouper variables to customize output style."""
         attrs = ", ".join([repr(getattr(self, attr, "Error")) for attr in attributes])
         if attrs:
             attrs = "({})".format(attrs)
-            
+
         if self._daughters:
             base_String = "  "*depth + str(self.name)+ attrs +"\n"+ "  "*depth + "<\n"
             for daughter in self._daughters:
@@ -407,7 +407,7 @@ MODE       - VALID STRING CODES
 frames     - 'frames', 'f'
 vertical   - 'vertical', 'v'
 horizontal - 'horizontal', 'h'"""
-        
+
         try:
             from text import frame, parallelize
         except ImportError:
@@ -426,7 +426,7 @@ horizontal - 'horizontal', 'h'"""
             return self._verticalize(attributes = attributes, depth=0)
 
         return self._frame_down(self, attributes = attributes)
-    
+
     def insert(self, *args):
         """If first argument is hierarchical, it is simply added as a child of self.
 Otherwise, arguments are taken and passed to self.__init__(...) to generate
@@ -444,12 +444,12 @@ If depth == -1, copying is exhaustive.
 If depth == 0, no children are copied (only self).
 NOTE: Element ID's are based on location in memory.  (The copy will have a
 different self.ID value than the original.)"""
-        
+
         temp = self._copy(depth)
         temp._parent = None
         temp._propagate(temp, "_origin", temp)
         return temp
-        
+
     def set_precedence(self, index):
         """Move this element to the index'th position among its siblings."""
         if self._parent:
@@ -465,7 +465,7 @@ Examples:
 The [0, 1, 2] permutation is the identity permutation.
 The [2, 1, 0] permutation is equivalent to using reversed.
 The [0,2,4,...,1,3,5,...] permutation organizes daughters by parity."""
-        
+
         if len(permutation) != len(self._daughters):
             raise HierarchyError("Permutation must have exactly 1 distinct index for each daughter.")
 
@@ -482,8 +482,8 @@ The [0,2,4,...,1,3,5,...] permutation organizes daughters by parity."""
 
     def transfer(self):
         pass
-        
-        
+
+
 def list_depth(nestedList):
     """A non-list object has 0 depth.  A simple list has a depth of 1.  Etc."""
 
@@ -501,7 +501,7 @@ If depth == 2, twice-nested lists are also affected.
 ...etc..."""
 
     if depth > 0 or depth == -1:
-        
+
         i = 0
         #This loop cycles through the outer-most list, looking for 2 consecutive
         #list or tuple elements.  Those 2 elements are replaced by the union.
@@ -551,8 +551,8 @@ parent
 >
 >>> print hier_out(['root',['1',['a'],['b']],['2',['i'],['ii']]], mode = 'h')
 root<                 >
-     1<    >, 2<     > 
-       a, b     i, ii  
+     1<    >, 2<     >
+       a, b     i, ii
 """
     try:
         return hierarchical_Object.render(mode= mode)
@@ -565,6 +565,6 @@ if __name__ == "__main__":
 
     #A simple instance for debugging purposes
     h = Hierarchy(['r',['t'],['b']])
-    
-    doctest.testmod()    
+
+    doctest.testmod()
     unittest.main()

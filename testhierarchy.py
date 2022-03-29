@@ -8,7 +8,7 @@ class SimpleTests(unittest.TestCase):
                           len(h),
                           h.parent,
                           h.origin.name),
-                         
+
                          ('root',
                           1,
                           None,
@@ -20,7 +20,7 @@ class SimpleTests(unittest.TestCase):
                           len(h),
                           h.parent,
                           h.origin.name),
-                         
+
                          ('root',
                           1,
                           None,
@@ -31,11 +31,11 @@ class SimpleTests(unittest.TestCase):
         self.assertEqual((h.name,
                           h['child'].name,
                           len(h._daughters)),
-                         
+
                          ('root',
                           'child',
                           1))
-        
+
     def test_twice_nested_list(self):
         h = hierarchy.Hierarchy(['root',['child', ['grand-child']]])
         self.assertEqual((h.name,
@@ -43,7 +43,7 @@ class SimpleTests(unittest.TestCase):
                           len(h._daughters),
                           h['grand-child'].name,
                           len(h['child']._daughters)),
-                         
+
                          ('root',
                           'child',
                           1,
@@ -66,7 +66,7 @@ class SimpleTests(unittest.TestCase):
                           'bottom',
                           'root',
                           'root'))
-                          
+
     def test_deeply_nested(self):
         h = hierarchy.Hierarchy(['root', ['top',['menu'],['out']],['bot',['prompt']]])
 
@@ -108,7 +108,7 @@ class SimpleTests(unittest.TestCase):
                           h['root'].name,
                           g['child'].name,
                           i['grand-child'].name),
-                         
+
                          ('root',
                           'child',
                           'grand-child',
@@ -118,7 +118,7 @@ class SimpleTests(unittest.TestCase):
                           'root',
                           'child',
                           'grand-child'))
-                          
+
     def test_nested_plus_parent(self):
         h = hierarchy.Hierarchy(['root',['top'],['bot']])
         g = hierarchy.Hierarchy(['forgot',['one']], h['top'])
@@ -270,10 +270,10 @@ class SimpleTests(unittest.TestCase):
 
                          (12,
                           3))
-        
+
 
 class SimpleFailures(unittest.TestCase):
-    
+
     def test_internal_assignment(self):
         """Assignment within a hierarchy is not allowed.  There are designated
 methods for rearranging parts of a hierarchy instead."""
