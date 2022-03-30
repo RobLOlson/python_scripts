@@ -132,9 +132,10 @@ def command_only(folder):
     if not mp3s:
         return
 
-    for mp3 in mp3s:
+    for i, mp3 in enumerate(mp3s):
         if "'" in str(mp3.stem):
-            shutil.move(mp3, str(mp3))
+            shutil.move(mp3, str(mp3).replace("'", ""))
+            mp3s[i] = pathlib.Path(str(mp3).replace("'", ""))
 
     concated = "|".join([str(elem.absolute()) for elem in mp3s])
     command = [
@@ -183,9 +184,11 @@ def concat_and_convert(folder):
     if not mp3s:
         return
 
-    for mp3 in mp3s:
+    for i, mp3 in enumerate(mp3s):
         if "'" in str(mp3.stem):
-            shutil.move(mp3, str(mp3))
+            shutil.move(mp3, str(mp3).replace("'", ""))
+            mp3s[i] = pathlib.Path(str(mp3).replace("'", ""))
+
 
 
     fp = open("files.txt", "w")

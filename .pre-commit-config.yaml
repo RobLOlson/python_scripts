@@ -8,3 +8,4 @@ repos:
     -   id: check-added-large-files
     -   id: check-toml
     -   id: detect-private-key
+    -   id: debug-statements
