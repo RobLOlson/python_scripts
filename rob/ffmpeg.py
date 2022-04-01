@@ -1,24 +1,21 @@
 import glob
-import pathlib
 import os
-import time
 import argparse
 import subprocess
 import multiprocessing
-import time
 import appdirs
-import random
 import sys
 import shutil
 
-# import pydub
 import rich
+import rich.traceback
 
+from pathlib import Path
+
+from rich import pretty
 from rich.progress import track
 from pydub.utils import mediainfo
 
-import rich.traceback
-from rich import pretty
 
 pretty.install()
 rich.traceback.install()
@@ -26,7 +23,7 @@ rich.traceback.install()
 # Create the parser
 my_parser = argparse.ArgumentParser(
     # prog=sys.argv[0],
-    prog="py -m rob."+pathlib.Path(__file__).stem,
+    prog="py -m rob."+Path(__file__).stem,
     allow_abbrev=True,
     add_help=True,
     description="Concatenates audio files to a single .m4b using ffmpeg.",
@@ -109,25 +106,25 @@ my_parser.add_argument('-l',
 # Execute the parse_args() method
 _ARGS = my_parser.parse_args()
 
-_PATH = pathlib.Path(_ARGS.path)
-_FILETYPE = _ARGS.filetype
+_PATH = Path(_ARGS.path)
+_FILETYPES = _ARGS.filetype
 _SAFE = _ARGS.safe
 _CPUS = _ARGS.cpus
 _COMMAND = _ARGS.command
 
-_PROMPT = f"rob.{pathlib.Path(__file__).stem}> "
+_PROMPT = f"rob.{Path(__file__).stem}> "
 _PROMPT_STYLE = "white on blue"
 _ERROR_STYLE = "red on black"
-_TEMP_FOLDER = pathlib.Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"
-_COMMAND_FILE = pathlib.Path(os.getcwd()) / "ffmpeg_commands.ps1"
+_TEMP_FOLDER = Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"
+_COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
-def command_only(folder):
+def command_only(folder: Path):
     os.chdir(folder)
 
     mp3s = []
-    for filetype in _FILETYPE:
+    for filetype in _FILETYPES:
         temp = glob.glob(f"*{filetype}")
-        mp3s.extend([pathlib.Path(elem) for elem in temp if elem[0] != '~'])
+        mp3s.extend([Path(elem) for elem in temp if elem[0] != '~'])
 
     if not mp3s:
         return
@@ -135,22 +132,23 @@ def command_only(folder):
     for i, mp3 in enumerate(mp3s):
         if "'" in str(mp3.stem):
             shutil.move(mp3, str(mp3).replace("'", ""))
-            mp3s[i] = pathlib.Path(str(mp3).replace("'", ""))
+            mp3s[i] = Path(str(mp3).replace("'", ""))
 
     concated = "|".join([str(elem.absolute()) for elem in mp3s])
     command = [
         "ffmpeg",
         "-i",
         f'''"concat:{concated}"''',
-        "-movflags", # Carry metadata over
-        "use_metadata_tags",
+        # "-movflags", # Carry metadata over
+        # "use_metadata_tags",
+        "-map_metadata", "0", # Use metadata from 0th input
         "-c:a", # audio cocec
         "aac",
         "-b:a", # bitrate
         "64k",
         "-c:v",
         "copy",
-        f"'{pathlib.Path(mp3s[0]).stem}.m4b'",
+        f"'{Path(mp3s[0]).stem}.m4b'",
         "-y",
     ]
 
@@ -164,7 +162,7 @@ def command_only(folder):
 
     return
 
-def concat_and_convert(folder):
+def concat_and_convert(folder: Path):
     """Spin up an ffmpeg process in target folder.
 
     Args:
@@ -176,9 +174,9 @@ def concat_and_convert(folder):
     global _SAFE
 
     mp3s = []
-    for filetype in _FILETYPE:
+    for filetype in _FILETYPES:
        temp = glob.glob(f"*{filetype}")
-       mp3s.extend([pathlib.Path(elem) for elem in temp if elem[0] != '~'])
+       mp3s.extend([Path(elem) for elem in temp if elem[0] != '~'])
 
 
     if not mp3s:
@@ -187,7 +185,7 @@ def concat_and_convert(folder):
     for i, mp3 in enumerate(mp3s):
         if "'" in str(mp3.stem):
             shutil.move(mp3, str(mp3).replace("'", ""))
-            mp3s[i] = pathlib.Path(str(mp3).replace("'", ""))
+            mp3s[i] = Path(str(mp3).replace("'", ""))
 
 
 
@@ -203,19 +201,19 @@ def concat_and_convert(folder):
         "ffmpeg",
         "-f",
         "concat",
-        "-safe",
-        "0",
-        "-i",
-        "files.txt",
-        "-movflags", # Carry metadata over
-        "use_metadata_tags",
+        "-safe", "0",
+        "-i", "files.txt",
+        # "-movflags", # Carry metadata over
+        # "use_metadata_tags",
+
+        "-map_metadata", "0", # Use metadata from 0th input
         "-c:a", # audio cocec
-        "aac",
+        "aac", # audio codec
         "-b:a", # bitrate
         f"{bit_rate}",
-        "-vn",
+        "-vn", # no video stream
         "-y",
-        f"""{pathlib.Path(mp3s[0]).stem}.m4b""",
+        f"""{Path(mp3s[0]).stem}.m4b""",
     ]
 
     if _SAFE:
@@ -232,7 +230,7 @@ def concat_and_convert(folder):
 
 def interact():
     global _PATH
-    global _FILETYPE
+    global _FILETYPES
     global _SAFE
     global _CPUS
     global _COMMAND
@@ -245,42 +243,43 @@ def interact():
 \[default: {_PATH.parent.absolute()}]""")
         choice = input(f"{_PROMPT}")
 
-        if pathlib.Path(choice).exists():
-            _PATH = pathlib.Path(choice)
+        if Path(choice).exists():
+            _PATH = Path(choice)
             final_choice = True
 
         valid = False
 
     rich.print(f"[yellow]Working on '{_PATH.absolute()}'.\n")
 
-    # rich.print(f"[{_PROMPT_STYLE}]Which file type to work on?[/{_PROMPT_STYLE}] \[default: {_FILETYPE}]\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg")
-    # choice = input(f"{_PROMPT}")
+    rich.print(f"[{_PROMPT_STYLE}]Which file type to work on?[/{_PROMPT_STYLE}] \[default: {_FILETYPES}]\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg")
+    choice = input(f"{_PROMPT}")
 
-    # match choice:
-    #     case "1" | "*.mp3" | ".mp3" | "mp3":
-    #         _FILETYPE = ".mp3"
+    match choice:
+        case "1" | "*.mp3" | ".mp3" | "mp3":
+            _FILETYPES = [".mp3"]
 
-    #     case "2" | "*.wav" | ".wav" | "wav":
-    #         _FILETYPE = ".wav"
+        case "2" | "*.wav" | ".wav" | "wav":
+            _FILETYPES = [".wav"]
 
-    #     case "3" | "*.ogg" | ".ogg" | "ogg":
-    #         _FILETYPE = ".ogg"
+        case "3" | "*.ogg" | ".ogg" | "ogg":
+            _FILETYPES = [".ogg"]
 
-    #     case _:
-    #         pass
+        case _ as x:
+            if x:
+                _FILETYPES = [choice]
 
-    rich.print(f"[yellow]Working on {_FILETYPE}'s.\n")
+    rich.print(f"[yellow]Working on {_FILETYPES}'s.\n")
 
     folders = set()
     os.chdir(_PATH)
-    for filetype in _FILETYPE:
+    for filetype in _FILETYPES:
         for file in glob.glob(f"**/*{filetype}", recursive=True):
-            if _SAFE and ".m4b" not in _FILETYPE:
+            if _SAFE and ".m4b" not in _FILETYPES:
                 try:
-                    os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
+                    os.remove(Path(f"{Path(file).parent}/{Path(file).stem}.m4b"))
                 except FileNotFoundError:
                     pass
-            target = pathlib.Path(file).absolute()
+            target = Path(file).absolute()
             folders.add(target.parent)
 
     all_folders = sorted(list(folders))
@@ -289,7 +288,7 @@ def interact():
     final_choice = False
     invalid = False
     while not final_choice:
-        rich.print(f"Folders with {_FILETYPE}'s:")
+        rich.print(f"Folders with {_FILETYPES}'s:")
         for count, folder in enumerate(all_folders):
             if folder in folders:
                 rich.print(f" [green]{count+1}.) {folder}")
@@ -357,14 +356,14 @@ def main():
 
     else:
         os.chdir(_PATH)
-        for filetype in _FILETYPE:
+        for filetype in _FILETYPES:
             for file in glob.glob(f"**/*{filetype}", recursive=True):
                 if not _SAFE:
                     try:
-                        os.remove(pathlib.Path(f"{pathlib.Path(file).parent}/{pathlib.Path(file).stem}.m4b"))
+                        os.remove(Path(f"{Path(file).parent}/{Path(file).stem}.m4b"))
                     except FileNotFoundError:
                         pass
-                target = pathlib.Path(file).absolute()
+                target = Path(file).absolute()
                 folders.add(target.parent)
 
         folders = sorted(list(folders))
@@ -381,7 +380,7 @@ def main():
                 pass
 
     if not folders:
-        rich.print(f"[{_ERROR_STYLE}]No {_FILETYPE}'s found.")
+        rich.print(f"[{_ERROR_STYLE}]No {_FILETYPES}'s found.")
         sys.exit(1)
 
     rich.print(
