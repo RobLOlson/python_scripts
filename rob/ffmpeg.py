@@ -3,14 +3,15 @@ import os
 import argparse
 import subprocess
 import multiprocessing
-import appdirs
 import sys
 import shutil
 
 import rich
 import rich.traceback
+# import appdirs
 
 from pathlib import Path
+from typing import List
 
 from rich import pretty
 from rich.progress import track
@@ -98,10 +99,10 @@ my_parser.add_argument('-i',
                        action='store_true',
                        help='supply arguments manually via prompt')
 
-my_parser.add_argument('-l',
-                       '--local',
-                       action='store_true',
-                       help='store temporary files on local machine')
+# my_parser.add_argument('-l',
+#                        '--local',
+#                        action='store_true',
+#                        help='store temporary files on local machine')
 
 # Execute the parse_args() method
 _ARGS = my_parser.parse_args()
@@ -115,7 +116,7 @@ _COMMAND = _ARGS.command
 _PROMPT = f"rob.{Path(__file__).stem}> "
 _PROMPT_STYLE = "white on blue"
 _ERROR_STYLE = "red on black"
-_TEMP_FOLDER = Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"
+# _TEMP_FOLDER = Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"
 _COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
 def command_only(folder: Path):
@@ -162,7 +163,7 @@ def command_only(folder: Path):
 
     return
 
-def concat_and_convert(folder: Path):
+def concat_and_convert(folder: Path) -> None:
     """Spin up an ffmpeg process in target folder.
 
     Args:
@@ -228,7 +229,7 @@ def concat_and_convert(folder: Path):
     return
 
 
-def interact():
+def interact() -> List[Path]:
     global _PATH
     global _FILETYPES
     global _SAFE
@@ -345,7 +346,7 @@ def interact():
 
     return folders
 
-def main():
+def main() -> None:
     folders = set()
 
     if _COMMAND:
