@@ -15,7 +15,9 @@ _DB_FILE = Path(appdirs.user_data_dir()) / "robolson" / "reddit_archive" / "comm
 if not _DB_FILE.exists():
     os.makedirs(_DB_FILE.parent, exist_ok=True)
 
-# Create the parser
+# Create Parser
+# vvvvvvvvvvvvv
+
 _ARGPARSER = argparse.ArgumentParser(
     prog=sys.argv[0],
     allow_abbrev=True,
@@ -65,7 +67,11 @@ _ARGPARSER.add_argument(
     help="Manually configure reddit credentials for this user agent.",
 )
 
+
 _ARGS = _ARGPARSER.parse_args()
+
+# ^^^^^^^^^^^^^^^^^^^^
+# End of Create Parser
 
 if _ARGS.config:
     _REDDIT_ID = input("\nEnter a reddit account ID.\n> ")
