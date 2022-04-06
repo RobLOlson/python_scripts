@@ -7,7 +7,6 @@ import os
 import glob
 import datetime
 import shutil
-import sys
 import re
 import argparse
 import appdirs
@@ -21,6 +20,7 @@ import toml
 from pathlib import Path
 
 rich.traceback.install()
+
 
 # Create the parser
 my_parser = argparse.ArgumentParser(
@@ -64,7 +64,7 @@ alt_mode.add_argument(
     action="store_true",
     help="create a config file",
 )
-
+# Created the Parser
 
 _ARGS = my_parser.parse_args()
 

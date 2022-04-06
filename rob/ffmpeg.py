@@ -8,7 +8,7 @@ import shutil
 
 import rich
 import rich.traceback
-# import appdirs
+import taglib
 
 from pathlib import Path
 from typing import List
@@ -22,6 +22,7 @@ pretty.install()
 rich.traceback.install()
 
 # Create the parser
+# vvvvvvvvvvvvvvvvv
 my_parser = argparse.ArgumentParser(
     # prog=sys.argv[0],
     prog="py -m rob."+Path(__file__).stem,
@@ -38,7 +39,6 @@ my_parser.add_argument(
     metavar="filetype",
     nargs="+",
     default=[".mp3", ".m4a", ".ogg"],
-    # choices=[".mp3", ".wav", ".ogg"],
     action="store",
     type=str,
     help="the filetype to concatenate (valid options: '.mp3', '.ogg' or '.wav')",
@@ -99,10 +99,9 @@ my_parser.add_argument('-i',
                        action='store_true',
                        help='supply arguments manually via prompt')
 
-# my_parser.add_argument('-l',
-#                        '--local',
-#                        action='store_true',
-#                        help='store temporary files on local machine')
+
+# ^^^^^^^^^^^^^^^^^^
+# Created the parser
 
 # Execute the parse_args() method
 _ARGS = my_parser.parse_args()
@@ -116,10 +115,17 @@ _COMMAND = _ARGS.command
 _PROMPT = f"rob.{Path(__file__).stem}> "
 _PROMPT_STYLE = "white on blue"
 _ERROR_STYLE = "red on black"
-# _TEMP_FOLDER = Path(f"{appdirs.user_data_dir()}") / "robolson" / "ffmpeg" / "temp"
 _COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
-def command_only(folder: Path):
+def command_only(folder: Path)->None:
+    """Generate a textfile containing the desired ffmpeg CLI commands.
+
+    Args:
+        folder (Path): The folder containing files to modify
+
+    Returns:
+        None
+    """
     os.chdir(folder)
 
     mp3s = []
@@ -204,10 +210,9 @@ def concat_and_convert(folder: Path) -> None:
         "concat",
         "-safe", "0",
         "-i", "files.txt",
-        # "-movflags", # Carry metadata over
-        # "use_metadata_tags",
-
         "-map_metadata", "0", # Use metadata from 0th input
+        "-movflags", # Carry metadata over
+        "use_metadata_tags",
         "-c:a", # audio cocec
         "aac", # audio codec
         "-b:a", # bitrate
@@ -225,6 +230,14 @@ def concat_and_convert(folder: Path) -> None:
     subprocess.run(command, shell=True)
 
     os.remove("files.txt")
+
+    inf = taglib.File(f"{mp3s[0]}")
+    outf = taglib.File(f"{Path(mp3s[0]).stem}.m4b")
+
+    outf.tags = inf.tags
+    outf.save()
+    outf.close()
+    inf.close()
 
     return
 
