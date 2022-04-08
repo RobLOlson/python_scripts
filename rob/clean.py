@@ -22,7 +22,7 @@ from pathlib import Path
 rich.traceback.install()
 
 
-# Create the parser
+# <Create ArgParser>
 my_parser = argparse.ArgumentParser(
     description="Clean up a folder.",
     add_help=True,
@@ -64,7 +64,7 @@ alt_mode.add_argument(
     action="store_true",
     help="create a config file",
 )
-# Created the Parser
+# </Creat ArgParser>
 
 _ARGS = my_parser.parse_args()
 

@@ -21,8 +21,7 @@ from pydub.utils import mediainfo
 pretty.install()
 rich.traceback.install()
 
-# Create the parser
-# vvvvvvvvvvvvvvvvv
+# <Create Parser>
 my_parser = argparse.ArgumentParser(
     # prog=sys.argv[0],
     prog="py -m rob."+Path(__file__).stem,
@@ -98,12 +97,8 @@ my_parser.add_argument('-i',
                        '--interact',
                        action='store_true',
                        help='supply arguments manually via prompt')
+# </Create Parser>
 
-
-# ^^^^^^^^^^^^^^^^^^
-# Created the parser
-
-# Execute the parse_args() method
 _ARGS = my_parser.parse_args()
 
 _PATH = Path(_ARGS.path)
@@ -231,6 +226,7 @@ def concat_and_convert(folder: Path) -> None:
 
     os.remove("files.txt")
 
+    # <Transfer metadata>
     inf = taglib.File(f"{mp3s[0]}")
     outf = taglib.File(f"{Path(mp3s[0]).stem}.m4b")
 
@@ -238,11 +234,17 @@ def concat_and_convert(folder: Path) -> None:
     outf.save()
     outf.close()
     inf.close()
+    # </Transfer metadata>
 
     return
 
 
 def interact() -> List[Path]:
+    """Walk the user through configuring an ffmpeg call.
+
+        Returns:
+            folders (List[Path]): the list of folders to traverse and modify.
+    """
     global _PATH
     global _FILETYPES
     global _SAFE
