@@ -8,7 +8,8 @@ exclude = []
 packages = [
     {include="rob", from=".."},
     {include="parser"},
-    {include="loggers"}
+    {include="loggers"},
+    {include="ticktick"}
 ]
 
 [tool.poetry.dependencies]
@@ -19,6 +20,7 @@ praw = "^7.5.0"
 openai = "^0.15.0"
 pydub = "^0.25.1"
 pytaglib = "^1.5.0"
+ticktick-py = "^2.0.2"
 
 [tool.poetry.dev-dependencies]
 venvPath = "C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robolson-tTkljxzG-py3.10\\Lib\\site-packages"

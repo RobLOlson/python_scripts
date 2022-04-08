@@ -8,8 +8,8 @@ from pathlib import Path
 
 import appdirs
 
-from ticktick.oauth2 import OAuth2
-from ticktick.api import TickTickClient
+from .ticktick.oauth2 import OAuth2
+from .ticktick.api import TickTickClient
 
 import argparse
 
