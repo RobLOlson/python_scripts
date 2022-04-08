@@ -1,12 +1,14 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.53"
+version = "0.3.59"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "pyproject.toml"]
 exclude = []
 packages = [
-    {include="rob", from=".."}
+    {include="rob", from=".."},
+    {include="parser"},
+    {include="loggers"}
 ]
 
 [tool.poetry.dependencies]
@@ -23,7 +25,6 @@ venvPath = "C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robo
 
 [tool.pyright]
 include = ["C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robolson-tTkljxzG-py3.10\\Lib\\site-packages"]
-
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

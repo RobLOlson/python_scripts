@@ -11,6 +11,8 @@ import praw
 
 from .parser.reddit_parser import reddit_parser
 
+reddit_parser.prog="py -m rob." + Path(__file__).stem
+
 _THIS_FILE = Path(sys.argv[0])
 _DB_FILE = Path(appdirs.user_data_dir()) / "robolson" / "reddit_archive" / "comments.db"
 

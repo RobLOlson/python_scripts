@@ -23,6 +23,8 @@ rich.traceback.install()
 
 from .parser.clean_parser import clean_parser
 
+clean_parser.prog = "py -m rob." + Path(__file__).stem
+
 _ARGS = clean_parser.parse_args()
 
 _CLI_PATH = _ARGS.path
