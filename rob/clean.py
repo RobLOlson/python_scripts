@@ -336,8 +336,17 @@ def undo():
             exit(1)
 
     rich.print("[red]Execute:")
+    skipped = []
     for command, source, dest in undo_commands:
-        rich.print(f"[yellow]mv '{source}' '{dest}'")
+        if source.exists():
+            rich.print(f"[yellow]mv '{source}' '{dest}'")
+        else:
+            rich.print(f"[red]mv '{source}' '{dest}' (ERROR 404)")
+            skipped.append((command, source, dest))
+
+    for skip in skipped:
+        undo_commands.remove(skip)
+
     rich.print("[red]Are you sure? (y/n)")
     choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
     if choice in ["y", "yes", "Y", "YES"]:
