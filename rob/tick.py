@@ -3,6 +3,7 @@ import datetime
 import time
 import logging
 import sys
+import subprocess
 
 from pathlib import Path
 
@@ -90,6 +91,9 @@ if args.update:
 
     exit(0)
 
+if args.daemon:
+    subprocess.Popen(["pyw", "-m", "rob.tick"])
+    exit(0)
 
 while True:
     today = datetime.datetime.today().isoformat("!")
@@ -105,5 +109,6 @@ while True:
             fp.write("\n".join([elem["title"] for elem in due]))
         else:
             fp.write("")
-    time.sleep(3600)
+
+    time.sleep(299)
     tick_client.sync()

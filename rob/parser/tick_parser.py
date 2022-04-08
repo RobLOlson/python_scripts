@@ -5,16 +5,26 @@ tick_parser = argparse.ArgumentParser(
     allow_abbrev=True,
     add_help=True,
     # usage="$(prog)s [-h] path",
-    description="Run a background process that syncs a local file with ticktick servers.",
+    description="Periodically syncs a local cache with ticktick servers.",
     epilog="(C) Rob",
 )
 
-tick_parser.add_argument(
+commands = tick_parser.add_mutually_exclusive_group()
+
+front_options = tick_parser.add_argument_group()
+
+commands.add_argument(
+    "-d", "--daemon", action="store_true", help="Run this as a background process."
+)
+
+commands.add_argument("-g", "--get", action="store_true", help="Get today's tasks.")
+
+
+front_options.add_argument(
     "-t", "--token", action="store_true", help="Force an OAuth Token update."
 )
 
-tick_parser.add_argument("-g", "--get", action="store_true", help="Get today's tasks.")
 
-tick_parser.add_argument(
+commands.add_argument(
     "-u", "--update", action="store_true", help="Update the task cache."
 )
