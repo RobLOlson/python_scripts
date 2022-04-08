@@ -17,89 +17,13 @@ from rich import pretty
 from rich.progress import track
 from pydub.utils import mediainfo
 
+from .parser.ffmpeg_parser import ffmpeg_parser
+
 
 pretty.install()
 rich.traceback.install()
 
-# <Create Parser>
-my_parser = argparse.ArgumentParser(
-    # prog=sys.argv[0],
-    prog="py -m rob."+Path(__file__).stem,
-    allow_abbrev=True,
-    add_help=True,
-    description="Concatenates audio files to a single .m4b using ffmpeg.",
-    epilog="(C) Rob",
-)
-
-# Add the arguments
-my_parser.add_argument(
-    "-f",
-    "--filetype",
-    metavar="filetype",
-    nargs="+",
-    default=[".mp3", ".m4a", ".ogg"],
-    action="store",
-    type=str,
-    help="the filetype to concatenate (valid options: '.mp3', '.ogg' or '.wav')",
-)
-
-my_parser.add_argument(
-    "-p",
-    "--path",
-    metavar="path",
-    nargs=1,
-    default=".",
-    action="store",
-    type=str,
-    help="the path to files to be concatted",
-)
-
-my_parser.add_argument(
-    "-c",
-    "--cpus",
-    metavar="cpus",
-    default=1,
-    action="store",
-    type=int,
-    help="the number of processor cores to utilize",
-)
-
-my_parser.add_argument(
-    "-n",
-    "--number",
-    metavar="number",
-    default=0,
-    action="store",
-    type=int,
-    help="the number of folders to limit execution on",
-)
-
-my_parser.add_argument(
-    "-s",
-    "--start",
-    metavar="start_number",
-    default=0,
-    action="store",
-    type=int,
-    help="start execution on Nth folder (ignoring previous)",
-)
-
-my_parser.add_argument('--safe',
-                       action='store_true',
-                       default=False,
-                       help='force ffmpeg to ask for overwrite permissions')
-
-my_parser.add_argument('--command',
-                       action='store_true',
-                       help='Only print the corresponding ffmpeg command(s)')
-
-my_parser.add_argument('-i',
-                       '--interact',
-                       action='store_true',
-                       help='supply arguments manually via prompt')
-# </Create Parser>
-
-_ARGS = my_parser.parse_args()
+_ARGS = ffmpeg_parser.parse_args()
 
 _PATH = Path(_ARGS.path)
 _FILETYPES = _ARGS.filetype

@@ -9,65 +9,15 @@ from pathlib import Path
 
 import praw
 
+from .parser.reddit_parser import reddit_parser
+
 _THIS_FILE = Path(sys.argv[0])
 _DB_FILE = Path(appdirs.user_data_dir()) / "robolson" / "reddit_archive" / "comments.db"
 
 if not _DB_FILE.exists():
     os.makedirs(_DB_FILE.parent, exist_ok=True)
 
-# <Create ArgParser>
-
-_ARGPARSER = argparse.ArgumentParser(
-    prog=sys.argv[0],
-    allow_abbrev=True,
-    add_help=True,
-    description="Archive reddit comments.",
-    epilog="(C) Rob",
-)
-
-_ARGPARSER.add_argument(
-    "-t", "--text", action="store_true", help="generate text file ONLY"
-)
-_ARGPARSER.add_argument(
-    "-o", "--overwrite", action="store_true", help="overwrite existing database entries"
-)
-_ARGPARSER.add_argument(
-    "-u",
-    "--user",
-    metavar="user",
-    nargs=1,
-    action="store",
-    type=str,
-    help="specify user",
-)
-
-_ARGPARSER.add_argument(
-    "-p",
-    # "--pwd",
-    "--password",
-    metavar="pwd",
-    nargs=1,
-    action="store",
-    type=str,
-    help="specify password",
-)
-
-_ARGPARSER.add_argument(
-    "-f",
-    "--full",
-    action="store_true",
-    help="Include 'top' and 'controversial' posts in praw request.",
-)
-
-_ARGPARSER.add_argument(
-    "-c",
-    "--config",
-    action="store_true",
-    help="Manually configure reddit credentials for this user agent.",
-)
-# </Create ArgParser>
-
-_ARGS = _ARGPARSER.parse_args()
+_ARGS = reddit_parser.parse_args()
 
 if _ARGS.config:
     _REDDIT_ID = input("\nEnter a reddit account ID.\n> ")

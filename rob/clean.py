@@ -8,7 +8,6 @@ import glob
 import datetime
 import shutil
 import re
-import argparse
 import appdirs
 import shutil
 import shelve
@@ -17,56 +16,14 @@ import rich.traceback
 import rich
 import toml
 
+
 from pathlib import Path
 
 rich.traceback.install()
 
+from .parser.clean_parser import clean_parser
 
-# <Create ArgParser>
-my_parser = argparse.ArgumentParser(
-    description="Clean up a folder.",
-    add_help=True,
-    epilog="(C) Rob",
-)
-
-# Add the arguments
-my_parser.add_argument(
-    "-p",
-    "--path",
-    metavar="dir",
-    default=".",
-    action="store",
-    type=str,
-    help="the directory to clean",
-)
-
-my_parser.add_argument(
-    "-y",
-    "--yes",
-    default=False,
-    action="store_true",
-    help="skip all interactive prompts by answering 'yes'",
-)
-
-alt_mode = my_parser.add_mutually_exclusive_group(required=False)
-
-alt_mode.add_argument(
-    "-u",
-    "--undo",
-    default=False,
-    action="store_true",
-    help="undo the previous execution in target directory",
-)
-
-alt_mode.add_argument(
-    "--config",
-    default=False,
-    action="store_true",
-    help="create a config file",
-)
-# </Creat ArgParser>
-
-_ARGS = my_parser.parse_args()
+_ARGS = clean_parser.parse_args()
 
 _CLI_PATH = _ARGS.path
 
