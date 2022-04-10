@@ -1,8 +1,6 @@
 import os
 import datetime
 import time
-import logging
-import sys
 import subprocess
 
 from pathlib import Path
@@ -12,9 +10,10 @@ import appdirs
 from .ticktick.oauth2 import OAuth2
 from .ticktick.api import TickTickClient
 
-import argparse
+# for debugging the daemon
+import logging
+from .loggers.tick_logger import StreamToLogger
 
-from .loggers.tick_logger import log, StreamToLogger
 from .parser.tick_parser import tick_parser
 
 tick_parser.prog = "py -m rob." + Path(__file__).stem
@@ -23,7 +22,6 @@ tick_parser.prog = "py -m rob." + Path(__file__).stem
 args = tick_parser.parse_args()
 
 _BASE_PATH = Path(appdirs.user_data_dir())
-
 
 _CLIENT_ID = os.environ.get("TICKTICK_CLIENT_ID", "")
 _CLIENT_SECRET = os.environ.get("TICKTICK_CLIENT_SECRET", "")
@@ -45,6 +43,7 @@ if not _TASK_FILE:
         os.makedirs(_TASK_FILE.parent, exist_ok=True)
         open(f"{_TASK_FILE}", "w").close()
 
+
 if args.get:
     last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(_TASK_FILE))
     if datetime.datetime.today() - last_modified < datetime.timedelta(minutes=60):
@@ -53,62 +52,74 @@ if args.get:
 
     exit(0)
 
-auth_client = OAuth2(
-    client_id=_CLIENT_ID,
-    client_secret=_CLIENT_SECRET,
-    redirect_uri="http://127.0.0.1:8080",
-    cache_path=str(_TOKEN_FILE),
-    check_cache=True,
-)
 
-tick_client = TickTickClient(
-    username=_TICKTICK_USERNAME, password=_TICKTICK_PASSWORD, oauth=auth_client
-)
-
-# For Debugging, these will redirect standard streams to the logger
-# stdout_logger = logging.getLogger("STDOUT")
-# sl = StreamToLogger(stdout_logger, logging.INFO)
-# sys.stdout = sl
-
-stderr_logger = logging.getLogger("STDERR")
-sl = StreamToLogger(stderr_logger, logging.ERROR)
-sys.stderr = sl
-
-if args.update:
+def get_due(tick_client) -> list[str]:
     today = datetime.datetime.today().isoformat("!")
+    today_date = today
     today = today.split("!")[0]
+
+    today = datetime.datetime.fromisoformat(today)
+
     due = [
         elem
         for elem in tick_client.state["tasks"]
-        if "dueDate" in elem.keys() and today in elem["dueDate"]
+        if "dueDate" in elem.keys()
+        and today > datetime.datetime.fromisoformat(elem["dueDate"][:-5])
     ]
 
-    with open(f"{_TASK_FILE}", "w") as fp:
-        if due:
-            fp.write("\n".join([elem["title"] for elem in due]))
-        else:
-            fp.write("")
+    return due
 
-    exit(0)
 
-if args.daemon:
-    subprocess.Popen(["pyw", "-m", "rob.tick"])
-    exit(0)
+def main() -> None:
 
-while True:
-    today = datetime.datetime.today().isoformat("!")
-    today = today.split("!")[0]
-    due = [
-        elem
-        for elem in tick_client.state["tasks"]
-        if "dueDate" in elem.keys() and today in elem["dueDate"]
-    ]
+    auth_client = OAuth2(
+        client_id=_CLIENT_ID,
+        client_secret=_CLIENT_SECRET,
+        redirect_uri="http://127.0.0.1:8080",
+        cache_path=str(_TOKEN_FILE),
+        check_cache=True,
+    )
 
-    with open(f"{_TASK_FILE}", "w") as fp:
-        if due:
-            fp.write("\n".join([elem["title"] for elem in due]))
-        else:
-            fp.write("")
+    tick_client = TickTickClient(
+        username=_TICKTICK_USERNAME, password=_TICKTICK_PASSWORD, oauth=auth_client
+    )
 
-    time.sleep(299)
-    tick_client.sync()
+    # For Debugging, these will redirect standard streams to the logger
+    # stdout_logger = logging.getLogger("STDOUT")
+    # sl = StreamToLogger(stdout_logger, logging.INFO)
+    # sys.stdout = sl
+
+    # stderr_logger = logging.getLogger("STDERR")
+    # sl = StreamToLogger(stderr_logger, logging.ERROR)
+    # sys.stderr = sl
+
+    if args.update:
+        due = get_due(tick_client)
+
+        with open(f"{_TASK_FILE}", "w") as fp:
+            if due:
+                fp.write("\n".join([elem["title"] for elem in due]))
+            else:
+                fp.write("")
+
+        exit(0)
+
+    if args.daemon:
+        subprocess.Popen(["pyw", "-m", "rob.tick"])
+        exit(0)
+
+    while True:
+        due = get_due(tick_client)
+
+        with open(f"{_TASK_FILE}", "w") as fp:
+            if due:
+                fp.write("\n".join([elem["title"] for elem in due]))
+            else:
+                fp.write("")
+
+        time.sleep(299)
+        tick_client.sync()
+
+
+if __name__ == "__main__":
+    main()

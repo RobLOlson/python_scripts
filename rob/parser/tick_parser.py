@@ -14,17 +14,27 @@ commands = tick_parser.add_mutually_exclusive_group()
 front_options = tick_parser.add_argument_group()
 
 commands.add_argument(
-    "-d", "--daemon", action="store_true", help="Run this as a background process."
+    "-d",
+    "--daemon",
+    action="store_true",
+    default=False,
+    help="Run this as a background process.",
 )
 
-commands.add_argument("-g", "--get", action="store_true", help="Get today's tasks.")
+commands.add_argument(
+    "-g", "--get", action="store_true", default=False, help="Get today's tasks."
+)
 
 
 front_options.add_argument(
-    "-t", "--token", action="store_true", help="Force an OAuth Token update."
+    "-t",
+    "--token",
+    action="store_true",
+    default=False,
+    help="Force an OAuth Token update.",
 )
 
 
 commands.add_argument(
-    "-u", "--update", action="store_true", help="Update the task cache."
+    "-u", "--update", action="store_true", default=False, help="Update the task cache."
 )

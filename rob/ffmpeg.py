@@ -1,10 +1,4 @@
-import glob
-import os
-import argparse
-import subprocess
-import multiprocessing
-import sys
-import shutil
+import glob, os, subprocess, multiprocessing, sys, shutil
 
 import rich
 import rich.traceback

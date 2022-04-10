@@ -1,9 +1,7 @@
 """(C) Rob Olson"""
 # pylint: disable = C0330
 # pylint: disable = multiple-imports
-import os, shelve, sys, datetime, argparse, subprocess, appdirs
-
-from rich.progress import track
+import os, shelve, sys, datetime, subprocess, appdirs
 
 from pathlib import Path
 
