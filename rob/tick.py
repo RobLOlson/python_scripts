@@ -7,6 +7,8 @@ from pathlib import Path
 
 import appdirs
 
+
+# Register App with ticktick servers at https://developer.ticktick.com/manage
 from .ticktick.oauth2 import OAuth2
 from .ticktick.api import TickTickClient
 
@@ -25,8 +27,23 @@ _BASE_PATH = Path(appdirs.user_data_dir())
 
 _CLIENT_ID = os.environ.get("TICKTICK_CLIENT_ID", "")
 _CLIENT_SECRET = os.environ.get("TICKTICK_CLIENT_SECRET", "")
+
+if not _CLIENT_ID or not _CLIENT_SECRET:
+    print(
+        "Missing environment variables 'TICKTICK_CLIENT_ID' and/or 'TICKTICK_CLIENT_SECRET'\nRegister App with ticktick servers at https://developer.ticktick.com/manage"
+    )
+    exit(1)
+
+
 _TICKTICK_USERNAME = os.environ.get("TICKTICK_USERNAME", "")
 _TICKTICK_PASSWORD = os.environ.get("TICKTICK_PASSWORD", "")
+
+if not _TICKTICK_USERNAME or not _TICKTICK_USERNAME:
+    print(
+        "Missing environment variables 'TICKTICK_USERNAME' and/or 'TICKTICK_PASSWORD'"
+    )
+    exit(1)
+
 
 _TOKEN_FILE = _BASE_PATH / "robolson" / "tick" / "cache" / ".token-oauth"
 
@@ -64,13 +81,23 @@ def get_due(tick_client) -> list[str]:
         elem
         for elem in tick_client.state["tasks"]
         if "dueDate" in elem.keys()
-        and today > datetime.datetime.fromisoformat(elem["dueDate"][:-5])
+        and today + datetime.timedelta(days=1)
+        > datetime.datetime.fromisoformat(elem["dueDate"][:-5])
     ]
 
     return due
 
 
 def main() -> None:
+
+    # For Debugging, these will redirect standard streams to the logger
+    # stdout_logger = logging.getLogger("STDOUT")
+    # sl = StreamToLogger(stdout_logger, logging.INFO)
+    # sys.stdout = sl
+
+    # stderr_logger = logging.getLogger("STDERR")
+    # sl = StreamToLogger(stderr_logger, logging.ERROR)
+    # sys.stderr = sl
 
     auth_client = OAuth2(
         client_id=_CLIENT_ID,
@@ -83,15 +110,6 @@ def main() -> None:
     tick_client = TickTickClient(
         username=_TICKTICK_USERNAME, password=_TICKTICK_PASSWORD, oauth=auth_client
     )
-
-    # For Debugging, these will redirect standard streams to the logger
-    # stdout_logger = logging.getLogger("STDOUT")
-    # sl = StreamToLogger(stdout_logger, logging.INFO)
-    # sys.stdout = sl
-
-    # stderr_logger = logging.getLogger("STDERR")
-    # sl = StreamToLogger(stderr_logger, logging.ERROR)
-    # sys.stderr = sl
 
     if args.update:
         due = get_due(tick_client)
