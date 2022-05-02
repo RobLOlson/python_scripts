@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.64"
+version = "0.3.65"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "pyproject.toml"]
@@ -21,6 +21,7 @@ openai = "^0.15.0"
 pydub = "^0.25.1"
 pytaglib = "^1.5.0"
 appdirs = "^1.4.4"
+deal = "^4.23.2"
 
 [tool.poetry.dev-dependencies]
 venvPath = "C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robolson-tTkljxzG-py3.10\\Lib\\site-packages"

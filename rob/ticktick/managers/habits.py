@@ -1,4 +1,6 @@
+import deal
 class HabitManager:
+    @deal.pure
     def __init__(self, client_class):
         self._client = client_class
         self.access_token = ""
@@ -6,6 +8,7 @@ class HabitManager:
     #   ---------------------------------------------------------------------------------------------------------------
     #   Habit Methods
 
+    @deal.pure
     def get_checkins(self):
         # POST habitChekckins/query
         """
@@ -21,6 +24,7 @@ class HabitManager:
         """
         pass
 
+    @deal.pure
     def batch_checkins(self, data, function):
         # POST habitCheckins/batch (create)
         """
@@ -58,22 +62,27 @@ class HabitManager:
         """
         pass
 
+    @deal.pure
     def add_checkins(self, data):
         self.batch_checkins(data, "add")
         pass
 
+    @deal.pure
     def update_checkins(self, data):
         self.batch_checkins(data, "update")
         pass
 
+    @deal.pure
     def delete_checkins(self, data):
         self.batch_checkins(data, "delete")
         pass
 
+    @deal.pure
     def get_habits(self):
         # GET habits
         pass
 
+    @deal.pure
     def batch_habits(self, data, function):
         # POST habits/batch (update)
         """
@@ -86,22 +95,27 @@ class HabitManager:
         """
         pass
 
+    @deal.pure
     def update_habits(self, data):
         self.batch_habits(data, "update")
         pass
 
+    @deal.pure
     def add_habits(self, data):
         self.batch_habits(data, "add")
         pass
 
+    @deal.pure
     def delete_habits(self, data):
         self.batch_habits(data, "delete")
         pass
 
+    @deal.pure
     def get_sections(self):
         # GET habitSections
         pass
 
+    @deal.pure
     def get_specific_records(self, ids=[], afterstamp=""):
         # GET habitRecords?habitIds=6037eb14801c327339afbd3a&habitIds=603897ae0cda91d09c9f376f&habitIds=6038980b801c81216396971b&habitIds=60389839801c81216396971c&afterStamp=20211230
         pass

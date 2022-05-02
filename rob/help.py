@@ -1,13 +1,16 @@
 import glob
-
+import sys
 from pathlib import Path
 
-import toml, rich, sys
-
+import deal
+import rich
+import toml
 
 _EXCLUSIONS = ["__init__", "__main__"]
 
 
+@deal.has("import", "io", "stdout")
+@deal.raises(Python, FNFError, OSError, TomlDecodeError, TypeError, ZeroDivisionError)
 def main():
 
     tom = toml.load(Path(__file__).parent / "pyproject.toml")
@@ -19,7 +22,6 @@ def main():
     )
 
     scripts = []
-    # breakpoint()
     for elem in glob.glob(f"{Path(__file__).parent}/*.py"):
         if Path(elem).stem not in _EXCLUSIONS:
             scripts.append("rob." + Path(elem).stem)

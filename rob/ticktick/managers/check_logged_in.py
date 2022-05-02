@@ -1,6 +1,9 @@
+import deal
 from functools import wraps
 
 
+@deal.has()
+@deal.raises(RuntimeError)
 def logged_in(func):
     """
     Serves as a decorator making sure that the instance is still logged in for a function call.

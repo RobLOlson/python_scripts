@@ -4,6 +4,7 @@ import time
 import logging
 import ast
 import os
+import deal
 
 from urllib.parse import urlparse, urlencode, parse_qsl
 from .cache import CacheHandler
@@ -13,6 +14,7 @@ from urllib3.util.retry import Retry
 log = logging.getLogger(__name__)
 
 
+@deal.pure
 def requests_retry_session(
     retries=3,
     backoff_factor=1,
@@ -46,6 +48,7 @@ class OAuth2:
     OAUTH_AUTHORIZE_URL = "https://ticktick.com/oauth/authorize"
     OBTAIN_TOKEN_URL = "https://ticktick.com/oauth/token"
 
+    @deal.pure
     def __init__(
         self,
         client_id: str,
@@ -139,6 +142,7 @@ class OAuth2:
         # get access token
         self.get_access_token(check_cache=check_cache, check_env=env_key)
 
+    @deal.pure
     def _get_auth_url(self):
         """
         Returns the url for authentication
@@ -155,6 +159,7 @@ class OAuth2:
 
         return "%s?%s" % (self.OAUTH_AUTHORIZE_URL, parameters)
 
+    @deal.pure
     def _open_auth_url_in_browser(self):
         """
         Opens the authorization url in the browser
@@ -170,6 +175,8 @@ class OAuth2:
         url = self._get_auth_url()
         webbrowser.open(url)
 
+    @deal.has('stdin')
+    @deal.safe
     def _get_redirected_url(self):
         """
         Prompts the user for the redirected url to parse the token and state
@@ -180,6 +187,8 @@ class OAuth2:
         # get the parsed parameters from the url
         self._code, self._state = self._get_auth_response_parameters(url)
 
+    @deal.has('stdin')
+    @deal.safe
     @staticmethod
     def _get_user_input(prompt: str = ""):
         """
@@ -187,6 +196,8 @@ class OAuth2:
         """
         return input(prompt)
 
+    @deal.has()
+    @deal.raises(ValueError)
     @staticmethod
     def _get_auth_response_parameters(url):
         """
@@ -205,6 +216,8 @@ class OAuth2:
         # return the parameters
         return isolated["code"], isolated["state"]
 
+    @deal.has('time')
+    @deal.safe
     def _request_access_token(self):
         """
         Makes the POST request to get the token and returns the token info dictionary
@@ -235,6 +248,8 @@ class OAuth2:
 
         return token_info
 
+    @deal.has()
+    @deal.raises(RuntimeError)
     def _post(self, url, **kwargs):
         """
         Sends an http post request with the specified url and keyword arguments.
@@ -259,6 +274,8 @@ class OAuth2:
         except ValueError:
             return response.text
 
+    @deal.has()
+    @deal.raises(ValueError)
     def get_access_token(self, check_cache: bool = True, check_env: str = None):
         """
         Retrieves the authorization token from cache or makes a new request for it.
@@ -320,6 +337,8 @@ class OAuth2:
         self.access_token_info = token_info
         return token_info["access_token"]
 
+    @deal.has('time')
+    @deal.safe
     @staticmethod
     def _set_expire_time(token_dict):
         """
@@ -335,6 +354,8 @@ class OAuth2:
         )
         return token_dict
 
+    @deal.has('time')
+    @deal.safe
     @staticmethod
     def is_token_expired(token_dict):
         """
@@ -349,6 +370,8 @@ class OAuth2:
         current_time = int(time.time())
         return token_dict["expire_time"] - current_time < 60
 
+    @deal.has('time')
+    @deal.safe
     def validate_token(self, token_dict):
         """
         Validates whether the access token is valid

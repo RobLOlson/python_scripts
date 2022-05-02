@@ -15,6 +15,7 @@ import shelve
 import rich.traceback
 import rich
 import toml
+import deal
 
 
 from pathlib import Path
@@ -65,6 +66,8 @@ PROMPT = f"rob.{THIS_FILE.stem}> "
 _COMMANDS = []
 
 
+@deal.has('import', 'io', 'stdin', 'stdout', 'time')
+@deal.safe
 def handle_files(files: list, folder: str = "misc", month: bool = False):
     """Organizes files by last modified date."""
     choice = ""
@@ -127,6 +130,8 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             choice = ""
 
 
+@deal.has('io', 'stdout')
+@deal.safe
 def remove_empty_dir(path: str | Path):
     """Remove empty folder."""
 
@@ -140,6 +145,8 @@ def remove_empty_dir(path: str | Path):
             pass
 
 
+@deal.has('io', 'stdout')
+@deal.safe
 def remove_empty_dirs(path: str | Path):
     """Recursively remove empty folders."""
 
@@ -151,6 +158,8 @@ def remove_empty_dirs(path: str | Path):
 
 
 # MAIN()
+@deal.has('import', 'io', 'read', 'stdin', 'stdout', 'time', 'write')
+@deal.raises(SystemExit)
 def main():
 
     if not os.path.isdir(_CLI_PATH):
@@ -313,11 +322,15 @@ def main():
 # END OF MAIN()
 
 
+@deal.has('io')
+@deal.safe
 def clean_up():
     for target_folder in ARCHIVE_FOLDERS:
         remove_empty_dirs(os.path.join(_CLI_PATH, target_folder))
 
 
+@deal.has('import', 'io', 'stdin', 'stdout')
+@deal.raises(SystemExit)
 def undo():
     undo_commands = []
 
@@ -364,6 +377,8 @@ def undo():
             # pickle.dump(_COMMANDS, _DATA_FILE)
 
 
+@deal.has('io', 'stdout')
+@deal.safe
 def execute_commands(commands=_COMMANDS):
     for command, source, dest in commands:
         try:
@@ -375,6 +390,8 @@ def execute_commands(commands=_COMMANDS):
             print(e)
 
 
+@deal.has('io', 'read', 'stdout', 'write')
+@deal.raises(FileNotFoundError, SameFileError, SpecialFileError)
 def create_config():
     os.makedirs(_USER_CONFIG_FILE.parent, exist_ok=True)
     shutil.copyfile(_BASE_CONFIG_FILE, _USER_CONFIG_FILE)

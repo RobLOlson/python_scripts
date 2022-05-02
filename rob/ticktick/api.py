@@ -1,3 +1,4 @@
+import deal
 from .managers.focus import FocusTimeManager
 from .managers.habits import HabitManager
 from .managers.pomo import PomoManager
@@ -19,6 +20,7 @@ class TickTickClient:
 
     HEADERS = {"User-Agent": USER_AGENT}
 
+    @deal.pure
     def __init__(self, username: str, password: str, oauth: OAuth2) -> None:
         """
         Initializes a client session. In order to interact with the API
@@ -55,6 +57,7 @@ class TickTickClient:
         self.tag = TagsManager(self)
         self.task = TaskManager(self)
 
+    @deal.pure
     def _prepare_session(self, username, password):
         """
         Creates all the necessary calls to prepare the session
@@ -63,6 +66,7 @@ class TickTickClient:
         self._settings()
         self.sync()
 
+    @deal.pure
     def reset_local_state(self):
         """
         Resets the contents of the items in the [`state`](api.md#state) dictionary.
@@ -77,6 +81,7 @@ class TickTickClient:
             "profile": {},
         }
 
+    @deal.pure
     def _login(self, username: str, password: str) -> None:
         """
         Logs in to TickTick and sets the instance access token.
@@ -97,6 +102,8 @@ class TickTickClient:
         self.access_token = response["token"]
         self.cookies["t"] = self.access_token
 
+    @deal.has()
+    @deal.raises(RuntimeError)
     @staticmethod
     def check_status_code(response, error_message: str) -> None:
         """
@@ -112,6 +119,7 @@ class TickTickClient:
         if response.status_code != 200:
             raise RuntimeError(error_message)
 
+    @deal.pure
     def _settings(self):
         """
         Sets the time_zone and profile_id.
@@ -131,6 +139,7 @@ class TickTickClient:
 
         return response
 
+    @deal.pure
     def sync(self):
         """
         Populates the `TickTickClient` [`state`](api.md#state) dictionary with the contents of your account.
@@ -160,6 +169,8 @@ class TickTickClient:
 
         return response
 
+    @deal.has()
+    @deal.raises(RuntimeError)
     def http_post(self, url, **kwargs):
         """
         Sends an http post request with the specified url and keyword arguments.
@@ -182,6 +193,8 @@ class TickTickClient:
         except ValueError:
             return response.text
 
+    @deal.has()
+    @deal.raises(RuntimeError)
     def http_get(self, url, **kwargs):
         """
         Sends an http get request with the specified url and keyword arguments.
@@ -204,6 +217,8 @@ class TickTickClient:
         except ValueError:
             return response.text
 
+    @deal.has()
+    @deal.raises(RuntimeError)
     def http_delete(self, url, **kwargs):
         """
         Sends an http delete request with the specified url and keyword arguments.
@@ -226,6 +241,8 @@ class TickTickClient:
         except ValueError:
             return response.text
 
+    @deal.has()
+    @deal.raises(RuntimeError)
     def http_put(self, url, **kwargs):
         """
         Sends an http put request with the specified url and keyword arguments.
@@ -248,6 +265,7 @@ class TickTickClient:
         except ValueError:
             return response.text
 
+    @deal.pure
     @staticmethod
     def parse_id(response: dict) -> str:
         """
@@ -270,6 +288,7 @@ class TickTickClient:
         id_tag = list(id_tag.keys())
         return id_tag[0]
 
+    @deal.pure
     @staticmethod
     def parse_etag(response: dict, multiple: bool = False) -> str:
         """
@@ -300,6 +319,8 @@ class TickTickClient:
                 etags.append(etag[etag2[key]])
             return etags
 
+    @deal.has()
+    @deal.raises(KeyError, ValueError)
     def get_by_fields(self, search: str = None, **kwargs):
         """
         Finds and returns the objects in `state` that match the inputted fields.
@@ -403,6 +424,8 @@ class TickTickClient:
         else:
             return objects
 
+    @deal.has()
+    @deal.raises(KeyError)
     def get_by_id(self, obj_id: str, search: str = None) -> dict:
         """
         Returns the dictionary of the object corresponding to the passed id.
@@ -469,6 +492,8 @@ class TickTickClient:
         # Return empty dictionary if not found
         return {}
 
+    @deal.has()
+    @deal.raises(KeyError)
     def get_by_etag(self, etag: str, search: str = None) -> dict:
         """
         Returns the dictionary object of the item with the matching etag.
@@ -535,6 +560,8 @@ class TickTickClient:
         # Return empty dictionary if not found
         return {}
 
+    @deal.has()
+    @deal.raises(KeyError, ValueError)
     def delete_from_local_state(self, search: str = None, **kwargs) -> dict:
         """
         Deletes a single object from the local `state` dictionary. **Does not delete any items remotely.**

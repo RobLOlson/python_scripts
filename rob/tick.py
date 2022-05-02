@@ -1,22 +1,23 @@
-import os
 import datetime
-import time
-import subprocess
-
-from pathlib import Path
-
-import appdirs
-
-
-# Register App with ticktick servers at https://developer.ticktick.com/manage
-from .ticktick.oauth2 import OAuth2
-from .ticktick.api import TickTickClient
 
 # for debugging the daemon
 import logging
-from .loggers.tick_logger import StreamToLogger
+import os
+import subprocess
+import time
+from pathlib import Path
+
+import appdirs
+import deal
 
 from .parser.tick_parser import tick_parser
+from .ticktick.api import TickTickClient
+
+# Register App with ticktick servers at https://developer.ticktick.com/manage
+from .ticktick.oauth2 import OAuth2
+
+# from .loggers.tick_logger import log, StreamToLogger
+
 
 tick_parser.prog = "py -m rob." + Path(__file__).stem
 
@@ -44,7 +45,6 @@ if not _TICKTICK_USERNAME or not _TICKTICK_USERNAME:
     )
     exit(1)
 
-
 _TOKEN_FILE = _BASE_PATH / "robolson" / "tick" / "cache" / ".token-oauth"
 
 if not _TOKEN_FILE.exists():
@@ -70,6 +70,7 @@ if args.get:
     exit(0)
 
 
+@deal.pure
 def get_due(tick_client) -> list[str]:
     today = datetime.datetime.today().isoformat("!")
     today_date = today
@@ -88,8 +89,11 @@ def get_due(tick_client) -> list[str]:
     return due
 
 
+@deal.has('global', 'io', 'syscall', 'write')
+@deal.raises(SystemExit)
 def main() -> None:
 
+    global args
     # For Debugging, these will redirect standard streams to the logger
     # stdout_logger = logging.getLogger("STDOUT")
     # sl = StreamToLogger(stdout_logger, logging.INFO)
@@ -136,6 +140,8 @@ def main() -> None:
                 fp.write("")
 
         time.sleep(299)
+
+        # log.info("syncing with ticktick servers")
         tick_client.sync()
 
 

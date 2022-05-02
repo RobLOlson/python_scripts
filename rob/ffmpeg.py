@@ -1,18 +1,21 @@
-import glob, os, subprocess, multiprocessing, sys, shutil
-
-import rich
-import rich.traceback
-import taglib
-
+import glob
+import multiprocessing
+import os
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 from typing import List
 
+import deal
+import rich
+import rich.traceback
+import taglib
+from pydub.utils import mediainfo
 from rich import pretty
 from rich.progress import track
-from pydub.utils import mediainfo
 
 from .parser.ffmpeg_parser import ffmpeg_parser
-
 
 pretty.install()
 rich.traceback.install()
@@ -30,6 +33,8 @@ _PROMPT_STYLE = "white on blue"
 _ERROR_STYLE = "red on black"
 _COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
+@deal.has('read', 'stdout')
+@deal.raises(Error, PermissionError)
 def command_only(folder: Path)->None:
     """Generate a textfile containing the desired ffmpeg CLI commands.
 
@@ -82,6 +87,8 @@ def command_only(folder: Path)->None:
 
     return
 
+@deal.has('global', 'import', 'syscall', 'write')
+@deal.raises(CalledProcessError, Error, PermissionError, ValueError)
 def concat_and_convert(folder: Path) -> None:
     """Spin up an ffmpeg process in target folder.
 
@@ -157,6 +164,8 @@ def concat_and_convert(folder: Path) -> None:
     return
 
 
+@deal.has('global', 'import', 'stdin', 'write')
+@deal.safe
 def interact() -> List[Path]:
     """Walk the user through configuring an ffmpeg call.
 
@@ -279,6 +288,8 @@ def interact() -> List[Path]:
 
     return folders
 
+@deal.has('global', 'import', 'io', 'stdin', 'write')
+@deal.raises(SystemExit)
 def main() -> None:
     folders = set()
 

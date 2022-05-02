@@ -1,7 +1,10 @@
+import deal
 from ..helpers.hex_color import check_hex_color, generate_hex_color
 from ..managers.check_logged_in import logged_in
 
 
+@deal.has()
+@deal.raises(ValueError)
 def _sort_string_value(sort_type: int) -> str:
     """
     Returns the string corresponding to the sort type integer
@@ -24,11 +27,14 @@ class TagsManager:
 
     SORT_DICTIONARY = {0: "project", 1: "dueDate", 2: "title", 3: "priority"}
 
+    @deal.pure
     def __init__(self, client_class):
         self._client = client_class
         self.access_token = self._client.access_token
         self.headers = self._client.HEADERS
 
+    @deal.has()
+    @deal.raises(ValueError)
     def _sort_string_value(self, sort_type: int) -> str:
         """
         Returns the string corresponding to the sort type integer
@@ -42,6 +48,8 @@ class TagsManager:
 
         return self.SORT_DICTIONARY[sort_type]
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def _check_fields(
         self,
         label: str = None,
@@ -104,6 +112,7 @@ class TagsManager:
             "name": label.lower(),
         }
 
+    @deal.pure
     def builder(
         self, label: str, color: str = "random", parent: str = None, sort: int = None
     ) -> dict:
@@ -149,6 +158,8 @@ class TagsManager:
         # Perform checks
         return self._check_fields(label, color=color, parent_label=parent, sort=sort)
 
+    @deal.has()
+    @deal.raises(TypeError)
     def create(
         self, label, color: str = "random", parent: str = None, sort: int = None
     ):
@@ -326,6 +337,8 @@ class TagsManager:
             else:
                 return items
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def rename(self, old: str, new: str) -> dict:
         """
         Renames a tag.
@@ -398,6 +411,8 @@ class TagsManager:
         # Return the etag of the updated object
         return self._client.get_by_etag(new_obj["etag"], search="tags")
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def color(self, label: str, color: str) -> dict:
         """
         Change the color of a tag. For batch changing colors, see [update][managers.tags.TagsManager.update].
@@ -460,6 +475,8 @@ class TagsManager:
         self._client.sync()
         return self._client.get_by_etag(response["id2etag"][obj["name"]])
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def sorting(self, label: str, sort: int) -> dict:
         """
         Change the sort type of a tag. For batch changing sort types, see [update][managers.tags.TagsManager.update].
@@ -518,6 +535,8 @@ class TagsManager:
         self._client.sync()
         return self._client.get_by_etag(response["id2etag"][obj["name"]])
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def nesting(self, child: str, parent: str) -> dict:
         """
         Update tag nesting. Move an already created tag to be nested underneath a parent tag - or ungroup an already
@@ -683,6 +702,8 @@ class TagsManager:
         self._client.sync()
         return self._client.get_by_etag(response["id2etag"][obj["name"]], search="tags")
 
+    @deal.has()
+    @deal.raises(TypeError)
     def update(self, obj):
         """
         Generic update method. Supports single and batch tag update.
@@ -824,6 +845,8 @@ class TagsManager:
                 items[index] = found  # Place at the correct index
             return items
 
+    @deal.has()
+    @deal.raises(ValueError)
     def merge(self, label, merged: str):
         """
 
@@ -972,6 +995,8 @@ class TagsManager:
 
         return kept_obj
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def delete(self, label):
         """
         Delete tag(s). Supports single tag deletion and "mock" batch tag deletion.

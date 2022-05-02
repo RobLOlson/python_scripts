@@ -1,6 +1,7 @@
 import json
 import errno
 import logging
+import deal
 
 log = logging.getLogger(__name__)
 
@@ -10,6 +11,7 @@ class CacheHandler:
     Handles the caching for TickTick auth tokens to disk
     """
 
+    @deal.pure
     def __init__(self,
                  path):
         """
@@ -19,6 +21,7 @@ class CacheHandler:
         # set path
         self.path = path
 
+    @deal.pure
     def get_cached_token(self):
         """
         Retrieves the cached token - and raises an exception if it doesn't work
@@ -39,6 +42,7 @@ class CacheHandler:
 
         return access_token_info
 
+    @deal.pure
     def write_token_to_cache(self, access_token_info):
         """
         Writes the token to cache

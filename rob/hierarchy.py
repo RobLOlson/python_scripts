@@ -18,6 +18,7 @@
 #Last Updated: 8/25/2014
 
 import weakref
+import deal
 
 
 class HierarchyError(Exception):
@@ -73,6 +74,7 @@ EXAMPLES:
 |+-------------+         |
 +------------------------+
 """
+    @deal.pure
     def __init__(self, initializer='root', parent=None, *args): #Remove *args?
 
 
@@ -102,6 +104,8 @@ EXAMPLES:
             if parent:
                 self.parent = parent
 
+    @deal.has()
+    @deal.raises(HierarchyError, ValueError)
     def __getitem__(self, name):
         """Experimenting with special syntax...
 A string index with the '=' symbol will be broken into two parts.
@@ -134,6 +138,8 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
             return self._traverse(self, name)
         raise ValueError("{} not found in hierarchy.".format(name))
 
+    @deal.has()
+    @deal.raises(HierarchyError, ValueError)
     def __setitem__(self, name, value):
 
         if "ID={}".format(value.ID) in self:
@@ -163,12 +169,14 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
         else:
             raise HierarchyError("{} must be a hierarchical type.".format(value))
 
+    @deal.pure
     def __len__(self):
         if self._daughters:
             return sum([len(daughter) for daughter in self._daughters])+1
         else:
             return 1
 
+    @deal.pure
     def __repr__(self):
         class_Name = str(self.__class__)
         dot_Index = class_Name.rindex('.')
@@ -177,9 +185,11 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
 
         return "{}('{}')".format(class_Name,self.name)
 
+    @deal.pure
     def __str__(self):
         return self.render()
 
+    @deal.pure
     def __contains__(self, value):
         try:
             self[value]
@@ -187,29 +197,35 @@ NOTE: Nested attributes are not allowed.  Only primitives and built-ins should
         except ValueError:
             return False
 
-    @property
+    @property  # type: ignore[misc]
+    @deal.pure
     def ID(self):
         """Read only."""
         return hash(self)
 
-    @property
+    @property  # type: ignore[misc]
+    @deal.pure
     def sisters(self):
         """Read only."""
         return self._sisters
 
-    @property
+    @property  # type: ignore[misc]
+    @deal.pure
     def daughters(self):
         """Read only."""
         return self._daughters
-    @property
+    @property  # type: ignore[misc]
+    @deal.pure
     def origin(self):
         """Read only."""
         return self._origin
 
-    @property
+    @property  # type: ignore[misc]
+    @deal.pure
     def parent(self):
         return self._parent
 
+    @deal.pure
     @parent.setter
     def parent(self, target):
         """Removes self from current parent and makes target self's new parent.
@@ -239,6 +255,7 @@ Also cleans up secondary references, lateral references, etc."""
         self._parent = target
         self._propagate(self, "_origin", target.origin)
 
+    @deal.pure
     def _copy(self, depth = -1):
         """The recursive part of the self.copy() method."""
         temp = self.__class__(self.name)
@@ -263,6 +280,7 @@ Also cleans up secondary references, lateral references, etc."""
 
         return temp
 
+    @deal.pure
     def _propagate(self, root, attribute, value):
         """Assign value to root.attribute and all of root's daughter.attribute."""
 
@@ -271,6 +289,8 @@ Also cleans up secondary references, lateral references, etc."""
         for daughter in root._daughters:
             self._propagate(daughter, attribute, value)
 
+    @deal.has()
+    @deal.raises(ValueError)
     def _traverse(self, root, target, attribute = "name"):
         """Search the hierarchy from root->leaves for an element with target attribute."""
         prop = getattr(root, attribute, None)
@@ -286,6 +306,7 @@ Also cleans up secondary references, lateral references, etc."""
         if root==self:
             raise ValueError("{} not found in the hierarchy.".format(target))
 
+    @deal.pure
     def _parse_list(self, nested_List):
         """Recursively turn a nested list/dictionary into a tree of Hierarchy objects."""
 
@@ -313,12 +334,15 @@ Also cleans up secondary references, lateral references, etc."""
 
         return temp
 
+    @deal.pure
     def _list_depth(self, root):
         if root._daughters:
             return max([self._list_depth(elem) for elem in root.daughters])+1
         else:
             return 1
 
+    @deal.has('import')
+    @deal.safe
     def _frame_down(self, root, attributes=[]):
         from textframe import frame, parallelize
         contents = ""
@@ -341,6 +365,8 @@ Also cleans up secondary references, lateral references, etc."""
         else:
             return frame(contents, hJust='c')
 
+    @deal.has('import')
+    @deal.safe
     def _stringify(self, attributes=[], depth = 0):
         """Recursively lay self out along one line for each level of nesting.
 TODO: Make indent and grouper variables to customize output style."""
@@ -374,6 +400,7 @@ TODO: Make indent and grouper variables to customize output style."""
         else:
             return head
 
+    @deal.pure
     def _verticalize(self, attributes = [], depth = 0):
         """Recursively lay self out on lines.
 TODO: Make indent and grouper variables to customize output style."""
@@ -398,6 +425,8 @@ TODO: Make indent and grouper variables to customize output style."""
         else:
             return "  "*depth+str(self.name)+attrs
 
+    @deal.has('import')
+    @deal.safe
     def render(self, attributes=[], mode = "frames"):
         """Display the hierarchy visually.  Attributes is a list of attributes.
 
@@ -427,6 +456,7 @@ horizontal - 'horizontal', 'h'"""
 
         return self._frame_down(self, attributes = attributes)
 
+    @deal.pure
     def insert(self, *args):
         """If first argument is hierarchical, it is simply added as a child of self.
 Otherwise, arguments are taken and passed to self.__init__(...) to generate
@@ -438,6 +468,7 @@ Otherwise, arguments are taken and passed to self.__init__(...) to generate
             temp = self.__class__(*args)
             temp.parent = self
 
+    @deal.pure
     def copy(self, depth=-1):
         """Return a copy of self including all children up to depth.
 If depth == -1, copying is exhaustive.
@@ -450,6 +481,8 @@ different self.ID value than the original.)"""
         temp._propagate(temp, "_origin", temp)
         return temp
 
+    @deal.has()
+    @deal.raises(AttributeError)
     def set_precedence(self, index):
         """Move this element to the index'th position among its siblings."""
         if self._parent:
@@ -459,6 +492,8 @@ different self.ID value than the original.)"""
         else:
             raise AttributeError("Root element has no index.")
 
+    @deal.has()
+    @deal.raises(HierarchyError)
     def permute_daughters(self, permutation):
         """Change the order of self's daughters to match that of permutation.
 Examples:
@@ -480,10 +515,12 @@ The [0,2,4,...,1,3,5,...] permutation organizes daughters by parity."""
         for elem, index in zip(self._daughters[:], permutation):
             elem.set_precedence(index)
 
+    @deal.pure
     def transfer(self):
         pass
 
 
+@deal.pure
 def list_depth(nestedList):
     """A non-list object has 0 depth.  A simple list has a depth of 1.  Etc."""
 
@@ -492,6 +529,7 @@ def list_depth(nestedList):
     else:
         return 0
 
+@deal.pure
 def join_contiguous(theList, depth = -1):
     """Joins 2 or more consecutive containers in theList, up to specified depth.
 If depth == -1, ALL levels of nesting are affected.
@@ -530,6 +568,7 @@ If depth == 2, twice-nested lists are also affected.
                 theList.insert(n, join_contiguous(subList, depth-1))
     return theList
 
+@deal.pure
 def hier_out(hierarchical_Object, mode = 'f'):
     """Returns a string representation of the passed object.
 

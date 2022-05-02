@@ -1,5 +1,6 @@
 import datetime
 import pytz
+import deal
 
 from ..helpers.time_methods import (
     convert_local_time_to_utc,
@@ -16,6 +17,7 @@ class TaskManager:
 
     TASK_CREATE_ENDPOINT = "/open/v1/task"
 
+    @deal.pure
     def __init__(self, client_class):
         # ._client is a reference to the original client_class
         self._client = client_class
@@ -38,6 +40,7 @@ class TaskManager:
 
         self.headers = self._client.HEADERS
 
+    @deal.pure
     def _generate_create_url(self):
         """
         Returns the endpoint url for task creation
@@ -46,6 +49,7 @@ class TaskManager:
         CREATE_ENDPOINT = "/open/v1/task"
         return self._client.OPEN_API_BASE_URL + CREATE_ENDPOINT
 
+    @deal.pure
     def create(self, task):
         """
         Create a task. Use [`builder`][managers.tasks.TaskManager.builder] for easy task dictionary
@@ -179,6 +183,7 @@ class TaskManager:
         # return response
         return response
 
+    @deal.pure
     def _generate_update_url(self, taskID: str):
         """
         Generates the url for updating a task based off the taskID
@@ -187,6 +192,7 @@ class TaskManager:
         UPDATE_ENDPOINT = f"/open/v1/task/{taskID}"
         return self._client.OPEN_API_BASE_URL + UPDATE_ENDPOINT
 
+    @deal.pure
     def update(self, task):
         """
         Update a task. The task should already be created.
@@ -263,6 +269,7 @@ class TaskManager:
         # return response
         return response
 
+    @deal.pure
     def _generate_mark_complete_url(self, projectID, taskID):
         """
         Generates the url for marking a task as complete based off the projectID and taskID
@@ -271,6 +278,7 @@ class TaskManager:
         COMPLETE_ENDPOINT = f"/open/v1/project/{projectID}/task/{taskID}/complete"
         return self._client.OPEN_API_BASE_URL + COMPLETE_ENDPOINT
 
+    @deal.pure
     def complete(self, task: dict):
         """
         Marks a task as complete. Pass in the task dictionary to be marked as completed.
@@ -330,12 +338,14 @@ class TaskManager:
         # return response
         return response
 
+    @deal.pure
     def _generate_delete_url(self):
         """
         Generates end point url for task deletion
         """
         return self._client.BASE_URL + "batch/task"
 
+    @deal.pure
     def delete(self, task):
         """
         Deletes a task. Supports single task deletion, and batch task deletion.
@@ -469,6 +479,8 @@ class TaskManager:
         # return input
         return task
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def make_subtask(self, obj, parent: str):
         """
         Makes the passed task(s) sub-tasks to the parent task.
@@ -620,6 +632,8 @@ class TaskManager:
         else:
             return subtasks
 
+    @deal.has()
+    @deal.raises(TypeError, ValueError)
     def move(self, obj, new: str):
         """
         Moves task(s) from their current project to the new project. It will move the specified
@@ -767,6 +781,8 @@ class TaskManager:
         else:
             return return_list
 
+    @deal.has()
+    @deal.raises(ValueError)
     def move_all(self, old: str, new: str) -> list:
         """
         Moves all the tasks from the old project to the new project.
@@ -850,6 +866,8 @@ class TaskManager:
         # Return the tasks in the new list
         return self._client.task.get_from_project(new)
 
+    @deal.has()
+    @deal.raises(ValueError)
     def get_from_project(self, project: str):
         """
         Obtains the tasks that are contained in the project.
@@ -909,6 +927,8 @@ class TaskManager:
         else:
             return tasks
 
+    @deal.has()
+    @deal.raises(KeyError, TypeError, ValueError)
     def get_completed(self, start, end=None, full: bool = True, tz: str = None) -> list:
         """
         Obtains all completed tasks from the given start date and end date.
@@ -1051,6 +1071,8 @@ class TaskManager:
         )
         return response
 
+    @deal.has()
+    @deal.raises(IllegalMonthError)
     def dates(self, start, due=None, tz=None):
         """
         Performs necessary date conversions from datetime objects to strings. This
@@ -1152,6 +1174,7 @@ class TaskManager:
 
         return dates
 
+    @deal.pure
     def builder(
         self,
         title: str = "",

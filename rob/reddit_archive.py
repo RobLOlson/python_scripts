@@ -6,6 +6,7 @@ import os, shelve, sys, datetime, subprocess, appdirs
 from pathlib import Path
 
 import praw
+import deal
 
 from .parser.reddit_parser import reddit_parser
 
@@ -62,6 +63,8 @@ _REDDIT = praw.Reddit(
 )
 
 
+@deal.has('io', 'time', 'write')
+@deal.safe
 def generate_text():
     now = datetime.datetime.now()
     with shelve.open(str(_DB_FILE)) as db, open(
@@ -94,6 +97,8 @@ http://reddit.com{comment['permalink']}
             )
 
 
+@deal.has('io', 'stdin', 'stdout', 'time', 'write')
+@deal.raises(SystemExit)
 def main():  # pylint: disable=missing-function-docstring
     if _ARGS.text:
         generate_text()

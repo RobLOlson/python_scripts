@@ -6,8 +6,11 @@ import pytz
 
 from ..helpers.constants import DATE_FORMAT
 import datetime
+import deal
 
 
+@deal.has('import')
+@deal.raises(UnknownTimeZoneError)
 def convert_local_time_to_utc(original_time, time_zone: str):
     """
     Converts the datetime object to UTC time. Utilizes the time_zone string for proper conversion.
@@ -46,6 +49,7 @@ def convert_local_time_to_utc(original_time, time_zone: str):
     return time_zone_dt.astimezone(utc).replace(tzinfo=None)
 
 
+@deal.pure
 def convert_date_to_tick_tick_format(datetime_obj, tz: str):
     """
     Parses ISO 8601 Format to Tick Tick Date Format

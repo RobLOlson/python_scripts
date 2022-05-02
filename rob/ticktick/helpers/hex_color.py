@@ -4,10 +4,13 @@ Provides some methods for dealing with hex color code strings.
 
 import random
 import re
+import deal
 
 VALID_HEX_VALUES = "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
 
 
+@deal.has('random')
+@deal.safe
 def generate_hex_color() -> str:
     """
     Generates a random hexadecimal color string to be used for rgb color schemes.
@@ -25,6 +28,7 @@ def generate_hex_color() -> str:
     return '#' + hex_num
 
 
+@deal.pure
 def check_hex_color(color: str) -> bool:
     """
     Verifies if the passed in color string is a valid hexadecimal color string
