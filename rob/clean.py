@@ -3,26 +3,24 @@
 # Robert Olson
 # pylint: disable=line-too-long
 
-import os
-import glob
 import datetime
-import shutil
+import glob
+import os
 import re
-import appdirs
-import shutil
 import shelve
-
-import rich.traceback
-import rich
-import toml
-import deal
-
-
+import shutil
 from pathlib import Path
+
+import appdirs
+import deal
+import rich
+import rich.traceback
+import toml
+
+from .parser.clean_parser import clean_parser
 
 rich.traceback.install()
 
-from .parser.clean_parser import clean_parser
 
 clean_parser.prog = "py -m rob." + Path(__file__).stem
 
@@ -66,7 +64,7 @@ PROMPT = f"rob.{THIS_FILE.stem}> "
 _COMMANDS = []
 
 
-@deal.has('import', 'io', 'stdin', 'stdout', 'time')
+@deal.has("import", "io", "stdin", "stdout", "time")
 @deal.safe
 def handle_files(files: list, folder: str = "misc", month: bool = False):
     """Organizes files by last modified date."""
@@ -130,7 +128,7 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             choice = ""
 
 
-@deal.has('io', 'stdout')
+@deal.has("io", "stdout")
 @deal.safe
 def remove_empty_dir(path: str | Path):
     """Remove empty folder."""
@@ -145,12 +143,12 @@ def remove_empty_dir(path: str | Path):
             pass
 
 
-@deal.has('io', 'stdout')
+@deal.has("io", "stdout")
 @deal.safe
 def remove_empty_dirs(path: str | Path):
     """Recursively remove empty folders."""
 
-    for trunk, dirnames, filenames in os.walk(path, topdown=False):
+    for trunk, dirnames, _ in os.walk(path, topdown=False):
         for dirname in dirnames:
             remove_empty_dir(os.path.realpath(os.path.join(trunk, dirname)))
 
@@ -158,7 +156,7 @@ def remove_empty_dirs(path: str | Path):
 
 
 # MAIN()
-@deal.has('import', 'io', 'read', 'stdin', 'stdout', 'time', 'write')
+@deal.has("import", "io", "read", "stdin", "stdout", "time", "write")
 @deal.raises(SystemExit)
 def main():
 
@@ -322,14 +320,14 @@ def main():
 # END OF MAIN()
 
 
-@deal.has('io')
+@deal.has("io")
 @deal.safe
 def clean_up():
     for target_folder in ARCHIVE_FOLDERS:
         remove_empty_dirs(os.path.join(_CLI_PATH, target_folder))
 
 
-@deal.has('import', 'io', 'stdin', 'stdout')
+@deal.has("import", "io", "stdin", "stdout")
 @deal.raises(SystemExit)
 def undo():
     undo_commands = []
@@ -377,7 +375,7 @@ def undo():
             # pickle.dump(_COMMANDS, _DATA_FILE)
 
 
-@deal.has('io', 'stdout')
+@deal.has("io", "stdout")
 @deal.safe
 def execute_commands(commands=_COMMANDS):
     for command, source, dest in commands:
@@ -390,8 +388,8 @@ def execute_commands(commands=_COMMANDS):
             print(e)
 
 
-@deal.has('io', 'read', 'stdout', 'write')
-@deal.raises(FileNotFoundError, SameFileError, SpecialFileError)
+@deal.has("io", "read", "stdout", "write")
+@deal.raises(FileNotFoundError)
 def create_config():
     os.makedirs(_USER_CONFIG_FILE.parent, exist_ok=True)
     shutil.copyfile(_BASE_CONFIG_FILE, _USER_CONFIG_FILE)

@@ -2,15 +2,15 @@
 Useful time conversion methods.
 """
 
+import datetime
+
+import deal
 import pytz
 
 from ..helpers.constants import DATE_FORMAT
-import datetime
-import deal
 
 
-@deal.has('import')
-@deal.raises(UnknownTimeZoneError)
+@deal.has("import")
 def convert_local_time_to_utc(original_time, time_zone: str):
     """
     Converts the datetime object to UTC time. Utilizes the time_zone string for proper conversion.

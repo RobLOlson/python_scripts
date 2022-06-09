@@ -1,13 +1,14 @@
 import datetime
-import pytz
-import deal
-
-from ..helpers.time_methods import (
-    convert_local_time_to_utc,
-    convert_date_to_tick_tick_format,
-)
-from ..helpers.constants import DATE_FORMAT
 from calendar import monthrange
+
+import deal
+import pytz
+
+from ..helpers.constants import DATE_FORMAT
+from ..helpers.time_methods import (
+    convert_date_to_tick_tick_format,
+    convert_local_time_to_utc,
+)
 
 
 class TaskManager:
@@ -1072,7 +1073,6 @@ class TaskManager:
         return response
 
     @deal.has()
-    @deal.raises(IllegalMonthError)
     def dates(self, start, due=None, tz=None):
         """
         Performs necessary date conversions from datetime objects to strings. This

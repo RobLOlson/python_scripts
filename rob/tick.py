@@ -7,10 +7,9 @@ import subprocess
 import time
 from pathlib import Path
 
-import appdirs
-import deal
+import appdirs  # type: ignore[import]
 
-from .parser.tick_parser import tick_parser
+from .parser.tick_parser import tick_parser  # type: ignore[import]
 from .ticktick.api import TickTickClient
 
 # Register App with ticktick servers at https://developer.ticktick.com/manage
@@ -52,7 +51,6 @@ if not _TOKEN_FILE.exists():
 
 if args.token:
     os.remove(_TOKEN_FILE)
-
 _TASK_FILE = os.environ.get("TICKTICK_TASK_FILE", "")
 if not _TASK_FILE:
     _TASK_FILE = _BASE_PATH / "robolson" / "tick" / "tasks.txt"
@@ -70,13 +68,12 @@ if args.get:
     exit(0)
 
 
-@deal.pure
 def get_due(tick_client) -> list[str]:
-    today = datetime.datetime.today().isoformat("!")
-    today_date = today
-    today = today.split("!")[0]
+    today_str = datetime.datetime.today().isoformat("!")
+    today_date = today_str
+    today_str = today_str.split("!")[0]
 
-    today = datetime.datetime.fromisoformat(today)
+    today = datetime.datetime.fromisoformat(today_str)
 
     due = [
         elem
@@ -89,8 +86,6 @@ def get_due(tick_client) -> list[str]:
     return due
 
 
-@deal.has('global', 'io', 'syscall', 'write')
-@deal.raises(SystemExit)
 def main() -> None:
 
     global args
@@ -120,7 +115,7 @@ def main() -> None:
 
         with open(f"{_TASK_FILE}", "w") as fp:
             if due:
-                fp.write("\n".join([elem["title"] for elem in due]))
+                fp.write("\n".join([elem["title"] for elem in due]))  # type: ignore[index]
             else:
                 fp.write("")
 
@@ -135,7 +130,7 @@ def main() -> None:
 
         with open(f"{_TASK_FILE}", "w") as fp:
             if due:
-                fp.write("\n".join([elem["title"] for elem in due]))
+                fp.write("\n".join([elem["title"] for elem in due]))  # type: ignore[index]
             else:
                 fp.write("")
 

@@ -10,7 +10,7 @@ _EXCLUSIONS = ["__init__", "__main__"]
 
 
 @deal.has("import", "io", "stdout")
-@deal.raises(Python, FNFError, OSError, TomlDecodeError, TypeError, ZeroDivisionError)
+@deal.raises(OSError, TypeError, ZeroDivisionError)
 def main():
 
     tom = toml.load(Path(__file__).parent / "pyproject.toml")

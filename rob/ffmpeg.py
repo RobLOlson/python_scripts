@@ -34,7 +34,7 @@ _ERROR_STYLE = "red on black"
 _COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
 @deal.has('read', 'stdout')
-@deal.raises(Error, PermissionError)
+@deal.raises(PermissionError)
 def command_only(folder: Path)->None:
     """Generate a textfile containing the desired ffmpeg CLI commands.
 
@@ -88,7 +88,7 @@ def command_only(folder: Path)->None:
     return
 
 @deal.has('global', 'import', 'syscall', 'write')
-@deal.raises(CalledProcessError, Error, PermissionError, ValueError)
+@deal.raises(PermissionError, ValueError)
 def concat_and_convert(folder: Path) -> None:
     """Spin up an ffmpeg process in target folder.
 
