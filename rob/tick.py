@@ -3,6 +3,7 @@ import datetime
 # for debugging the daemon
 import logging
 import os
+import random
 import subprocess
 import time
 from pathlib import Path
@@ -128,16 +129,41 @@ def main() -> None:
     while True:
         due = get_due(tick_client)
 
+        # Create Overdue Tasks in "me" list for Pavlok
+        for task in due:
+            # Do not trigger during sleeping hours
+            if not 8 < datetime.datetime.now().hour < 20:
+                continue
+
+            due_date = datetime.datetime.fromisoformat(task["dueDate"][:-5])
+            due_diff = datetime.datetime.now() - due_date
+
+            if due_diff.days > 0 and 0.99**due_diff.days < random.random():
+                new_due = datetime.datetime.fromordinal(
+                    datetime.datetime.today().toordinal()
+                )
+                new_due = new_due + datetime.timedelta(hours=20)
+                new_due = new_due.isoformat("T") + "+0000"
+                new_task = tick_client.task.builder(
+                    title=f"Overdue({due_diff.days}): {task['title']}",
+                    dueDate=new_due,
+                    content="Created for Pavlok",
+                    priority=3,
+                    projectId="611479cafba2c1d019f96b45",
+                )
+                new_task["dueDate"] = new_due
+                tick_client.task.create(new_task)
+
         with open(f"{_TASK_FILE}", "w") as fp:
             if due:
                 fp.write("\n".join([elem["title"] for elem in due]))  # type: ignore[index]
             else:
                 fp.write("")
 
-        time.sleep(299)
-
         # log.info("syncing with ticktick servers")
         tick_client.sync()
+
+        time.sleep(299)
 
 
 if __name__ == "__main__":

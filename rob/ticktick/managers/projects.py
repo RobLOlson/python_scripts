@@ -1,4 +1,3 @@
-import deal
 from ..helpers.hex_color import check_hex_color, generate_hex_color
 from ..managers.check_logged_in import logged_in
 
@@ -8,14 +7,11 @@ class ProjectManager:
     Handles all interactions for projects.
     """
 
-    @deal.pure
     def __init__(self, client_class):
         self._client = client_class
         self.access_token = self._client.access_token
         self.headers = self._client.HEADERS
 
-    @deal.has()
-    @deal.raises(TypeError, ValueError)
     def builder(
         self,
         name: str,
@@ -106,8 +102,6 @@ class ProjectManager:
             "groupId": folder_id,
         }
 
-    @deal.has()
-    @deal.raises(TypeError)
     def create(
         self,
         name,
@@ -289,8 +283,6 @@ class ProjectManager:
                         items[index] = found
             return items
 
-    @deal.has()
-    @deal.raises(TypeError)
     def update(self, obj):
         """
         Updates the passed project(s). Supports single project update and multiple project update (batch)
@@ -427,8 +419,6 @@ class ProjectManager:
                         items[index] = found
             return items
 
-    @deal.has()
-    @deal.raises(TypeError, ValueError)
     def delete(self, ids):
         """
         Deletes the project(s) with the passed ID string.
@@ -514,8 +504,6 @@ class ProjectManager:
         else:
             return deleted_list
 
-    @deal.has()
-    @deal.raises(TypeError, ValueError)
     def archive(self, ids):
         """
         Moves the project(s) to a project folder created by `TickTick` called "Archived Lists"
@@ -626,8 +614,6 @@ class ProjectManager:
 
         return self.update(objs)
 
-    @deal.has()
-    @deal.raises(TypeError)
     def create_folder(self, name):
         """
         Creates a project folder to allow for project grouping. Project folder names can be repeated.
@@ -733,8 +719,6 @@ class ProjectManager:
                         items[index] = found
             return items
 
-    @deal.has()
-    @deal.raises(TypeError)
     def update_folder(self, obj):
         """
         Updates the project folders(s) remotely based off changes made locally.
@@ -853,8 +837,6 @@ class ProjectManager:
                         items[index] = found
             return items
 
-    @deal.has()
-    @deal.raises(TypeError, ValueError)
     def delete_folder(self, ids):
         """
         Deletes the folder(s).
