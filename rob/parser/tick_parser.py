@@ -1,7 +1,7 @@
 import argparse
 
 tick_parser = argparse.ArgumentParser(
-    prog="",
+    prog="py -m rob.tick",
     allow_abbrev=True,
     add_help=True,
     # usage="$(prog)s [-h] path",

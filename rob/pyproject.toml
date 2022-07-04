@@ -22,6 +22,7 @@ pydub = "^0.25.1"
 pytaglib = "^1.5.0"
 appdirs = "^1.4.4"
 deal = "^4.23.2"
+redmail = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
 venvPath = "C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robolson-tTkljxzG-py3.10\\Lib\\site-packages"

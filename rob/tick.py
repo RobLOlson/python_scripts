@@ -1,7 +1,4 @@
 import datetime
-
-# for debugging the daemon
-import logging
 import os
 import random
 import subprocess
@@ -15,6 +12,10 @@ from .ticktick.api import TickTickClient
 
 # Register App with ticktick servers at https://developer.ticktick.com/manage
 from .ticktick.oauth2 import OAuth2
+
+# for debugging the daemon
+# import logging
+
 
 # from .loggers.tick_logger import log, StreamToLogger
 
@@ -139,6 +140,19 @@ def main() -> None:
             due_diff = datetime.datetime.now() - due_date
 
             if due_diff.days > 0 and 0.99**due_diff.days < random.random():
+
+                if task["projectId"] == "54384b29b84562b41688e91a":
+                    # If task in Joes List, add to Joes Pavlok List
+                    new_projectId = "8999486ebf8fc984f752dd46"
+
+                elif task["projectId"] == "af22459697ae1243ca23f4d9":
+                    # If task in Eryns List, add to Eryns Pavlok List
+                    new_projectId = "88ba4b50ab907613d84d0cb6"
+
+                else:
+                    # Add to Robs Pavlok List
+                    new_projectId = "611479cafba2c1d019f96b45"
+
                 new_due = datetime.datetime.fromordinal(
                     datetime.datetime.today().toordinal()
                 )
@@ -148,15 +162,16 @@ def main() -> None:
                     title=f"Overdue({due_diff.days}): {task['title']}",
                     dueDate=new_due,
                     content="Created for Pavlok",
-                    priority=3,
-                    projectId="611479cafba2c1d019f96b45",
+                    priority=5,
+                    projectId=new_projectId,
                 )
                 new_task["dueDate"] = new_due
                 tick_client.task.create(new_task)
 
         with open(f"{_TASK_FILE}", "w") as fp:
             if due:
-                fp.write("\n".join([elem["title"] for elem in due]))  # type: ignore[index]
+                # write name of due task to file if it is assigned to inbox
+                fp.write("\n".join([elem["title"] for elem in due if elem["projectId"] == "inbox115493726"]))  # type: ignore[index]
             else:
                 fp.write("")
 
