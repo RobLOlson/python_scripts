@@ -2,15 +2,12 @@ import glob
 import sys
 from pathlib import Path
 
-import deal
 import rich
 import toml
 
 _EXCLUSIONS = ["__init__", "__main__"]
 
 
-@deal.has("import", "io", "stdout")
-@deal.raises(OSError, TypeError, ZeroDivisionError)
 def main():
 
     tom = toml.load(Path(__file__).parent / "pyproject.toml")
