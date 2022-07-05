@@ -33,8 +33,6 @@ _PROMPT_STYLE = "white on blue"
 _ERROR_STYLE = "red on black"
 _COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
-@deal.has('read', 'stdout')
-@deal.raises(PermissionError)
 def command_only(folder: Path)->None:
     """Generate a textfile containing the desired ffmpeg CLI commands.
 
