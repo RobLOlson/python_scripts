@@ -1,24 +1,24 @@
 import datetime
+
+# for debugging the daemon
+import logging
 import os
 import random
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 import appdirs  # type: ignore[import]
 
+from .loggers.tick_logger import StreamToLogger, log
 from .parser.tick_parser import tick_parser  # type: ignore[import]
 from .ticktick.api import TickTickClient
 
 # Register App with ticktick servers at https://developer.ticktick.com/manage
 from .ticktick.oauth2 import OAuth2
 
-# for debugging the daemon
-# import logging
-
-
-# from .loggers.tick_logger import log, StreamToLogger
-
+_DEBUG = True
 
 tick_parser.prog = "py -m rob." + Path(__file__).stem
 
@@ -91,14 +91,15 @@ def get_due(tick_client) -> list[str]:
 def main() -> None:
 
     global args
-    # For Debugging, these will redirect standard streams to the logger
-    # stdout_logger = logging.getLogger("STDOUT")
-    # sl = StreamToLogger(stdout_logger, logging.INFO)
-    # sys.stdout = sl
+    if _DEBUG:
+        # For Debugging, these will redirect standard streams to the logger
+        stdout_logger = logging.getLogger("STDOUT")
+        sl = StreamToLogger(stdout_logger, logging.INFO)
+        sys.stdout = sl
 
-    # stderr_logger = logging.getLogger("STDERR")
-    # sl = StreamToLogger(stderr_logger, logging.ERROR)
-    # sys.stderr = sl
+        stderr_logger = logging.getLogger("STDERR")
+        sl = StreamToLogger(stderr_logger, logging.ERROR)
+        sys.stderr = sl
 
     auth_client = OAuth2(
         client_id=_CLIENT_ID,

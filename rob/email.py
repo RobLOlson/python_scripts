@@ -35,12 +35,12 @@ if len(sys.argv) < 2:
     exit(1)
 
 # _ARGS = email_parser.parse_args()
-_ARGS = docopt(_DOC, argv=sys.argv[1:], help=False)
+_ARGS = docopt(_DOC, argv=sys.argv[1:], help=True)
 
 
-if _ARGS["--help"] or _ARGS["-h"]:
-    print(__doc__)
-    exit(1)
+# if _ARGS["--help"] or _ARGS["-h"]:
+#     print(__doc__)
+#     exit(1)
 
 _CONTACT_FILE = Path(appdirs.user_data_dir()) / "robolson" / "email" / "contacts.db"
 

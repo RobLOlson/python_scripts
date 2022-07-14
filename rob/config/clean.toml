@@ -1,6 +1,6 @@
 DEBUG = false
 
-HANDLE_MISC = true # Unrecognized extensions will be filed under 'misc'
+HANDLE_MISC = true # Unrecognized file types will be filed under 'misc'
 
 EXCLUSIONS = [ "desktop.ini" ]
 

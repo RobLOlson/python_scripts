@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 
 import appdirs
-import deal
 
 _LOG_FILE = Path(appdirs.user_data_dir()) / "robolson" / "tick" / "LOG.txt"
 
@@ -16,13 +15,11 @@ class StreamToLogger(object):
     Fake file-like stream object that redirects writes to a logger instance.
     """
 
-    @deal.pure
     def __init__(self, logger, log_level=logging.INFO):
         self.logger = logger
         self.log_level = log_level
         self.linebuf = ""
 
-    @deal.pure
     def write(self, buf):
         for line in buf.rstrip().splitlines():
             self.logger.log(self.log_level, line.rstrip())
