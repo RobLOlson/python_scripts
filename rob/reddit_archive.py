@@ -1,58 +1,124 @@
 """(C) Rob Olson"""
+import datetime
+
 # pylint: disable = C0330
 # pylint: disable = multiple-imports
-import os, shelve, sys, datetime, subprocess, appdirs
-
+import os
+import shelve
+import subprocess
+import sys
 from pathlib import Path
 
+import appdirs
 import praw
-import deal
 
 from .parser.reddit_parser import reddit_parser
 
-reddit_parser.prog="py -m rob." + Path(__file__).stem
+reddit_parser.prog = "py -m rob." + Path(__file__).stem
 
 _THIS_FILE = Path(sys.argv[0])
 _DB_FILE = Path(appdirs.user_data_dir()) / "robolson" / "reddit_archive" / "comments.db"
+_USER_FILE = Path(appdirs.user_data_dir()) / "robolson" / "reddit_archive" / "users.db"
+
+_PROMPT = "\nrob.reddit_archive> "
 
 if not _DB_FILE.exists():
     os.makedirs(_DB_FILE.parent, exist_ok=True)
 
+if not _USER_FILE.exists():
+    os.makedirs(_USER_FILE.parent, exist_ok=True)
+
 _ARGS = reddit_parser.parse_args()
 
-if _ARGS.config:
-    _REDDIT_ID = input("\nEnter a reddit account ID.\n> ")
-    _REDDIT_SECRET = input(
-        "\nEnter the reddit secret for this account\n(located at https://www.reddit.com/perfs/apps)\n> "
-    )
-    choice = input("Save credentials? Y/N\n>")
-    if choice in ["yes", "y", "Y"]:
-        subprocess.run(["setx", "REDDIT_ID", _REDDIT_ID])
-        subprocess.run(["setx", "REDDIT_SECRET", _REDDIT_SECRET])
-
-else:
-    # located at https://www.reddit.com/prefs/apps
-    _REDDIT_ID = os.environ["REDDIT_ID"]
-    _REDDIT_SECRET = os.environ["REDDIT_SECRET"]
 
 match (_ARGS.user, _ARGS.password):
-    case (None, None) | (_, None) | (None, _):
+
+    # No Username
+    case (None, None) | (None, _):
         try:
-            _REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
-            _REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+            with shelve.open(str(_USER_FILE)) as db:
+                _REDDIT_USERNAME = db["default"]
+                _REDDIT_CREDS = db[_REDDIT_USERNAME]
+                _REDDIT_PASSWORD = _REDDIT_CREDS["reddit_password"]
+            # _REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
+            # _REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
         except KeyError:
             _REDDIT_USERNAME = input("Enter reddit username: ")
             _REDDIT_PASSWORD = input("Enter reddit password: ")
-            choice = input("\nSave login info (WARNING: NOT SECURE)? Y/N\n> ")
-            if choice in ["yes", "YES", "y", "Y"]:
-                subprocess.run(["setx", "REDDIT_USERNAME", _REDDIT_USERNAME])
-                subprocess.run(["setx", "REDDIT_PASSWORD", _REDDIT_PASSWORD])
+            choice = input(f"\nSave login info (WARNING: NOT SECURE)? Y/N{_PROMPT}")
+            with shelve.open(str(_USER_FILE)) as db:
+                db[_REDDIT_USERNAME] = {"reddit_password": _REDDIT_PASSWORD}
+                _REDDIT_CREDS = db[_REDDIT_USERNAME]
+                choice = input(f"\nMake this default user?{_PROMPT}")
+                if choice in ["yes", "YES", "y", "Y"]:
+                    db["default"] = _REDDIT_USERNAME
+                # subprocess.run(["setx", "REDDIT_USERNAME", _REDDIT_USERNAME])
+                # subprocess.run(["setx", "REDDIT_PASSWORD", _REDDIT_PASSWORD])
+
+    # Username, but no password
+    case (u, None):
+        with shelve.open(str(_USER_FILE)) as db:
+            try:
+                _REDDIT_USERNAME = u[0]
+                _REDDIT_PASSWORD = db[_REDDIT_USERNAME]["reddit_password"]
+            except KeyError:
+                _REDDIT_PASSWORD = input(f"Enter password (user: {u}): ")
+
     case (u, p) if u and p:
-        _REDDIT_USERNAME = u
-        _REDDIT_PASSWORD = p
+        _REDDIT_USERNAME = u[0]
+        _REDDIT_PASSWORD = p[0]
     case _:
         print("DUH")
 
+
+try:
+    with shelve.open(str(_USER_FILE)) as db:
+        _REDDIT_ID = db[_REDDIT_USERNAME]["app_id"]
+        _REDDIT_SECRET = db[_REDDIT_USERNAME]["app_secret"]
+# _REDDIT_ID = os.environ["REDDIT_ID"]
+# _REDDIT_SECRET = os.environ["REDDIT_SECRET"]
+except KeyError:
+
+    # if _ARGS.config:
+    _REDDIT_ID = input(
+        f"\nEnter a reddit app ID. (located https://www.reddit.com/prefs/apps/){_PROMPT}"
+    )
+    _REDDIT_SECRET = input(
+        f"\nEnter the reddit secret for this account\n(located at https://www.reddit.com/prefs/apps/){_PROMPT}"
+    )
+    choice = input(f"Save credentials? Y/N{_PROMPT}")
+    if choice in ["yes", "y", "Y"]:
+        with shelve.open(str(_USER_FILE)) as db:
+            _REDDIT_CREDS = db[_REDDIT_USERNAME]
+            _REDDIT_CREDS["app_id"] = _REDDIT_ID
+            _REDDIT_CREDS["app_secret"] = _REDDIT_SECRET
+            db[_REDDIT_USERNAME] = _REDDIT_CREDS
+            # db[_REDDIT_USERNAME]["app_id"] = _REDDIT_ID
+            # db[_REDDIT_USERNAME]["app_secret"] = _REDDIT_SECRET
+        # try:
+        #     _REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
+        #     _REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+        # except KeyError:
+        #     _REDDIT_USERNAME = input("Enter reddit username: ")
+        #     _REDDIT_PASSWORD = input("Enter reddit password: ")
+        #     choice = input("\nSave login info (WARNING: NOT SECURE)? Y/N\n> ")
+        #     if choice in ["yes", "YES", "y", "Y"]:
+        #         with shelve.open(_USER_FILE) as db:
+        #             db[_REDDIT_USERNAME] = {
+        #                 "app_id": _REDDIT_ID,
+        #                 "app_secret": _REDDIT_SECRET,
+        #                 "reddit_password": _REDDIT_PASSWORD,
+        # }
+        # subprocess.run(["setx", "REDDIT_ID", _REDDIT_ID])
+        # subprocess.run(["setx", "REDDIT_SECRET", _REDDIT_SECRET])
+
+# else:
+#     # located at https://www.reddit.com/prefs/apps
+#     try:
+#         _REDDIT_ID = _REDDIT_CREDS["app_id"]
+#         _REDDIT_SECRET = _
+#     _REDDIT_ID = os.environ["REDDIT_ID"]
+#     _REDDIT_SECRET = os.environ["REDDIT_SECRET"]
 
 _REDDIT = praw.Reddit(
     client_id=_REDDIT_ID,
@@ -63,8 +129,6 @@ _REDDIT = praw.Reddit(
 )
 
 
-@deal.has('io', 'time', 'write')
-@deal.safe
 def generate_text():
     now = datetime.datetime.now()
     with shelve.open(str(_DB_FILE)) as db, open(
@@ -97,8 +161,6 @@ http://reddit.com{comment['permalink']}
             )
 
 
-@deal.has('io', 'stdin', 'stdout', 'time', 'write')
-@deal.raises(SystemExit)
 def main():  # pylint: disable=missing-function-docstring
     if _ARGS.text:
         generate_text()
