@@ -56,7 +56,7 @@ match (_ARGS.user, _ARGS.password):
                 # subprocess.run(["setx", "REDDIT_PASSWORD", _REDDIT_PASSWORD])
 
     # Username, but no password
-    case (u, None):
+    case (u, None) if u:
         with shelve.open(str(_USER_FILE)) as db:
             try:
                 _REDDIT_USERNAME = u[0]
