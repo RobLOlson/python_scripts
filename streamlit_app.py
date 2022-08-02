@@ -1,40 +1,29 @@
-import numpy as np
-import pandas as pd
 import streamlit as st
+from shillelagh.backends.apsw.db import connect
 
-st.title("Uber pickups in NYC")
+# chart_data = pd.DataFrame({"hi": {"a": 1, "b": 2, "c": 3}})
+# # chart_data = [[1, 2, 3], [4, 5, 6]]
+# chart_data.set_axis(["x", "y", "z"], axis=0)
+# st.bar_chart({"hi": {"abc"[i]: i for i in range(3)}})
 
-DATE_COLUMN = "date/time"
-DATA_URL = (
-    "https://s3-us-west-2.amazonaws.com/"
-    "streamlit-demo-data/uber-raw-data-sep14.csv.gz"
+sheet_url = st.secrets["public_gsheets_url"]
+
+conn = connect(":memory:")
+cursor = conn.cursor()
+
+query = f'SELECT * FROM "{sheet_url}"'
+rows = list(cursor.execute(query))
+
+for row in rows:
+    if row[0].lower() in ["total", "test"]:
+        rows.remove(row)
+
+"""Cost of electrical appliances."""
+
+cost_type = st.radio(
+    label="Cost Frequency",
+    options=[3, 4, 5],
+    format_func=lambda x: [0, 0, 0, "Daily", "Weekly", "Yearly"][x],
 )
 
-
-@st.cache
-def load_data(nrows):
-    data = pd.read_csv(DATA_URL, nrows=nrows)
-    lowercase = lambda x: str(x).lower()
-    data.rename(lowercase, axis="columns", inplace=True)
-    data[DATE_COLUMN] = pd.to_datetime(data[DATE_COLUMN])
-    return data
-
-
-data_load_state = st.text("Loading data...")
-data = load_data(10000)
-data_load_state.text("Done! (using st.cache)")
-
-if st.checkbox("Show raw data"):
-    st.subheader("Raw data")
-    st.write(data)
-
-st.subheader("Number of pickups by hour")
-hist_values = np.histogram(data[DATE_COLUMN].dt.hour, bins=24, range=(0, 24))[0]
-st.bar_chart(hist_values)
-
-# Some number in the range 0-23
-hour_to_filter = st.slider("hour", 0, 23, 17)
-filtered_data = data[data[DATE_COLUMN].dt.hour == hour_to_filter]
-
-st.subheader("Map of all pickups at %s:00" % hour_to_filter)
-st.map(filtered_data)
+st.bar_chart({"cost (in dollars)": {row[0]: row[int(cost_type)] for row in rows}})
