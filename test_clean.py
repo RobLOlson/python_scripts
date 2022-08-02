@@ -4,7 +4,7 @@ import sys
 import pytest
 from hypothesis import given, strategies
 
-from .rob.clean import execute_commands, handle_files, main, undo
+from .rob.clean import execute_commands, handle_files, main, remove_empty_dir, undo
 
 
 @strategies.composite
@@ -15,7 +15,7 @@ def file_name(draw):
 
 
 @given(file_name=file_name())
-def test_handle_filesz(file_name):
+def test_handle_files(file_name):
     d = pathlib.Path(__file__).parent / "TMP"
     if not d.exists():
         d.mkdir()
@@ -26,8 +26,29 @@ def test_handle_filesz(file_name):
 
     assert 1
 
+    print("CLEANING")
+
     p.unlink()
     d.rmdir()
+
+
+@given(file_name=file_name())
+def test_remove_empty_dir(file_name):
+    d = pathlib.Path(__file__).parent / "TMP"
+    if not d.exists():
+        d.mkdir()
+
+    p = d / pathlib.Path(file_name).stem
+    p.mkdir()
+
+    remove_empty_dir(p)
+
+    assert not p.exists()
+
+    if p.exists():
+        p.rmdir()
+    if d.exists():
+        d.rmdir()
 
 
 # @given(files())

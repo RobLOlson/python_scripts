@@ -300,7 +300,7 @@ def main():
     for command, file, target in _COMMANDS:
         rich.print(f"[yellow]mv {file} {target}")
     rich.print("[red]Are you sure? (y/n)")
-    choice = input(f"{PROMPT}") if not yes_all else "y"
+    choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
     if choice in ["y", "yes", "Y", "YES"]:
         execute_commands()
         with shelve.open(str(_DATA_FILE)) as db:
