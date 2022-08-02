@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 from typing import List
 
-import deal
 import rich
 import rich.traceback
 import taglib
@@ -33,7 +32,8 @@ _PROMPT_STYLE = "white on blue"
 _ERROR_STYLE = "red on black"
 _COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
-def command_only(folder: Path)->None:
+
+def command_only(folder: Path) -> None:
     """Generate a textfile containing the desired ffmpeg CLI commands.
 
     Args:
@@ -47,7 +47,7 @@ def command_only(folder: Path)->None:
     mp3s = []
     for filetype in _FILETYPES:
         temp = glob.glob(f"*{filetype}")
-        mp3s.extend([Path(elem) for elem in temp if elem[0] != '~'])
+        mp3s.extend([Path(elem) for elem in temp if elem[0] != "~"])
 
     if not mp3s:
         return
@@ -64,10 +64,11 @@ def command_only(folder: Path)->None:
         f'''"concat:{concated}"''',
         # "-movflags", # Carry metadata over
         # "use_metadata_tags",
-        "-map_metadata", "0", # Use metadata from 0th input
-        "-c:a", # audio cocec
+        "-map_metadata",
+        "0",  # Use metadata from 0th input
+        "-c:a",  # audio cocec
         "aac",
-        "-b:a", # bitrate
+        "-b:a",  # bitrate
         "64k",
         "-c:v",
         "copy",
@@ -79,14 +80,13 @@ def command_only(folder: Path)->None:
         command.remove("-y")
 
     with open(_COMMAND_FILE, "a") as fp:
-        fp.write(" ".join(command)+"\n")
+        fp.write(" ".join(command) + "\n")
 
     print(" ".join(command))
 
     return
 
-@deal.has('global', 'import', 'syscall', 'write')
-@deal.raises(PermissionError, ValueError)
+
 def concat_and_convert(folder: Path) -> None:
     """Spin up an ffmpeg process in target folder.
 
@@ -100,9 +100,8 @@ def concat_and_convert(folder: Path) -> None:
 
     mp3s = []
     for filetype in _FILETYPES:
-       temp = glob.glob(f"*{filetype}")
-       mp3s.extend([Path(elem) for elem in temp if elem[0] != '~'])
-
+        temp = glob.glob(f"*{filetype}")
+        mp3s.extend([Path(elem) for elem in temp if elem[0] != "~"])
 
     if not mp3s:
         return
@@ -112,30 +111,31 @@ def concat_and_convert(folder: Path) -> None:
             shutil.move(mp3, str(mp3).replace("'", ""))
             mp3s[i] = Path(str(mp3).replace("'", ""))
 
-
-
     fp = open("files.txt", "w")
     for file in track(mp3s):
         fp.write(f"file '{file}'\n")
 
     fp.close()
 
-    bit_rate = mediainfo(mp3s[0])['bit_rate']
+    bit_rate = mediainfo(mp3s[0])["bit_rate"]
 
     command = [
         "ffmpeg",
         "-f",
         "concat",
-        "-safe", "0",
-        "-i", "files.txt",
-        "-map_metadata", "0", # Use metadata from 0th input
-        "-movflags", # Carry metadata over
+        "-safe",
+        "0",
+        "-i",
+        "files.txt",
+        "-map_metadata",
+        "0",  # Use metadata from 0th input
+        "-movflags",  # Carry metadata over
         "use_metadata_tags",
-        "-c:a", # audio cocec
-        "aac", # audio codec
-        "-b:a", # bitrate
+        "-c:a",  # audio cocec
+        "aac",  # audio codec
+        "-b:a",  # bitrate
         f"{bit_rate}",
-        "-vn", # no video stream
+        "-vn",  # no video stream
         "-y",
         f"""{Path(mp3s[0]).stem}.m4b""",
     ]
@@ -143,8 +143,7 @@ def concat_and_convert(folder: Path) -> None:
     if _SAFE:
         command.remove("-y")
 
-
-    rich.print("[green]Executing:\n[yellow]"+" ".join(command))
+    rich.print("[green]Executing:\n[yellow]" + " ".join(command))
     subprocess.run(command, shell=True)
 
     os.remove("files.txt")
@@ -162,13 +161,11 @@ def concat_and_convert(folder: Path) -> None:
     return
 
 
-@deal.has('global', 'import', 'stdin', 'write')
-@deal.safe
 def interact() -> List[Path]:
     """Walk the user through configuring an ffmpeg call.
 
-        Returns:
-            folders (List[Path]): the list of folders to traverse and modify.
+    Returns:
+        folders (List[Path]): the list of folders to traverse and modify.
     """
     global _PATH
     global _FILETYPES
@@ -180,8 +177,10 @@ def interact() -> List[Path]:
     valid = True
     while not final_choice:
         style = _PROMPT_STYLE if valid else _ERROR_STYLE
-        rich.print(f"""[{style}]Enter the path to work on.[/{style}]
-\[default: {_PATH.parent.absolute()}]""")
+        rich.print(
+            f"""[{style}]Enter the path to work on.[/{style}]
+\[default: {_PATH.parent.absolute()}]"""
+        )
         choice = input(f"{_PROMPT}")
 
         if Path(choice).exists():
@@ -192,7 +191,9 @@ def interact() -> List[Path]:
 
     rich.print(f"[yellow]Working on '{_PATH.absolute()}'.\n")
 
-    rich.print(f"[{_PROMPT_STYLE}]Which file type to work on?[/{_PROMPT_STYLE}] \[default: {_FILETYPES}]\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg")
+    rich.print(
+        f"[{_PROMPT_STYLE}]Which file type to work on?[/{_PROMPT_STYLE}] \[default: {_FILETYPES}]\n 1.) *.mp3\n 2.) *.wav\n 3.) *.ogg"
+    )
     choice = input(f"{_PROMPT}")
 
     match choice:
@@ -237,7 +238,9 @@ def interact() -> List[Path]:
                 rich.print(f" [red]{count+1}.) {folder}")
 
         style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
-        rich.print(f"\n[{style}]Toggle execution of folders by number or press Enter to continue.")
+        rich.print(
+            f"\n[{style}]Toggle execution of folders by number or press Enter to continue."
+        )
         choice = input(f"{_PROMPT}")
         invalid = False
         try:
@@ -246,17 +249,19 @@ def interact() -> List[Path]:
 
             choice = int(choice)
             if 1 <= choice <= len(all_folders):
-                if all_folders[choice-1] in folders:
-                    folders.remove(all_folders[choice-1])
+                if all_folders[choice - 1] in folders:
+                    folders.remove(all_folders[choice - 1])
                 else:
-                    folders.insert(choice-1, all_folders[choice-1])
+                    folders.insert(choice - 1, all_folders[choice - 1])
             else:
                 invalid = True
 
         except (SyntaxError, ValueError):
             invalid = True
 
-    rich.print(f"[{_PROMPT_STYLE}]How many CPU cores to use?[/{_PROMPT_STYLE}] \[default: {_CPUS}]")
+    rich.print(
+        f"[{_PROMPT_STYLE}]How many CPU cores to use?[/{_PROMPT_STYLE}] \[default: {_CPUS}]"
+    )
     choice = input(f"{_PROMPT}")
 
     while True:
@@ -267,18 +272,22 @@ def interact() -> List[Path]:
                 _CPUS = int(choice)
                 break
         except (TypeError, ValueError):
-            rich.print(f"[red]Must supply an integer.[/red]\nHow many CPU cores to use \[default: {_CPUS}]?\n")
+            rich.print(
+                f"[red]Must supply an integer.[/red]\nHow many CPU cores to use \[default: {_CPUS}]?\n"
+            )
             choice = input(f"{_PROMPT}")
 
     rich.print(f"[yellow]Using {_CPUS} core{'s' if _CPUS>1 else ''}.\n")
 
-    rich.print(f"[{_PROMPT_STYLE}](1) Execute commands or \n(2) Generate command file?[/{_PROMPT_STYLE}]\n\[default {'1' if _COMMAND else '1'}]")
+    rich.print(
+        f"[{_PROMPT_STYLE}](1) Execute commands or \n(2) Generate command file?[/{_PROMPT_STYLE}]\n\[default {'1' if _COMMAND else '1'}]"
+    )
     choice = input(f"{_PROMPT}")
 
     match choice:
-        case '1' | 'execute':
+        case "1" | "execute":
             _COMMAND = False
-        case '2' | 'generate' | 'file':
+        case "2" | "generate" | "file":
             _COMMAND = True
             open(_COMMAND_FILE, "w").close()
         case _:
@@ -286,8 +295,7 @@ def interact() -> List[Path]:
 
     return folders
 
-@deal.has('global', 'import', 'io', 'stdin', 'write')
-@deal.raises(SystemExit)
+
 def main() -> None:
     folders = set()
 
@@ -314,11 +322,11 @@ def main() -> None:
         # optionally slice the list of folders
         match (bool(_ARGS.number), bool(_ARGS.start)):
             case (True, False):
-                folders = folders[0:_ARGS.number]
+                folders = folders[0 : _ARGS.number]
             case (False, True):
-                folders = folders[_ARGS.start-1:]
+                folders = folders[_ARGS.start - 1 :]
             case (True, True):
-                folders = folders[_ARGS.start-1:_ARGS.start-1+_ARGS.number]
+                folders = folders[_ARGS.start - 1 : _ARGS.start - 1 + _ARGS.number]
             case _:
                 pass
 
@@ -333,13 +341,13 @@ def main() -> None:
     )
     input(f"{_PROMPT}")
 
-
     if _COMMAND:
         with multiprocessing.Pool(_CPUS) as pool:
             pool.map_async(command_only, folders).get()
     else:
         with multiprocessing.Pool(_CPUS) as pool:
             pool.map_async(concat_and_convert, folders).get()
+
 
 if __name__ == "__main__":
     main()
