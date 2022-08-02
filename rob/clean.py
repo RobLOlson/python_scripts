@@ -63,7 +63,9 @@ PROMPT = f"rob.{THIS_FILE.stem}> "
 _COMMANDS = []
 
 
-def handle_files(files: list, folder: str = "misc", month: bool = False):
+def handle_files(
+    files: list, folder: str = "misc", month: bool = False, yes_all: bool = _ARGS.yes
+):
     """Organizes files by last modified date."""
     choice = ""
 
@@ -90,25 +92,23 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
             rich.print(
                 f"[yellow]mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
             )
-            choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
+            choice = input(f"{PROMPT}") if not yes_all else "y"
 
         if choice in ["y", "yes"]:
             _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
-            try:
-                choice = ""
-                # shutil.move(file, target_folder)
 
             # File of Same Name Has Already Been Moved To Folder
-            except shutil.Error:
-                print(
-                    f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n"
-                )
-                # os.rename(file, target_folder + "\\COPY " + file)
-                Path(file).rename(
-                    target_folder
-                    + f"\\{Path(file).stem} {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} ({int((datetime.datetime.now() - datetime.datetime.min).total_seconds())}) COPY{Path(file).suffix}"
-                )
-                choice = ""
+            # This code should be obsolete, handled by the `execute_commands()` function
+            # except shutil.Error:
+            #     print(
+            #         f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n"
+            #     )
+            #     # os.rename(file, target_folder + "\\COPY " + file)
+            #     Path(file).rename(
+            #         target_folder
+            #         + f"\\{Path(file).stem} {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} ({int((datetime.datetime.now() - datetime.datetime.min).total_seconds())}) COPY{Path(file).suffix}"
+            #     )
+            #     choice = ""
 
         elif choice in ["a", "all"]:
             _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
@@ -120,9 +120,12 @@ def handle_files(files: list, folder: str = "misc", month: bool = False):
         elif choice in ["d", "del"]:
             os.makedirs("delete_me", exist_ok=True)
             _COMMANDS.append((f"mv", Path(file), Path(f"delete_me") / Path(file)))
-            # shutil.move(file, os.path.normpath(f"delete_me/{file}"))
-            # os.remove(file)
             choice = ""
+
+
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+#  </ def handle_files()>
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 def remove_empty_dir(path: str | Path):
@@ -297,7 +300,7 @@ def main():
     for command, file, target in _COMMANDS:
         rich.print(f"[yellow]mv {file} {target}")
     rich.print("[red]Are you sure? (y/n)")
-    choice = input(f"{PROMPT}") if not _ARGS.yes else "y"
+    choice = input(f"{PROMPT}") if not yes_all else "y"
     if choice in ["y", "yes", "Y", "YES"]:
         execute_commands()
         with shelve.open(str(_DATA_FILE)) as db:
@@ -308,7 +311,9 @@ def main():
     exit(0)
 
 
-# END OF MAIN()
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+#  </ def main()>
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 def clean_up():
@@ -362,7 +367,21 @@ def undo():
             # pickle.dump(_COMMANDS, _DATA_FILE)
 
 
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+#  </ def undo()>
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
 def execute_commands(commands=_COMMANDS):
+    """Execute a sequence of file manipulation commands.
+
+    Args:
+        commands: A 3-tuple of (
+                                command="mv",
+                                source=".\file.txt",
+                                destination="~\renamed.txt"
+                                ).
+    """
     for command, source, dest in commands:
         try:
             os.makedirs(dest.parent.absolute(), exist_ok=True)

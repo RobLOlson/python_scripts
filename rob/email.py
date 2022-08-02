@@ -36,7 +36,7 @@ from docopt import docopt
 from redmail import gmail
 from rich.prompt import Prompt
 
-from .parser.email_parser import contact_parser, email_parser
+# from .parser.email_parser import contact_parser, email_parser
 
 # _ARGS = email_parser.parse_args()
 _ARGS = docopt(_DOC, argv=sys.argv[1:], help=True)
