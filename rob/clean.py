@@ -378,8 +378,8 @@ def execute_commands(commands=_COMMANDS):
     Args:
         commands: A 3-tuple of (
                                 command="mv",
-                                source=".\file.txt",
-                                destination="~\renamed.txt"
+                                source="file.txt",
+                                destination="renamed.txt"
                                 ).
     """
     for command, source, dest in commands:
