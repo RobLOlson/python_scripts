@@ -69,8 +69,6 @@ def handle_files(
     """Organizes files by last modified date."""
     choice = ""
 
-    assert False
-
     for file in files:
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
         f_day = last_modified.day
