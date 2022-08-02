@@ -69,6 +69,7 @@ def handle_files(
     """Organizes files by last modified date."""
     choice = ""
 
+    breakpoint()
     assert False
 
     for file in files:
