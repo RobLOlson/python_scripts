@@ -1,4 +1,5 @@
 import pathlib
+import sys
 
 import pytest
 from hypothesis import given, strategies
@@ -14,7 +15,7 @@ def file_name(draw):
 
 
 @given(file_name=file_name())
-def test_handle_files(file_name):
+def test_handle_filesz(file_name):
     d = pathlib.Path(__file__).parent / "TMP"
     if not d.exists():
         d.mkdir()
