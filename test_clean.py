@@ -28,7 +28,7 @@ def test_handle_files(file_name):
 
     print("CLEANING")
 
-    p.unlink()
+    p.unlink(missing_ok=True)
     d.rmdir()
 
 

@@ -3,10 +3,11 @@ import copy
 import streamlit as st
 from shillelagh.backends.apsw.db import connect
 
-# chart_data = pd.DataFrame({"hi": {"a": 1, "b": 2, "c": 3}})
-# # chart_data = [[1, 2, 3], [4, 5, 6]]
-# chart_data.set_axis(["x", "y", "z"], axis=0)
-# st.bar_chart({"hi": {"abc"[i]: i for i in range(3)}})
+_ROWS = []
+
+COUNTER = 0
+
+cost_range = (0, 0)
 
 
 # _ROWS = list(cursor.execute(query))
