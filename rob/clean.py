@@ -18,9 +18,6 @@ import toml
 
 from .parser.clean_parser import clean_parser
 
-rich.traceback.install()
-
-
 clean_parser.prog = "py -m rob." + Path(__file__).stem
 
 _ARGS = clean_parser.parse_args()
@@ -153,6 +150,7 @@ def remove_empty_dirs(path: str | Path):
 
 # MAIN()
 def main():
+    rich.traceback.install()
 
     if not os.path.isdir(_CLI_PATH):
         rich.print(f"[red on black]The specified path ({_CLI_PATH}) does not exist.")
