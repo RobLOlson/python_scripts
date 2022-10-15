@@ -7,6 +7,7 @@ import os
 import shelve
 import subprocess
 import sys
+from itertools import chain
 from pathlib import Path
 
 import appdirs
@@ -172,15 +173,24 @@ def main():  # pylint: disable=missing-function-docstring
         input("Invalid login credentials.")
         exit(1)
 
+    print("Archiving 'new'", end="")
     new = me.comments.new(limit=None)
-    top = me.comments.top(limit=None)
-    contro = me.comments.controversial(limit=None)
+
+    if _ARGS.full:
+        print(", 'top' and 'controversial")
+        top = me.comments.top(limit=None)
+        contro = me.comments.controversial(limit=None)
+
+    else:
+        top = []
+        contro = []
+
+    print("...")
 
     with shelve.open(str(_DB_FILE)) as db:  # pylint: disable=invalid-name
         prev = db.keys()
-        print("Archiving 'new'...")
         count = 0
-        for comment in new:
+        for comment in chain(new, top, contro):
             print(count, end="\r", flush=True)
             count += 1
             if _ARGS.overwrite:
@@ -191,63 +201,6 @@ def main():  # pylint: disable=missing-function-docstring
 
             if comment.id not in prev and len(comment.body) > 100:
                 parent = comment.parent()
-                db[comment.id] = {
-                    "id": comment.id,
-                    "body": comment.body,
-                    "ups": comment.ups,
-                    "downs": comment.downs,
-                    "permalink": comment.permalink,
-                    "parent_author": str(getattr(parent, "author", None)),
-                    "parent_body": getattr(parent, "body", None),
-                    "created_utc": comment.created_utc,
-                    "human_time": datetime.datetime.fromtimestamp(
-                        comment.created_utc
-                    ).isoformat(),
-                }
-
-        if not _ARGS.full:
-            generate_text()
-            exit(0)
-
-        print("Archiving 'top'...")
-        count = 0
-        for comment in top:
-            print(count, end="\r", flush=True)
-            count += 1
-            if _ARGS.overwrite:
-                try:
-                    del db[comment.id]
-                except KeyError:
-                    pass
-
-            if comment.id not in prev and len(comment.body) > 100:
-                parent = comment.parent()
-
-                db[comment.id] = {
-                    "id": comment.id,
-                    "body": comment.body,
-                    "ups": comment.ups,
-                    "downs": comment.downs,
-                    "permalink": comment.permalink,
-                    "parent_author": str(getattr(parent, "author", None)),
-                    "parent_body": getattr(parent, "body", None),
-                    "created_utc": comment.created_utc,
-                    "human_time": datetime.datetime.fromtimestamp(
-                        comment.created_utc
-                    ).isoformat(),
-                }
-
-        print("Archiving 'controversial'...")
-        for comment in contro:
-            if _ARGS.overwrite:
-                try:
-                    del db[comment.id]
-                except KeyError:
-                    pass
-
-            if comment.id not in prev and len(comment.body) > 100:
-                parent = comment.parent()
-
                 db[comment.id] = {
                     "id": comment.id,
                     "body": comment.body,
