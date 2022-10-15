@@ -68,7 +68,6 @@ def handle_files(
 
     for file in files:
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
-        f_day = last_modified.day
         f_month = MONTHS[last_modified.month]
 
         file_size = os.stat(file).st_size
@@ -91,33 +90,32 @@ def handle_files(
             )
             choice = input(f"{PROMPT}") if not yes_all else "y"
 
-        if choice in ["y", "yes"]:
-            _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
+        match choice:
+            case "y" | "yes":
+                _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
 
-            # File of Same Name Has Already Been Moved To Folder
-            # This code should be obsolete, handled by the `execute_commands()` function
-            # except shutil.Error:
-            #     print(
-            #         f"Renamed '{file}' to '{f_month} {f_day} ({datetime.datetime.now().time().microsecond}) COPY {file}'.\n"
-            #     )
-            #     # os.rename(file, target_folder + "\\COPY " + file)
-            #     Path(file).rename(
-            #         target_folder
-            #         + f"\\{Path(file).stem} {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} ({int((datetime.datetime.now() - datetime.datetime.min).total_seconds())}) COPY{Path(file).suffix}"
-            #     )
-            #     choice = ""
+            case "a" | "all":
+                _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
+                yes_all = True
 
-        elif choice in ["a", "all"]:
-            _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
-            # shutil.move(file, target_folder)
+            case "d" | "del":
+                os.makedirs("delete_me", exist_ok=True)
+                _COMMANDS.append((f"mv", Path(file), Path(f"delete_me") / Path(file)))
 
-        elif choice in ["n", "no"]:
-            choice = ""
+        # if choice in ["y", "yes"]:
+        #     _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
 
-        elif choice in ["d", "del"]:
-            os.makedirs("delete_me", exist_ok=True)
-            _COMMANDS.append((f"mv", Path(file), Path(f"delete_me") / Path(file)))
-            choice = ""
+        # elif choice in ["a", "all"]:
+        #     _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
+        #     # shutil.move(file, target_folder)
+
+        # elif choice in ["n", "no"]:
+        #     choice = ""
+
+        # elif choice in ["d", "del"]:
+        #     os.makedirs("delete_me", exist_ok=True)
+        #     _COMMANDS.append((f"mv", Path(file), Path(f"delete_me") / Path(file)))
+        #     choice = ""
 
 
 #  ^^^^^^^^^^^^^^^^^^^^^^^^^^
