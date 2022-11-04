@@ -41,8 +41,7 @@ match (_ARGS.user, _ARGS.password):
                 _REDDIT_USERNAME = db["default"]
                 _REDDIT_CREDS = db[_REDDIT_USERNAME]
                 _REDDIT_PASSWORD = _REDDIT_CREDS["reddit_password"]
-            # _REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
-            # _REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
+
         except KeyError:
             _REDDIT_USERNAME = input("Enter reddit username: ")
             _REDDIT_PASSWORD = input("Enter reddit password: ")
@@ -53,8 +52,6 @@ match (_ARGS.user, _ARGS.password):
                 choice = input(f"\nMake this default user?{_PROMPT}")
                 if choice in ["yes", "YES", "y", "Y"]:
                     db["default"] = _REDDIT_USERNAME
-                # subprocess.run(["setx", "REDDIT_USERNAME", _REDDIT_USERNAME])
-                # subprocess.run(["setx", "REDDIT_PASSWORD", _REDDIT_PASSWORD])
 
     # Username, but no password
     case (u, None) if u:
@@ -76,8 +73,7 @@ try:
     with shelve.open(str(_USER_FILE)) as db:
         _REDDIT_ID = db[_REDDIT_USERNAME]["app_id"]
         _REDDIT_SECRET = db[_REDDIT_USERNAME]["app_secret"]
-# _REDDIT_ID = os.environ["REDDIT_ID"]
-# _REDDIT_SECRET = os.environ["REDDIT_SECRET"]
+
 except KeyError:
 
     # if _ARGS.config:
@@ -94,32 +90,6 @@ except KeyError:
             _REDDIT_CREDS["app_id"] = _REDDIT_ID
             _REDDIT_CREDS["app_secret"] = _REDDIT_SECRET
             db[_REDDIT_USERNAME] = _REDDIT_CREDS
-            # db[_REDDIT_USERNAME]["app_id"] = _REDDIT_ID
-            # db[_REDDIT_USERNAME]["app_secret"] = _REDDIT_SECRET
-        # try:
-        #     _REDDIT_USERNAME = os.environ["REDDIT_USERNAME"]
-        #     _REDDIT_PASSWORD = os.environ["REDDIT_PASSWORD"]
-        # except KeyError:
-        #     _REDDIT_USERNAME = input("Enter reddit username: ")
-        #     _REDDIT_PASSWORD = input("Enter reddit password: ")
-        #     choice = input("\nSave login info (WARNING: NOT SECURE)? Y/N\n> ")
-        #     if choice in ["yes", "YES", "y", "Y"]:
-        #         with shelve.open(_USER_FILE) as db:
-        #             db[_REDDIT_USERNAME] = {
-        #                 "app_id": _REDDIT_ID,
-        #                 "app_secret": _REDDIT_SECRET,
-        #                 "reddit_password": _REDDIT_PASSWORD,
-        # }
-        # subprocess.run(["setx", "REDDIT_ID", _REDDIT_ID])
-        # subprocess.run(["setx", "REDDIT_SECRET", _REDDIT_SECRET])
-
-# else:
-#     # located at https://www.reddit.com/prefs/apps
-#     try:
-#         _REDDIT_ID = _REDDIT_CREDS["app_id"]
-#         _REDDIT_SECRET = _
-#     _REDDIT_ID = os.environ["REDDIT_ID"]
-#     _REDDIT_SECRET = os.environ["REDDIT_SECRET"]
 
 _REDDIT = praw.Reddit(
     client_id=_REDDIT_ID,
@@ -177,7 +147,7 @@ def main():  # pylint: disable=missing-function-docstring
     new = me.comments.new(limit=None)
 
     if _ARGS.full:
-        print(", 'top' and 'controversial")
+        print(", 'top' and 'controversial", end="")
         top = me.comments.top(limit=None)
         contro = me.comments.controversial(limit=None)
 
@@ -188,7 +158,7 @@ def main():  # pylint: disable=missing-function-docstring
     print("...")
 
     with shelve.open(str(_DB_FILE)) as db:  # pylint: disable=invalid-name
-        prev = db.keys()
+        prev = db.keys()  # previously archived comment IDs
         count = 0
         for comment in chain(new, top, contro):
             print(count, end="\r", flush=True)

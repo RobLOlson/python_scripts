@@ -5,9 +5,9 @@ import pytest
 from hypothesis import given, strategies
 
 try:
-    from rob.clean import execute_commands, handle_files, main, remove_empty_dir, undo
+    from rob.clean import execute_move_commands, handle_files, main, remove_empty_dir, undo
 except ImportError:
-    from .rob.clean import execute_commands, handle_files, main, remove_empty_dir, undo
+    from .rob.clean import execute_move_commands, handle_files, main, remove_empty_dir, undo
 
 
 @strategies.composite
@@ -62,7 +62,7 @@ def test_execute_commands(file_name="test.txt", source="a", dest="b"):
     p1.touch()
     p2 = d / pathlib.Path(dest).stem / pathlib.Path(file_name)
 
-    execute_commands(commands=[("mv", p1, p2)])
+    execute_move_commands(commands=[("mv", p1, p2)])
 
     p2.unlink(missing_ok=True)
     p2.parent.rmdir()
