@@ -48,3 +48,12 @@ reddit_parser.add_argument(
     action="store_true",
     help="Manually configure reddit credentials for this user agent.",
 )
+
+reddit_parser.add_argument(
+    "--csv",
+    metavar="csv",
+    nargs=1,
+    action="store",
+    type=str,
+    help="specify csv file to parse and archive",
+)

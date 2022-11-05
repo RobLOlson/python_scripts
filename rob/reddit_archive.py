@@ -1,4 +1,5 @@
 """(C) Rob Olson"""
+import csv
 import datetime
 
 # pylint: disable = C0330
@@ -9,6 +10,7 @@ import subprocess
 import sys
 from itertools import chain
 from pathlib import Path
+from typing import Iterable
 
 import appdirs
 import praw
@@ -67,6 +69,7 @@ match (_ARGS.user, _ARGS.password):
         _REDDIT_PASSWORD = p[0]
     case _:
         print("DUH")
+        exit(1)
 
 
 try:
@@ -132,7 +135,53 @@ http://reddit.com{comment['permalink']}
             )
 
 
+def parse_csv(csv_file: Path):
+    """Take the 'comments.csv' file provided by reddit's data dump and parse into database."""
+
+    with open(str(csv_file), encoding="utf-8") as fp, shelve.open(str(_DB_FILE)) as db:
+        data = csv.DictReader(fp, delimiter=",")
+        prev: set[str] = set(db.keys())  # previously archived comment IDs
+
+        comment_ids: set[str] = {datum["id"] for datum in data}
+
+        new_comments = comment_ids - prev
+
+        count: int = 0
+        for comment_id in new_comments:
+            print(count, end="\r", flush=True)
+            count += 1
+
+            if comment_id not in prev:
+                comment = _REDDIT.comment(comment_id)
+                try:
+                    body = comment.body
+                except praw.exceptions.ClientException:
+                    continue
+                if len(body) < 100:
+                    continue
+
+                parent = comment.parent()
+                db[comment.id] = {
+                    "id": comment.id,
+                    "body": comment.body,
+                    "ups": comment.ups,
+                    "downs": comment.downs,
+                    "permalink": comment.permalink,
+                    "parent_author": str(getattr(parent, "author", None)),
+                    "parent_body": getattr(parent, "body", None),
+                    "created_utc": comment.created_utc,
+                    "human_time": datetime.datetime.fromtimestamp(
+                        comment.created_utc
+                    ).isoformat(),
+                }
+
+
 def main():  # pylint: disable=missing-function-docstring
+    if _ARGS.csv:
+        parse_csv(Path(_ARGS.csv[0]))
+        generate_text()
+        exit(0)
+
     if _ARGS.text:
         generate_text()
         exit(0)
