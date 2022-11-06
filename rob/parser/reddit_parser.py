@@ -26,9 +26,8 @@ reddit_parser.add_argument(
 
 reddit_parser.add_argument(
     "-p",
-    # "--pwd",
     "--password",
-    metavar="pwd",
+    metavar="password",
     nargs=1,
     action="store",
     type=str,
@@ -51,7 +50,7 @@ reddit_parser.add_argument(
 
 reddit_parser.add_argument(
     "--csv",
-    metavar="csv",
+    metavar="csv_file",
     nargs=1,
     action="store",
     type=str,

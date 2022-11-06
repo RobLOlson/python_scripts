@@ -8,6 +8,7 @@ import os
 import shelve
 import subprocess
 import sys
+from copy import copy
 from itertools import chain
 from pathlib import Path
 from typing import Iterable
@@ -116,8 +117,16 @@ def generate_text():
                 key=lambda x: x["created_utc"],
             )
         )
+        comments = [comment["body"] for comment in copy(sorted_comments)]
 
+        fp.write(f"total # of comments: {len(comments):,}\n")
+        fp.write(
+            f"total # of words: {sum(len(comment.split(' ')) for comment in comments):,}\n"
+        )
+
+        comment_count = 0
         for comment in sorted_comments:
+            comment_count += 1
             try:
                 parent_author = comment["parent_author"]
             except KeyError:
