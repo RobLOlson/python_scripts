@@ -56,3 +56,9 @@ reddit_parser.add_argument(
     type=str,
     help="specify csv file to parse and archive",
 )
+
+reddit_parser.add_argument(
+    "--interact",
+    action="store_true",
+    help="load database into memory and interact using python REPL",
+)

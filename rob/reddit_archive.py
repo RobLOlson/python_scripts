@@ -1,4 +1,5 @@
 """(C) Rob Olson"""
+import code
 import csv
 import datetime
 
@@ -218,6 +219,12 @@ def main():  # pylint: disable=missing-function-docstring
     with shelve.open(str(_DB_FILE)) as db:  # pylint: disable=invalid-name
         prev = db.keys()  # previously archived comment IDs
         count = 0
+
+        if _ARGS.interact:
+            locals().update(globals())
+            code.interact(local=locals())
+            exit(0)
+
         for comment in chain(new, top, contro):
             print(count, end="\r", flush=True)
             count += 1
