@@ -125,9 +125,8 @@ def generate_text():
             f"total # of words: {sum(len(comment.split(' ')) for comment in comments):,}\n"
         )
 
-        comment_count = 0
         for comment in sorted_comments:
-            comment_count += 1
+            word_count = len(comment["body"].split(" "))
             try:
                 parent_author = comment["parent_author"]
             except KeyError:
@@ -136,10 +135,10 @@ def generate_text():
                 f"""
 ======
 http://reddit.com{comment['permalink']}
-{comment['human_time']} ({comment['ups']})
+{comment['human_time']} ({comment['ups']} upvotes)
 ======
 {parent_author}: {comment['parent_body']}
-======
+====== ({word_count} words)
 {comment['body']}
 ======\n\n"""
             )
