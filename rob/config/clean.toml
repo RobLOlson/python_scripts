@@ -22,8 +22,6 @@ MONTHS = [
 ]
 
 [FILE_TYPES]
-Large_Files = [ ]
-delete_me = [ ]
 executables = [ ".exe", ".msi" ]
 media = [
   ".jpg",
@@ -50,7 +48,6 @@ media = [
   ".m4b",
   ".m4a"
 ]
-misc = [ ]
 programming = [
   ".py",
   ".ahk",
@@ -67,7 +64,8 @@ programming = [
   ".ps1",
   ".yml",
   ".yaml",
-  ".toml"
+  ".toml",
+  ".justfile"
 ]
 syslinks = [ ".lnk", ".url" ]
 "zip files" = [ ".zip", ".7z", ".tar", ".rar", ".gz" ]

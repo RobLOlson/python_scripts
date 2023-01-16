@@ -60,5 +60,5 @@ reddit_parser.add_argument(
 reddit_parser.add_argument(
     "--interact",
     action="store_true",
-    help="load database into memory and interact using python REPL",
+    help="interact with database and reddit API",
 )

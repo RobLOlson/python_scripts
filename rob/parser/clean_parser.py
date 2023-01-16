@@ -25,6 +25,14 @@ clean_parser.add_argument(
     help="skip all interactive prompts by answering 'yes'",
 )
 
+clean_parser.add_argument(
+    "-r",
+    "--recurse",
+    default=False,
+    action="store_true",
+    help="Recurse through nested folders.",
+)
+
 alt_mode = clean_parser.add_mutually_exclusive_group(required=False)
 
 alt_mode.add_argument(
@@ -40,4 +48,8 @@ alt_mode.add_argument(
     default=False,
     action="store_true",
     help="create a config file",
+)
+
+alt_mode.add_argument(
+    "--debug", default=False, action="store_true", help="run in debug mode"
 )
