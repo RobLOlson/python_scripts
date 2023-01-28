@@ -38,21 +38,21 @@ def test_remove_empty_dir(file_name: str):
 # @given(file_name=file_name(), source=file_name(), dest=file_name())
 def test_execute_commands(file_name="test.txt", source="a", dest="b"):
 
-    assert True
-    # d = Path(".") / "TMP" / Path(source).stem
-    # if not d.exists():
-    #     d.mkdir(parents=True)
+    # assert True
+    d = Path(".") / "TMP" / Path(source).stem
+    if not d.exists():
+        d.mkdir(parents=True)
 
-    # p1 = d / Path(file_name).name
-    # p1.touch()
-    # p2 = d / Path(dest).stem / Path(file_name)
+    p1 = d / Path(file_name).name
+    p1.touch()
+    p2 = d / Path(dest).stem / Path(file_name)
 
-    # execute_move_commands(commands={p1: p2})
+    execute_move_commands(commands={p1: p2})
 
-    # p2.unlink(missing_ok=True)
-    # p2.parent.rmdir()
-    # p1.parent.rmdir()
-    # if d.exists():
-    #     d.rmdir()
-    # if d.parent.exists():
-    #     d.parent.rmdir()
+    p2.unlink(missing_ok=True)
+    p2.parent.rmdir()
+    p1.parent.rmdir()
+    if d.exists():
+        d.rmdir()
+    if d.parent.exists():
+        d.parent.rmdir()

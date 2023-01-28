@@ -4,26 +4,26 @@
 # pylint: disable=line-too-long
 
 import datetime
-import glob
 import os
+import pdb
 import re
 import shelve
 import shutil
 import statistics
+import sys
 from pathlib import Path
 
 import appdirs
 import rich
 import rich.traceback
 import toml
+import typer
 
-from .parser.clean_parser import clean_parser
+main_app = typer.Typer()
 
-clean_parser.prog = "py -m rob." + Path(__file__).stem
+archive_app = typer.Typer()
+main_app.add_typer(archive_app, name="archive", help="Clean an existing archive.")
 
-_ARGS = clean_parser.parse_args()
-
-_CLI_PATH = Path(_ARGS.path)
 
 _THIS_FILE = Path(__file__)
 
@@ -51,8 +51,8 @@ with open(_BASE_CONFIG_FILE, "r") as fp:
 if _USER_CONFIG_FILE.exists():
     with (open(_USER_CONFIG_FILE, "r")) as fp:
         USER_SETTINGS = toml.load(fp)
+        _SETTINGS.update(USER_SETTINGS)
 
-_SETTINGS.update(USER_SETTINGS)
 
 # _CROWDED_FOLDER = _SETTINGS["CROWDED_FOLDER"]  # number of files that is 'crowded'
 _FILE_TYPES: dict[str, list[str]] = _SETTINGS[
@@ -82,7 +82,8 @@ _EXTENSION_HANDLER = generate_extension_handler(_FILE_TYPES)
 def isolate_crowded_folders(
     folders: list[Path], crowded_threshold: int = 20
 ) -> list[Path]:
-    """Return a list of directories with many files inside."""
+    """Return a list of directories with many files inside.
+    post: True"""
 
     crowded = []
 
@@ -96,7 +97,7 @@ def isolate_crowded_folders(
     return crowded
 
 
-def approve_list(target: list, desc: str = "") -> list:
+def approve_list(target: list, desc: str = "", repr_func=None) -> list:
     """Returns a user-approved subset of target list."""
 
     if not target:
@@ -106,12 +107,17 @@ def approve_list(target: list, desc: str = "") -> list:
     final_choice = False
     invalid = False
     while not final_choice:
-        rich.print(desc)
+        rich.print(desc, end="\n\n")
         for count, item in enumerate(target):
-            if item in approved_targets:
-                rich.print(f" [green]{count+1}.) {item}")
+            if repr_func:
+                display = repr_func(item)
             else:
-                rich.print(f" [red]{count+1}.) {item}")
+                display = item
+
+            if item in approved_targets:
+                rich.print(f" [green]{count+1}.) {display}")
+            else:
+                rich.print(f" [red]{count+1}.) {display}")
 
         style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
         rich.print(
@@ -150,23 +156,32 @@ def approve_list(target: list, desc: str = "") -> list:
     return approved_targets
 
 
-def approve_dict(target: dict, desc: str = "") -> dict:
+def approve_dict(target: dict, desc: str = "", repr_func=None) -> dict:
     """Returns a user-approved subset of target dictionary."""
 
     if not target:
         return {}
+
+    if not repr_func:
+        source_chars = max(len(str(key)) for key in target.keys())
+        dest_chars = max(len(str(target[key])) for key in target.keys())
+        repr_func = (
+            lambda key: f"{str(key):<{source_chars}} -> {str(target[key]):>{dest_chars}}"
+        )
 
     approved_keys = []
     frozen_keys = list(target.keys())
     final_choice = False
     invalid = False
     while not final_choice:
-        rich.print(desc)
+        rich.print(desc, end="\n\n")
         for count, key in enumerate(frozen_keys):
             if key in approved_keys:
-                rich.print(f" [green]{count+1}.) {key}[yellow]->[green]{target[key]}")
+                # rich.print(f" [green]{count+1:2}.) {key}[yellow]->[green]{target[key]}")
+                rich.print(f" [green]{count+1:2}.){repr_func(key)}")
             else:
-                rich.print(f" [red]{count+1}.) {key}[yellow]->[red]{target[key]}")
+                # rich.print(f" [red]{count+1}.) {key}[yellow]->[red]{target[key]}")
+                rich.print(f" [red]{count+1:2}.){repr_func(key)}")
 
         style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
         rich.print(
@@ -238,7 +253,7 @@ def associate_files(
     root: Path = Path("."),
     extension_handler: dict[str, str] | None = None,
     default_folder: Path = Path("misc"),
-    yes_all: bool = True,
+    # yes_all: bool = True,
 ) -> dict[Path, Path]:
     """Returns a dictionary that associates passed files with their most organized location."""
 
@@ -268,27 +283,29 @@ def associate_files(
                 / f"{file_type_folder} {last_modified.month} ({f_month}) {f_year}"
             )
 
-        if yes_all:
-            file_targets[file] = target_folder / file.name
+        file_targets[file] = target_folder / file.name
 
-        else:
-            choice = ""
-            while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
-                rich.print(
-                    f"[yellow]mv '{file.name if Path(file.name).exists() else file.absolute()}' '{target_folder / file.name}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
-                )
-                choice = input(f"{_PROMPT}")
+        # if yes_all:
+        #     file_targets[file] = target_folder / file.name
 
-            match choice:
-                case "y" | "yes":
-                    file_targets[file] = target_folder / file.name
+        # else:
+        #     choice = ""
+        #     while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
+        #         rich.print(
+        #             f"[yellow]mv '{file.name if Path(file.name).exists() else file.absolute()}' '{target_folder / file.name}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
+        #         )
+        #         choice = input(f"{_PROMPT}")
 
-                case "a" | "all":
-                    file_targets[file] = target_folder / file.name
-                    yes_all = True
+        #     match choice:
+        #         case "y" | "yes":
+        #             file_targets[file] = target_folder / file.name
 
-                case "d" | "del":
-                    file_targets[file] = Path("delete_me") / file.name
+        #         case "a" | "all":
+        #             file_targets[file] = target_folder / file.name
+        #             yes_all = True
+
+        #         case "d" | "del":
+        #             file_targets[file] = Path("delete_me") / file.name
 
     return file_targets
 
@@ -297,7 +314,7 @@ def handle_files(
     files: list[str],
     folder: str = "misc",
     month: bool = False,
-    yes_all: bool = _ARGS.yes,
+    yes_all: bool = True,
 ) -> None:
     """Organizes files by last modified date."""
     choice = ""
@@ -351,73 +368,64 @@ def remove_empty_dir(path: str | Path):
         os.rmdir(path)
         print(f"Removing empty folder ({path}).")
     except OSError as e:
-        if _ARGS.debug:
-            print(f"Could not remove folder: {e}")
-        else:
-            pass
+        pass
 
 
-def remove_empty_dirs(path: str | Path):
+@archive_app.command(name="empty")
+def remove_empty_dirs(target: Path = Path(".")):
     """Recursively remove empty folders."""
 
-    for trunk, dirnames, _ in os.walk(path, topdown=False):
+    for trunk, dirnames, _ in os.walk(target, topdown=False):
         for dirname in dirnames:
             remove_empty_dir(os.path.realpath(os.path.join(trunk, dirname)))
 
-    remove_empty_dir(path)
+    remove_empty_dir(target)
 
 
-def clean_up() -> None:
-    for target_folder in ARCHIVE_FOLDERS:
-        remove_empty_dirs(os.path.join(_CLI_PATH, target_folder))
+@main_app.command()
+def undo(target: Path = Path("."), yes_all=False) -> None:
+    """Undo file manipulations in target directory."""
 
-
-def undo() -> None:
     undo_commands = {}
     breakpoint()
     with shelve.open(str(_UNDO_FILE)) as db:
         try:
-            old_commands = db[str(_CLI_PATH.absolute())]
+            old_commands = db[str(target.absolute())]
             for source, dest in old_commands.items():
-                undo_commands[dest] = _CLI_PATH.absolute() / source
+                undo_commands[dest] = target.absolute() / source
                 # undo_commands.append((command, dest, source))
                 # _COMMANDS.append((command, dest, source))
 
         except KeyError:
             rich.print(
-                f"[red]No recorded commands executed on ({Path(_CLI_PATH).absolute()})."
+                f"[red]No recorded commands executed on ({Path(target).absolute()})."
             )
             exit(1)
 
     preview_mvs(undo_commands)
 
-    # rich.print("[red]Execute:")
-    # skipped = []
-    # for command, source, dest in undo_commands:
-    #     if source.exists():
-    #         rich.print(f"[yellow]mv '{source}' '{dest}'")
-    #     else:
-    #         rich.print(f"[red]mv '{source}' '{dest}' (ERROR 404)")
-    #         skipped.append((command, source, dest))
+    breakpoint()
+    if yes_all:
+        choice = "y"
+    else:
+        rich.print("[red]Are you sure? (y/n)")
+        choice = input(f"{_PROMPT}")
 
-    # for skip in skipped:
-    #     undo_commands.remove(skip)
-
-    rich.print("[red]Are you sure? (y/n)")
-    choice = input(f"{_PROMPT}") if not _ARGS.yes else "y"
     if choice in ["y", "yes", "Y", "YES"]:
         try:
             execute_move_commands(undo_commands)
 
         except Exception as e:
             with shelve.open(str(_UNDO_FILE)) as db:
-                del db[str(_CLI_PATH.absolute())]
+                del db[str(target.absolute())]
             print(e)
             exit(1)
         with shelve.open(str(_UNDO_FILE)) as db:
-            db[str(_CLI_PATH.absolute())] = undo_commands
+            db[str(target.absolute())] = undo_commands
 
             # pickle.dump(_COMMANDS, _UNDO_FILE)
+
+    remove_empty_dirs(target)
 
 
 #  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -426,33 +434,37 @@ def undo() -> None:
 
 
 def preview_mvs(renames: dict[Path, Path]):
-    """Print a list of mv targets."""
+    """Print a list of mv targets.
+    post: True"""
     for source, dest in renames.items():
         rich.print(f"mv [green]{source.name} [red]{dest.absolute()}")
 
 
-def execute_move_commands(commands: dict[Path, Path]):
+def execute_move_commands(commands: dict[Path, Path], target: Path = Path(".")):
     """Execute a sequence of file move commands.
 
     Args:
         commands: A dictionary with source keys and destination values.
+    post: True
     """
     sources = list(commands.keys())
     for source in sources:
         try:
-            os.makedirs(commands[source].absolute(), exist_ok=True)
+            os.makedirs(commands[source].parent.absolute(), exist_ok=True)
             shutil.move(source.absolute(), commands[source].absolute())
 
         # File of Same Name Has Already Been Moved To Folder
         except shutil.Error as e:
             print(e)
-
+        except FileNotFoundError as e:
+            rich.print(f"{_ERROR_STYLE}{source.absolute()} not found.")
     with shelve.open(str(_UNDO_FILE)) as db:
-        db[str(_CLI_PATH.absolute())] = commands
+        db[str(target.absolute())] = commands
 
 
 def create_config():
-    """Create a config file in users app data directory that overrides base settings."""
+    """Create a config file in users app data directory that overrides base settings.
+    post: True"""
 
     os.makedirs(_USER_CONFIG_FILE.parent, exist_ok=True)
     shutil.copyfile(_BASE_CONFIG_FILE, _USER_CONFIG_FILE)
@@ -493,24 +505,26 @@ def gather_files(
     return []
 
 
+@main_app.command(name="files")
 def clean_files(
     target: Path = Path("."),
     recurse: bool = False,
     yes_all: bool = False,
-    extension_handler: dict[str, str] | None = None,
+    # extension_handler: dict[str, str] | None = None,
     exclusions: list[Path] | None = None,
 ) -> None:
-    """Clean the files in target root directory using an extension handler that associates extensions to folders."""
-
+    """Clean the files by extension in target root directory."""
+    extension_handler = _EXTENSION_HANDLER
     if recurse:
         root_files = target.rglob("*.*")
     else:
         root_files = target.glob("*.*")
 
-    root_files = [file for file in root_files if file.name not in exclusions]
+    if exclusions:
+        root_files = [file for file in root_files if file.name not in exclusions]
 
     target_mvs: dict[Path, Path] = associate_files(
-        root_files, extension_handler=extension_handler, yes_all=True
+        files=list(root_files), extension_handler=extension_handler
     )
 
     if yes_all:
@@ -523,13 +537,30 @@ def clean_files(
 
     if approved_mvs:
         preview_mvs(approved_mvs)
-        execute_move_commands(approved_mvs)
+        execute_move_commands(approved_mvs, target=target)
 
 
+@archive_app.command(name="large")
 def identify_large_files(target: Path = Path("."), yes_all: bool = False) -> None:
     """Find large files in target directory and offer to centralize them."""
 
-    all_files = gather_files(target=target, recurse=True, recursion_limit=3)
+    archive_folders = [
+        Path(target) / f"{archive_folder}" for archive_folder in _FILE_TYPES.keys()
+    ]
+    sub_folders = []
+    all_files = []
+
+    for folder in archive_folders:
+        sub_folders.extend(list(folder.glob(f"{folder.name} [0-9][0-9][0-9][0-9]/")))
+
+    for sub_folder in sub_folders:
+        all_files.extend(sub_folder.rglob("*.*"))
+
+    # all_files = gather_files(target=target, recurse=True, recursion_limit=3)
+    if not all_files:
+        rich.print("No archives found.")
+        return
+
     file_sizes = [os.stat(file.absolute()).st_size for file in all_files]
     avg_file_size = sum(file_sizes) / len(file_sizes)
     standard_deviation = statistics.stdev(file_sizes)
@@ -538,7 +569,7 @@ def identify_large_files(target: Path = Path("."), yes_all: bool = False) -> Non
         choice = "y"
     else:
         rich.print(
-            f"Archived files average:\n\n{int(avg_file_size/1_000_000):_} Mbs +/- {int(standard_deviation/1_000_000):_} Mbs\n\n{_PROMPT_STYLE}Isolate large files (default: >150 Mbs)? Y/N? (Enter an integer to specify large file treshold.)",
+            f"Archived files average:\n\n{float(avg_file_size/1_000_000):_.2f} Mbs +/- {float(standard_deviation/1_000_000):_.2} Mbs\n\n{_PROMPT_STYLE}Isolate large files (default: >150 Mbs)? Y/N?\n(Enter an integer to specify large file treshold.)",
         )
         choice = input(f"{_PROMPT}")
 
@@ -564,34 +595,41 @@ def identify_large_files(target: Path = Path("."), yes_all: bool = False) -> Non
         file for file in all_files if os.stat(file.absolute()).st_size > large
     ]
 
-    if large_files:
-        large_mvs = associate_files(
-            large_files, default_folder=Path("large_files"), yes_all=_ARGS.yes
+    if yes_all:
+        approved_files = large_files
+    else:
+        show_file_size = (
+            lambda x: f"{x} ({float(os.stat(x.absolute()).st_size/1_000_000):_.2f} Mb)"
         )
-        if not yes_all:
-            preview_mvs(large_mvs)
-            rich.print(
-                f"{len(large_mvs)} large files found.\n[black on red]Execute? Y/N\n{_PROMPT}",
-                end="",
-            )
-            choice = input()
-            if choice not in ["y", "Y", "yes", "YES"]:
-                return
+        approved_files = approve_list(
+            large_files,
+            f"{_PROMPT_STYLE}Select large files to isolate:",
+            repr_func=show_file_size,
+        )
+    if approved_files:
+        large_mvs = associate_files(approved_files, default_folder=Path("large_files"))
 
         execute_move_commands(large_mvs)
 
 
+@archive_app.command(name="crowded")
 def identify_crowded_archives(
-    target: Path = Path("."), threshold: int = 20, yes_all: bool = False
+    target: Path = typer.Option(default=Path("."), help="target path"),
+    threshold: int = typer.Option(
+        default=20, help="number of files to qualify as crowded"
+    ),
+    yes_all: bool = typer.Option(
+        default=False, help="always apply all routines to all valid files"
+    ),
 ) -> None:
-    """Identify crowded folders and offer to uncrowd them."""
+    """Archives with file count exceeding threshold is sub-divided by month folders."""
 
     archive_folders = [Path(f"{key}") for key in _FILE_TYPES.keys()]
     all_folders = []
     for folder in archive_folders:
         all_folders.extend(list(folder.glob(f"{folder} [0-9][0-9][0-9][0-9]/")))
 
-    crowded_folders = isolate_crowded_folders(all_folders, crowded_threshold=5)
+    crowded_folders = isolate_crowded_folders(all_folders, crowded_threshold=threshold)
 
     uncrowded_mvs = {}
 
@@ -619,186 +657,23 @@ def identify_crowded_archives(
         execute_move_commands(uncrowded_mvs)
 
 
-def main():
-    # rich.traceback.install()
-
-    # if not os.path.isdir(_CLI_PATH):
-    if not _CLI_PATH.exists():
-        rich.print(f"[red on black]The specified path ({_CLI_PATH}) does not exist.")
-        exit(1)
-
-    # else:
-    #     root = Path(_CLI_PATH)
-
-    if _ARGS.undo:
-        undo()
-        clean_up()
-        exit(0)
-
-    if _ARGS.config:
-        create_config()
-        exit(0)
-
-    clean_files(
-        target=_CLI_PATH,
-        recurse=_ARGS.recurse,
-        yes_all=_ARGS.yes,
-        extension_handler=_EXTENSION_HANDLER,
-        exclusions=_EXCLUSIONS,
-    )
-
-    identify_large_files(target=_CLI_PATH, yes_all=_ARGS.yes)
-
+@main_app.command()
+def all(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
+    """Apply all available cleaning routines."""
+    clean_files(target=target, recurse=recurse, exclusions=_EXCLUSIONS, yes_all=yes_all)
+    identify_large_files(target=target, yes_all=yes_all)
     identify_crowded_archives(
-        target=_CLI_PATH, threshold=_SETTINGS["CROWDED_FOLDER"], yes_all=_ARGS.yes
+        target=target, threshold=_SETTINGS["CROWDED_FOLDER"], yes_all=yes_all
     )
+    remove_empty_dirs(target=target)
 
-    breakpoint()
     return
 
-    # all_files = gather_files(_CLI_PATH, exclusions=_EXCLUSIONS)
-
-    # for file_name in all_files:
-    #     if file_name in _EXCLUSIONS:
-    #         all_files.remove(file_name)
-
-    file_groups: dict[str, list[Path]] = {}
-
-    # put all files with same extension group into one list
-    # and put that list in the file_groups dictionary
-    # FOR EXAMPLE
-    # file_groups["media"] will contain a list of all pictures in CWD
-    # file_groups["zip files"] contain a list of all compressed archives in CWD
-    # etc
-
-    for file_type, extension_list in _FILE_TYPES.items():
-        if not extension_list:
-            continue
-
-        # extension_pattern = re.compile(
-        #     "(" + "|".join(extension_list) + ")$", re.IGNORECASE
-        # )
-        file_groups[file_type] = [
-            file_name
-            for file_name in all_files
-            # if re.search(extension_pattern, str(file_name))
-            if file_name.suffix in extension_list
-        ]
-
-        for file in file_groups[file_type]:
-            all_files.remove(file)
-
-    # Any file-types not explicitly handled are moved to the miscellaneous folder
-    if HANDLE_MISC and all_files:
-        try:
-            file_groups["misc"].extend(all_files)
-        except KeyError:
-            file_groups["misc"] = all_files
-        # print(f"moved {all_files}")
-
-    # Do not target THIS file
-    if __file__ in file_groups["programming"]:
-        file_groups["programming"].remove(__file__)
-
-    # Do not target THIS file
-    if _THIS_FILE in file_groups["programming"]:
-        file_groups["programming"].remove(_THIS_FILE)
-
-    file_count = sum([len(file_group) for _, file_group in file_groups.items()])
-
-    print(f"({file_count}) files/folders to move.\n")
-
-    # Handles all files in file_groups
-    for file_type, file_group in file_groups.items():
-        if not file_group:
-            continue
-
-        modified_info = [
-            (
-                file,
-                datetime.datetime.fromtimestamp(os.path.getmtime(file)).year,
-                datetime.datetime.fromtimestamp(os.path.getmtime(file)).month,
-            )
-            for file in file_group
-        ]
-
-        organized_info: dict[int, list[tuple[str, int]]] = {}
-        for file, year, month in modified_info:
-            existing = organized_info.get((year))
-            if not existing:
-                organized_info[year] = [(file, month)]
-            else:
-                existing.append((file, month))
-
-        for year in organized_info.keys():
-            old_files = glob.glob(str(Path(f"{file_type}/{file_type} {year}")) + "/*")
-            new_files = [elem[0] for elem in organized_info[year]]
-            if len(old_files) + len(new_files) > _CROWDED_FOLDER:
-                handle_files(new_files, file_type, month=True)
-            else:
-                handle_files(new_files, file_type)
-
-    # Check for extra folders not generated by this program
-    extra_folders = [
-        elem
-        for elem in glob.glob("*")
-        if not Path(elem).suffix and elem not in ARCHIVE_FOLDERS
-    ]
-
-    move_folders = False
-    if extra_folders:
-        rich.print(
-            "\n[yellow]Non-archive folders detected.[green]\n * {}\n[yellow]Archive them (y/n)?".format(
-                " \n * ".join(extra_folders)
-            )
-        )
-        choice = input(f"{_PROMPT}") if not _ARGS.yes else "n"
-
-        if choice in ["y", "yes"]:
-            move_folders = True
-
-    if move_folders:
-        for extra_folder in extra_folders:
-            rich.print(f"[yellow]{Path(extra_folder).resolve()}\nMove (y/n)?")
-            choice = input(f"{_PROMPT}") if not _ARGS.yes else "y"
-
-            if choice in ["y", "yes"]:
-                rich.print("[yellow]Archive Folders:")
-                for i, default_folder in enumerate(ARCHIVE_FOLDERS):
-                    rich.print(f"[green] {i+1}.) {default_folder}")
-
-                rich.print(
-                    f"[yellow]mv '{extra_folder}' ???\nDestination (enter number)?"
-                )
-                target_folder = input(f"{_PROMPT}")
-                try:
-                    if 1 <= int(target_folder) < len(ARCHIVE_FOLDERS) + 1:
-                        target_folder = ARCHIVE_FOLDERS[int(target_folder) - 1]
-
-                        # _COMMANDS.append(("mv", [extra_folder], target_folder))
-                        handle_files([extra_folder], folder=target_folder)
-                        choice = ""
-                except ValueError:
-                    break
-
-    rich.print("[red]Execute:")
-    for command, file, target in _COMMANDS:
-        rich.print(f"[yellow]mv {file} {target}")
-    rich.print("[red]Are you sure? (y/n)")
-    choice = input(f"{_PROMPT}") if not _ARGS.yes else "y"
-    if choice in ["y", "yes", "Y", "YES"]:
-        execute_move_commands()
-        with shelve.open(str(_UNDO_FILE)) as db:
-            db[_CLI_PATH] = _COMMANDS
-            # pickle.dump(_COMMANDS, fp)
-
-    clean_up()
-    return
-
-
-#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
-#  </ def main()>
-#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 1:
+        all()
+        exit(0)
+
+    main_app()
+    # main()

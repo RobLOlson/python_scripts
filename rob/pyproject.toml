@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.68"
+version = "0.3.71"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "pyproject.toml"]
@@ -13,7 +13,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.7, <3.11"
 rich = "^11.2.0"
 toml = "^0.10.2"
 praw = "^7.5.0"
@@ -24,11 +24,11 @@ appdirs = "^1.4.4"
 deal = "^4.23.2"
 redmail = "^0.4.0"
 docopt = "^0.6.2"
-
-# [tool.poetry.dev-dependencies]
-# venvPath = "C:\\Users\\sterl\\AppData\\Local\\pypoetry\\Cache\\virtualenvs\\robolson-tTkljxzG-py3.10\\Lib\\site-packages"
+fire = "^0.5.0"
+typer = {extras = ["all"], version = "^0.7.0"}
 
 [tool.poetry.dev-dependencies]
+crosshair-tool = "^0.0.36"
 pytest = "^7.1.2"
 hypothesis = "^6.54.1"
 pre-commit = "^2.20.0"

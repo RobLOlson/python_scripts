@@ -4,7 +4,7 @@ HANDLE_MISC = true # Unrecognized file types will be filed under 'misc'
 
 EXCLUSIONS = [ "desktop.ini" ]
 
-CROWDED_FOLDER = 24 # Number of files before a yearly archive is turned into a monthly archive
+CROWDED_FOLDER = 20 # Number of files before a yearly archive is turned into a monthly archive
 
 MONTHS = [
   "Jan",
@@ -67,5 +67,5 @@ programming = [
   ".toml",
   ".justfile"
 ]
-syslinks = [ ".lnk", ".url" ]
+symlinks = [ ".lnk", ".url" ]
 "zip files" = [ ".zip", ".7z", ".tar", ".rar", ".gz" ]
