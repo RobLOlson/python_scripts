@@ -383,11 +383,12 @@ def remove_empty_dirs(target: Path = Path(".")):
 
 
 @main_app.command()
-def undo(target: Path = Path("."), yes_all=False) -> None:
+def undo(
+    target: Path = Path("."), yes_all: bool = False, dry_run: bool = False
+) -> None:
     """Undo file manipulations in target directory."""
 
     undo_commands = {}
-    breakpoint()
     with shelve.open(str(_UNDO_FILE)) as db:
         try:
             old_commands = db[str(target.absolute())]
@@ -402,9 +403,11 @@ def undo(target: Path = Path("."), yes_all=False) -> None:
             )
             exit(1)
 
-    preview_mvs(undo_commands)
+    preview_mvs(undo_commands, absolute=True)
 
-    breakpoint()
+    if dry_run:
+        return
+
     if yes_all:
         choice = "y"
     else:
@@ -433,11 +436,13 @@ def undo(target: Path = Path("."), yes_all=False) -> None:
 #  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-def preview_mvs(renames: dict[Path, Path]):
+def preview_mvs(renames: dict[Path, Path], absolute: bool = False):
     """Print a list of mv targets.
     post: True"""
     for source, dest in renames.items():
-        rich.print(f"mv [green]{source.name} [red]{dest.absolute()}")
+        rich.print(
+            f"mv [green]{source.absolute() if absolute else source.name} [red]{dest.absolute()}"
+        )
 
 
 def execute_move_commands(commands: dict[Path, Path], target: Path = Path(".")):
