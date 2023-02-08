@@ -12,12 +12,14 @@ import shutil
 import statistics
 import sys
 from pathlib import Path
+from typing import Callable
 
 import appdirs
 import rich
 import rich.traceback
 import toml
 import typer
+from typer import Argument, Option
 
 main_app = typer.Typer()
 
@@ -384,7 +386,13 @@ def remove_empty_dirs(target: Path = Path(".")):
 
 @main_app.command()
 def undo(
-    target: Path = Path("."), yes_all: bool = False, dry_run: bool = False
+    target: Path = Argument(Path("."), help="Target folder to undo operations."),
+    yes_all: bool = Option(
+        False, help="Automatically confirm all actions.", show_default=False
+    ),
+    dry_run: bool = Option(
+        False, help="Print commands without executing.", show_default=False
+    ),
 ) -> None:
     """Undo file manipulations in target directory."""
 
@@ -436,7 +444,7 @@ def undo(
 #  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-def preview_mvs(renames: dict[Path, Path], absolute: bool = False):
+def preview_mvs(renames: dict[Path, Path], absolute: bool = False) -> Callable:
     """Print a list of mv targets.
     post: True"""
     for source, dest in renames.items():
@@ -512,7 +520,7 @@ def gather_files(
 
 @main_app.command(name="files")
 def clean_files(
-    target: Path = Path("."),
+    target: Path = Option(Path("."), help="Target folder to organize files."),
     recurse: bool = False,
     yes_all: bool = False,
     # extension_handler: dict[str, str] | None = None,
@@ -546,7 +554,12 @@ def clean_files(
 
 
 @archive_app.command(name="large")
-def identify_large_files(target: Path = Path("."), yes_all: bool = False) -> None:
+def identify_large_files(
+    target: Path = Argument(
+        Path("."), help="Target folder to locate overly large files."
+    ),
+    yes_all: bool = Option(False, help="Automatically confirm all actions."),
+) -> None:
     """Find large files in target directory and offer to centralize them."""
 
     archive_folders = [
@@ -662,6 +675,11 @@ def identify_crowded_archives(
         execute_move_commands(uncrowded_mvs)
 
 
+@main_app.callback()
+def main(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
+    all(target=target, recurse=recurse, yes_all=yes_all)
+
+
 @main_app.command()
 def all(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
     """Apply all available cleaning routines."""
@@ -673,6 +691,11 @@ def all(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
     remove_empty_dirs(target=target)
 
     return
+
+
+@main_app.callback()
+def main():
+    """Organize files in a folder."""
 
 
 if __name__ == "__main__":

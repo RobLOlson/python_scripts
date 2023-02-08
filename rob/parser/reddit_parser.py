@@ -62,3 +62,9 @@ reddit_parser.add_argument(
     action="store_true",
     help="interact with database and reddit API",
 )
+
+reddit_parser.add_argument(
+    "--no-text",
+    action="store_true",
+    help="Suppress text file generation.",
+)

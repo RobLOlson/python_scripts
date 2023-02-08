@@ -34,14 +34,7 @@ _COMMAND_FILE = Path(os.getcwd()) / "ffmpeg_commands.ps1"
 
 
 def command_only(folder: Path) -> None:
-    """Generate a textfile containing the desired ffmpeg CLI commands.
-
-    Args:
-        folder (Path): The folder containing files to modify
-
-    Returns:
-        None
-    """
+    """Generate a textfile containing the desired ffmpeg CLI commands."""
     os.chdir(folder)
 
     mp3s = []
@@ -88,11 +81,7 @@ def command_only(folder: Path) -> None:
 
 
 def concat_and_convert(folder: Path) -> None:
-    """Spin up an ffmpeg process in target folder.
-
-    Args:
-        folder: path to folder that contains audio files
-    """
+    """Spin up an ffmpeg process in target folder."""
 
     os.chdir(folder)
 

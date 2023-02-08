@@ -220,6 +220,9 @@ def main():  # pylint: disable=missing-function-docstring
         count = 0
 
         if _ARGS.interact:
+            print(
+                "\n  Comment database available as 'db'.\n  Reddit API available as '_REDDIT'\n"
+            )
             locals().update(globals())
             code.interact(local=locals())
             exit(0)
@@ -249,7 +252,8 @@ def main():  # pylint: disable=missing-function-docstring
                     ).isoformat(),
                 }
 
-    generate_text()
+    if not _ARGS.no_text:
+        generate_text()
 
 
 if __name__ == "__main__":
