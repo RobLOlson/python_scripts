@@ -116,10 +116,14 @@ def approve_list(target: list, desc: str = "", repr_func=None) -> list:
             else:
                 display = item
 
-            if item in approved_targets:
-                rich.print(f" [green]{count+1}.) {display}")
-            else:
-                rich.print(f" [red]{count+1}.) {display}")
+            style = "[green]" if item in approved_targets else "[red]"
+
+            rich.print(f" {style}{count+1}.) {display}")
+
+            # if item in approved_targets:
+            #     rich.print(f" [green]{count+1}.) {display}")
+            # else:
+            #     rich.print(f" [red]{count+1}.) {display}")
 
         style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
         rich.print(
