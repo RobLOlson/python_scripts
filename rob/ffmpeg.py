@@ -9,7 +9,6 @@ from typing import List
 
 import rich
 import rich.traceback
-import taglib
 from pydub.utils import mediainfo
 from rich import pretty
 from rich.progress import track
@@ -23,7 +22,7 @@ _ARGS = ffmpeg_parser.parse_args()
 
 _PATH = Path(_ARGS.path)
 _FILETYPES = _ARGS.filetype
-_SAFE = _ARGS.safe
+# _ARGS.safe = _ARGS.safe
 _CPUS = _ARGS.cpus
 _COMMAND = _ARGS.command
 
@@ -46,9 +45,13 @@ def command_only(folder: Path) -> None:
         return
 
     for i, mp3 in enumerate(mp3s):
-        if "'" in str(mp3.stem):
-            shutil.move(mp3, str(mp3).replace("'", ""))
-            mp3s[i] = Path(str(mp3).replace("'", ""))
+        for char in str(mp3.stem):
+            if ord(char) > 127 or char in "'":  # ascii chars have ord(char) < 128
+                shutil.move(mp3, str(mp3).replace(char, ""))
+                mp3s[i] = Path(str(mp3).replace(char, ""))
+        # if "'" in str(mp3.stem):
+        #     shutil.move(mp3, str(mp3).replace("'", ""))
+        #     mp3s[i] = Path(str(mp3).replace("'", ""))
 
     concated = "|".join([str(elem.absolute()) for elem in mp3s])
     command = [
@@ -69,7 +72,7 @@ def command_only(folder: Path) -> None:
         "-y",
     ]
 
-    if _SAFE:
+    if _ARGS.safe:
         command.remove("-y")
 
     with open(_COMMAND_FILE, "a") as fp:
@@ -85,7 +88,7 @@ def concat_and_convert(folder: Path) -> None:
 
     os.chdir(folder)
 
-    global _SAFE
+    # global _ARGS.safe
 
     mp3s = []
     for filetype in _FILETYPES:
@@ -95,10 +98,16 @@ def concat_and_convert(folder: Path) -> None:
     if not mp3s:
         return
 
+    # for i, mp3 in enumerate(mp3s):
+    #     if "'" in str(mp3.stem):
+    #         shutil.move(mp3, str(mp3).replace("'", ""))
+    #         mp3s[i] = Path(str(mp3).replace("'", ""))
+
     for i, mp3 in enumerate(mp3s):
-        if "'" in str(mp3.stem):
-            shutil.move(mp3, str(mp3).replace("'", ""))
-            mp3s[i] = Path(str(mp3).replace("'", ""))
+        for char in str(mp3.stem):
+            if ord(char) > 127 or char in "'":  # ascii chars have ord(char) < 128
+                shutil.move(mp3, str(mp3).replace(char, ""))
+                mp3s[i] = Path(str(mp3).replace(char, ""))
 
     fp = open("files.txt", "w")
     for file in track(mp3s):
@@ -129,7 +138,7 @@ def concat_and_convert(folder: Path) -> None:
         f"""{Path(mp3s[0]).stem}.m4b""",
     ]
 
-    if _SAFE:
+    if _ARGS.safe:
         command.remove("-y")
 
     rich.print("[green]Executing:\n[yellow]" + " ".join(command))
@@ -138,8 +147,8 @@ def concat_and_convert(folder: Path) -> None:
     os.remove("files.txt")
 
     # <Transfer metadata>
-    inf = taglib.File(f"{mp3s[0]}")
-    outf = taglib.File(f"{Path(mp3s[0]).stem}.m4b")
+    # inf = taglib.File(f"{mp3s[0]}")
+    # outf = taglib.File(f"{Path(mp3s[0]).stem}.m4b")
 
     outf.tags = inf.tags
     outf.save()
@@ -158,7 +167,7 @@ def interact() -> List[Path]:
     """
     global _PATH
     global _FILETYPES
-    global _SAFE
+    # global _ARGS.safe
     global _CPUS
     global _COMMAND
 
@@ -205,7 +214,7 @@ def interact() -> List[Path]:
     os.chdir(_PATH)
     for filetype in _FILETYPES:
         for file in glob.glob(f"**/*{filetype}", recursive=True):
-            if _SAFE and ".m4b" not in _FILETYPES:
+            if _ARGS.safe and ".m4b" not in _FILETYPES:
                 try:
                     os.remove(Path(f"{Path(file).parent}/{Path(file).stem}.m4b"))
                 except FileNotFoundError:
@@ -298,7 +307,7 @@ def main() -> None:
         os.chdir(_PATH)
         for filetype in _FILETYPES:
             for file in glob.glob(f"**/*{filetype}", recursive=True):
-                if not _SAFE:
+                if not _ARGS.safe:
                     try:
                         os.remove(Path(f"{Path(file).parent}/{Path(file).stem}.m4b"))
                     except FileNotFoundError:
