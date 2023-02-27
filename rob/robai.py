@@ -1,13 +1,12 @@
-import os
-import openai
-import sys
-import shelve
-import datetime
 import argparse
+import datetime
+import os
 import re
-
+import shelve
+import sys
 from pathlib import Path
 
+import openai
 import rich
 
 NOW = datetime.datetime.today()
@@ -54,6 +53,13 @@ my_parser.add_argument(
     help="Clear user's database of convos.",
 )
 
+my_parser.add_argument(
+    "-i",
+    "--inspect",
+    action="store_true",
+    help="Clear user's database of convos.",
+)
+
 # Execute the parse_args() method
 args = my_parser.parse_args()
 
@@ -76,9 +82,9 @@ Robert is a charming man who loves his friends and family.  {USER} is texting hi
 """
 
 if "?" in args.Prompt:
-    TEMPERATURE = 0.1
+    TEMPERATURE = 0.2
 else:
-    TEMPERATURE = 0.9
+    TEMPERATURE = 0.2
 
 NEW_PROMPT = f"""
 {USER}: {args.Prompt}"""
@@ -87,20 +93,27 @@ Robert:"""
 
 CLEAN_PROMPT = f"Robert is a charming man who loves his friends and family.  {USER} is texting him.  His texts are short.  Reduce his following response to ONE sentence.  Make it short and clear.\n"
 
+if args.inspect:
+    breakpoint()
+
 with shelve.open(f"{FILE.parent}/db/{args.user}_convo.db") as db:
     for date in sorted(db.keys()):
         if (NOW - datetime.datetime.fromisoformat(date)).total_seconds() < 3600 * 4:
             PRE_PROMPT += db[date]
-        else:
-            break
+        # else:
+        #     break
 
         if len(PRE_PROMPT) > 1000:
             break
     try:
-        r1 = openai.Completion.create(
-            model="curie:ft-user-lxdklb8ngeneatsn8iouxynt-2021-12-09-06-55-36",
-            prompt=PRE_PROMPT + NEW_PROMPT + ROB,
-            max_tokens=60,
+        # r1 = openai.Completion.create(
+        r1 = openai.Edit.create(
+            # model="curie:ft-user-lxdklb8ngeneatsn8iouxynt-2021-12-09-06-55-36",
+            model="text-davinci-edit-001",
+            input=PRE_PROMPT + NEW_PROMPT + ROB,
+            # prompt=PRE_PROMPT + NEW_PROMPT + ROB,
+            instruction="Complete Robert's response.",
+            # max_tokens=60,
             n=1,
             temperature=TEMPERATURE,
         )
@@ -108,42 +121,35 @@ with shelve.open(f"{FILE.parent}/db/{args.user}_convo.db") as db:
     # If the model isn't spun up then this error might happen
     except openai.error.RateLimitError:
         r1 = openai.Completion.create(
-            model="curie:ft-user-lxdklb8ngeneatsn8iouxynt-2021-12-09-06-55-36",
-            prompt=PRE_PROMPT + NEW_PROMPT + ROB,
+            # model="curie:ft-user-lxdklb8ngeneatsn8iouxynt-2021-12-09-06-55-36",
+            model="text-davinci-001",
+            # prompt=PRE_PROMPT + NEW_PROMPT + ROB,
+            input=PRE_PROMPT + NEW_PROMPT + ROB,
+            instruction="Complete Robert's response.",
             max_tokens=60,
             n=1,
             temperature=TEMPERATURE,
         )
 
-    response = r1.choices[0].text
-    patt = re.compile(r"[^\.!?:,]+")
-    reg = patt.findall(response)
+    # response = r1.choices[0].text
+    # patt = re.compile(r"[^\.!?:,]+")
+    # reg = patt.findall(response)
 
-    if reg:
-        response = ""
-        for sentence in reg:
-            response += sentence
-            if len(response) > 55:
-                if response[-1] == ",":
-                    response = response[:-1]
-                break
+    # if reg:
+    #     response = ""
+    #     for sentence in reg:
+    #         response += sentence
+    #         if len(response) > 55:
+    #             if response[-1] == ",":
+    #                 response = response[:-1]
+    #             break
 
-    repeat_patt = re.compile(r"(.{7,}?)\1+")
-    reg = repeat_patt.match(response)
-    if reg:
-        response = reg.groups(0)[0]
-    # r2 = openai.Completion.create(
-    #     engine="davinci-instruct-beta-v3",
-    #     prompt=f'{CLEAN_PROMPT}\n\n{response}',
-    #     max_tokens=35,
-    #     n=1,
-    #     temperature=0.2
-    # )
-    # response2=r2.choices[0].text
+    # repeat_patt = re.compile(r"(.{7,}?)\1+")
+    # reg = repeat_patt.match(response)
+    # if reg:
+    #     response = reg.groups(0)[0]
 
-    # rich.print(f"FIRST PASS\n[black on yellow]{response}\n[/black on  yellow]")
+    response = r1.choices[0].text.split("\n")[-2]
 
-    rich.print(
-        f"{PRE_PROMPT}{NEW_PROMPT}\nRobert:[black on red]{response}[/black on red]"
-    )
-    db[str(NOW)] = f"{NEW_PROMPT}\nRobert:{response}\n\n###\n"
+    rich.print(f"{PRE_PROMPT}{NEW_PROMPT}\n[black on red]{response}[/black on red]")
+    db[str(NOW)] = f"{NEW_PROMPT}\n{response}\n\n###\n"
