@@ -51,7 +51,7 @@ with open(_BASE_CONFIG_FILE, "r") as fp:
     _SETTINGS = toml.load(fp)
 
 if _USER_CONFIG_FILE.exists():
-    with (open(_USER_CONFIG_FILE, "r")) as fp:
+    with open(_USER_CONFIG_FILE, "r") as fp:
         USER_SETTINGS = toml.load(fp)
         _SETTINGS.update(USER_SETTINGS)
 
@@ -99,7 +99,9 @@ def isolate_crowded_folders(
     return crowded
 
 
-def approve_list(target: list, desc: str = "", repr_func=None, maximum:int|None = None) -> list:
+def approve_list(
+    target: list, desc: str = "", repr_func=None, maximum: int | None = None
+) -> list:
     """Returns a user-approved subset of target list."""
 
     if not target:
@@ -137,8 +139,10 @@ def approve_list(target: list, desc: str = "", repr_func=None, maximum:int|None 
                         approved_targets.remove(target[count - 1])
                     else:
                         approved_targets.insert(count - 1, target[count - 1])
-                    if maximum and len(approved_targets)>maximum:
-                        approved_keys = approved_targets[len(approved_targets) - maximum:]
+                    if maximum and len(approved_targets) > maximum:
+                        approved_targets = approved_targets[
+                            len(approved_targets) - maximum :
+                        ]
                     count += 1
 
                 continue
@@ -150,8 +154,10 @@ def approve_list(target: list, desc: str = "", repr_func=None, maximum:int|None 
                 else:
                     # approved_targets.insert(choice - 1, target[choice - 1])
                     approved_targets.append(target[choice - 1])
-                if maximum and len(approved_targets)>maximum:
-                    approved_keys = approved_targets[len(approved_targets) - maximum:]
+                if maximum and len(approved_targets) > maximum:
+                    approved_targets = approved_targets[
+                        len(approved_targets) - maximum :
+                    ]
             else:
                 invalid = True
 
@@ -161,18 +167,24 @@ def approve_list(target: list, desc: str = "", repr_func=None, maximum:int|None 
     return approved_targets
 
 
-def approve_dict(target: dict, desc: str = "", repr_func: Callable[...,str]|None=None, maximum: int|None = None) -> dict:
+def approve_dict(
+    target: dict,
+    desc: str = "",
+    repr_func: Callable[..., str] | None = None,
+    maximum: int | None = None,
+) -> dict:
     """Returns a user-approved subset of target dictionary."""
 
     if not target:
         return {}
 
     if not repr_func:
-        breakpoint()
         source_width = max([len(str(key)) for key in target.keys()])
         dest_width = max(len(str(target[key])) for key in target.keys())
+
         def default_format(key):
             return f"{str(key):<{source_width}} -> {str(target[key]):>{dest_width}}"
+
         repr_func = default_format
 
     approved_keys = []
@@ -209,7 +221,7 @@ def approve_dict(target: dict, desc: str = "", repr_func: Callable[...,str]|None
 
                     count += 1
 
-                if maximum and len(approved_keys)>maximum:
+                if maximum and len(approved_keys) > maximum:
                     approved_keys = approved_keys[len(approved_keys) - maximum :]
 
                 continue
@@ -220,9 +232,8 @@ def approve_dict(target: dict, desc: str = "", repr_func: Callable[...,str]|None
                     approved_keys.remove(frozen_keys[choice - 1])
                 else:
                     # approved_keys.insert(choice - 1, frozen_keys[choice - 1])
-                    approved_keys.append(frozen_keys[choice-1])
-                if maximum and len(approved_keys)>maximum:
-                    # breakpoint()
+                    approved_keys.append(frozen_keys[choice - 1])
+                if maximum and len(approved_keys) > maximum:
                     approved_keys = approved_keys[len(approved_keys) - maximum :]
             else:
                 invalid = True
@@ -280,14 +291,23 @@ def associate_files(
     uncrowded_pattern = re.compile(r"\w+ \d\d? \(\w+\) \d\d\d\d")
 
     for file in files:
-        if file.name in _FILE_TYPES.keys() or file.name=="misc":
+        if file.name in _FILE_TYPES.keys() or file.name == "misc":
             continue
 
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
         file_type_folder = extension_handler.get(file.suffix, default_folder.name)
 
-        if file_type_folder == "misc" and not yes_all:
-            pass
+        # if file_type_folder == "misc" and not yes_all:
+        #     candidate = approve_list(
+        #         target=list(_FILE_TYPES.keys()),
+        #         desc=f"Move '{file.absolute()}' to which folder?\n(Or leave selection empty to skip.)",
+        #         maximum=1,
+        #     )
+
+        #     if not candidate:
+        #         continue
+
+        #     file_type_folder = candidate[0]
 
         f_year: str = str(last_modified.year)
         f_month: str = str(last_modified.month)
@@ -457,6 +477,27 @@ def execute_move_commands(commands: dict[Path, Path], target: Path = Path(".")):
     """
     sources = list(commands.keys())
     for source in sources:
+        if not source.suffix:  # if source is a folder, rather than a file
+            candidate = approve_list(
+                target=list(_FILE_TYPES.keys()),
+                desc=f"Move '{source.absolute()}' to which folder?\n(Or leave selection empty to skip.)",
+                maximum=1,
+            )
+
+            if not candidate:
+                continue
+
+            file_type_folder = Path(candidate[0])
+
+            target_folder = associate_files(
+                files=[source],
+                extension_handler={"": str(file_type_folder)},
+                default_folder=file_type_folder,
+            )
+            os.makedirs(target_folder[source].parent.absolute(), exist_ok=True)
+            shutil.move(source.absolute(), target_folder[source].absolute())
+            continue
+
         try:
             os.makedirs(commands[source].parent.absolute(), exist_ok=True)
             shutil.move(source.absolute(), commands[source].absolute())
@@ -541,7 +582,7 @@ def clean_files(
     else:
         approved_mvs = approve_dict(
             target_mvs,
-            f"Targeting '{target.absolute()}' for clean up.\n{_PROMPT_STYLE}Select files to archive:"
+            f"Targeting '{target.absolute()}' for clean up.\n{_PROMPT_STYLE}Select files to archive:",
         )
 
     if approved_mvs:
@@ -612,17 +653,19 @@ def identify_large_files(
     if yes_all:
         approved_files = large_files
     else:
+
         def show_file_size(x):
             return f"{x} ({float(os.stat(x.absolute()).st_size / 1000000):_.2f} Mb)"
+
         approved_files = approve_list(
             large_files,
             f"{_PROMPT_STYLE}Select large files to isolate:",
             repr_func=show_file_size,
         )
     if approved_files:
-        large_mvs = associate_files(approved_files,
-                                    default_folder=Path("large_files"),
-                                    yes_all=yes_all)
+        large_mvs = associate_files(
+            approved_files, default_folder=Path("large_files"), yes_all=yes_all
+        )
 
         execute_move_commands(large_mvs)
 
