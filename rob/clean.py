@@ -5,7 +5,6 @@
 
 import datetime
 import os
-import pdb
 import re
 import shelve
 import shutil
@@ -37,6 +36,7 @@ _USER_CONFIG_FILE = (
     Path(appdirs.user_config_dir()) / "robolson" / "clean" / "config" / "clean.toml"
 )
 _UNDO_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "undo.db"
+
 _BLACKLIST_FILE = (
     Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "ignore.db"
 )
@@ -65,7 +65,7 @@ _EXCLUSIONS = _SETTINGS["EXCLUSIONS"]  # list of files to totally ignore
 MONTHS = _SETTINGS["MONTHS"]  # strings to use when writing names of months
 MONTHS.insert(0, None)
 
-_COMMANDS = []
+# _COMMANDS = []
 
 
 def generate_extension_handler(file_types: dict[str, list[str]]) -> dict[str, str]:
@@ -99,7 +99,7 @@ def isolate_crowded_folders(
     return crowded
 
 
-def approve_list(target: list, desc: str = "", repr_func=None) -> list:
+def approve_list(target: list, desc: str = "", repr_func=None, maximum:int|None = None) -> list:
     """Returns a user-approved subset of target list."""
 
     if not target:
@@ -120,11 +120,6 @@ def approve_list(target: list, desc: str = "", repr_func=None) -> list:
 
             rich.print(f" {style}{count+1}.) {display}")
 
-            # if item in approved_targets:
-            #     rich.print(f" [green]{count+1}.) {display}")
-            # else:
-            #     rich.print(f" [red]{count+1}.) {display}")
-
         style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
         rich.print(
             f"\n{style}Toggle items by entering their associated list index, enter 'a' to toggle ALL items, or press Enter to continue."
@@ -142,7 +137,8 @@ def approve_list(target: list, desc: str = "", repr_func=None) -> list:
                         approved_targets.remove(target[count - 1])
                     else:
                         approved_targets.insert(count - 1, target[count - 1])
-
+                    if maximum and len(approved_targets)>maximum:
+                        approved_keys = approved_targets[len(approved_targets) - maximum:]
                     count += 1
 
                 continue
@@ -152,7 +148,10 @@ def approve_list(target: list, desc: str = "", repr_func=None) -> list:
                 if target[choice - 1] in approved_targets:
                     approved_targets.remove(target[choice - 1])
                 else:
-                    approved_targets.insert(choice - 1, target[choice - 1])
+                    # approved_targets.insert(choice - 1, target[choice - 1])
+                    approved_targets.append(target[choice - 1])
+                if maximum and len(approved_targets)>maximum:
+                    approved_keys = approved_targets[len(approved_targets) - maximum:]
             else:
                 invalid = True
 
@@ -162,18 +161,19 @@ def approve_list(target: list, desc: str = "", repr_func=None) -> list:
     return approved_targets
 
 
-def approve_dict(target: dict, desc: str = "", repr_func=None) -> dict:
+def approve_dict(target: dict, desc: str = "", repr_func: Callable[...,str]|None=None, maximum: int|None = None) -> dict:
     """Returns a user-approved subset of target dictionary."""
 
     if not target:
         return {}
 
     if not repr_func:
-        source_chars = max(len(str(key)) for key in target.keys())
-        dest_chars = max(len(str(target[key])) for key in target.keys())
-        repr_func = (
-            lambda key: f"{str(key):<{source_chars}} -> {str(target[key]):>{dest_chars}}"
-        )
+        breakpoint()
+        source_width = max([len(str(key)) for key in target.keys()])
+        dest_width = max(len(str(target[key])) for key in target.keys())
+        def default_format(key):
+            return f"{str(key):<{source_width}} -> {str(target[key]):>{dest_width}}"
+        repr_func = default_format
 
     approved_keys = []
     frozen_keys = list(target.keys())
@@ -209,6 +209,9 @@ def approve_dict(target: dict, desc: str = "", repr_func=None) -> dict:
 
                     count += 1
 
+                if maximum and len(approved_keys)>maximum:
+                    approved_keys = approved_keys[len(approved_keys) - maximum :]
+
                 continue
 
             choice = int(choice)
@@ -216,7 +219,11 @@ def approve_dict(target: dict, desc: str = "", repr_func=None) -> dict:
                 if frozen_keys[choice - 1] in approved_keys:
                     approved_keys.remove(frozen_keys[choice - 1])
                 else:
-                    approved_keys.insert(choice - 1, frozen_keys[choice - 1])
+                    # approved_keys.insert(choice - 1, frozen_keys[choice - 1])
+                    approved_keys.append(frozen_keys[choice-1])
+                if maximum and len(approved_keys)>maximum:
+                    # breakpoint()
+                    approved_keys = approved_keys[len(approved_keys) - maximum :]
             else:
                 invalid = True
 
@@ -259,7 +266,7 @@ def associate_files(
     root: Path = Path("."),
     extension_handler: dict[str, str] | None = None,
     default_folder: Path = Path("misc"),
-    # yes_all: bool = True,
+    yes_all: bool = True,
 ) -> dict[Path, Path]:
     """Returns a dictionary that associates passed files with their most organized location."""
 
@@ -273,8 +280,14 @@ def associate_files(
     uncrowded_pattern = re.compile(r"\w+ \d\d? \(\w+\) \d\d\d\d")
 
     for file in files:
+        if file.name in _FILE_TYPES.keys() or file.name=="misc":
+            continue
+
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
         file_type_folder = extension_handler.get(file.suffix, default_folder.name)
+
+        if file_type_folder == "misc" and not yes_all:
+            pass
 
         f_year: str = str(last_modified.year)
         f_month: str = str(last_modified.month)
@@ -291,75 +304,53 @@ def associate_files(
 
         file_targets[file] = target_folder / file.name
 
-        # if yes_all:
-        #     file_targets[file] = target_folder / file.name
-
-        # else:
-        #     choice = ""
-        #     while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
-        #         rich.print(
-        #             f"[yellow]mv '{file.name if Path(file.name).exists() else file.absolute()}' '{target_folder / file.name}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
-        #         )
-        #         choice = input(f"{_PROMPT}")
-
-        #     match choice:
-        #         case "y" | "yes":
-        #             file_targets[file] = target_folder / file.name
-
-        #         case "a" | "all":
-        #             file_targets[file] = target_folder / file.name
-        #             yes_all = True
-
-        #         case "d" | "del":
-        #             file_targets[file] = Path("delete_me") / file.name
-
     return file_targets
 
 
-def handle_files(
-    files: list[str],
-    folder: str = "misc",
-    month: bool = False,
-    yes_all: bool = True,
-) -> None:
-    """Organizes files by last modified date."""
-    choice = ""
+# def handle_files(
+#     files: list[str],
+#     folder: str = "misc",
+#     month: bool = False,
+#     yes_all: bool = True,
+# ) -> None:
+#     """Organizes files by last modified date."""
+#     choice = ""
 
-    for file in files:
-        last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
-        f_month = MONTHS[last_modified.month]
+#     for file in files:
+#         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
+#         f_month = MONTHS[last_modified.month]
 
-        file_size = os.stat(file).st_size
+#         file_size = os.stat(file).st_size
 
-        f_year = last_modified.year
-        if file_size > 150_000_000:
-            target_folder = os.path.join("Large_Files", str(f_year))
-        else:
-            target_folder = os.path.join(folder, f"{folder} {str(f_year)}")
+#         f_year = last_modified.year
+#         if file_size > 150_000_000:
+#             target_folder = os.path.join("Large_Files", str(f_year))
+#         else:
+#             target_folder = os.path.join(folder, f"{folder} {str(f_year)}")
 
-        if month:
-            target_folder = os.path.join(
-                target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}"
-            )
-        os.makedirs(target_folder, exist_ok=True)
+#         if month:
+#             target_folder = os.path.join(
+#                 target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}"
+#             )
+#         os.makedirs(target_folder, exist_ok=True)
 
-        while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
-            rich.print(
-                f"[yellow]mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
-            )
-            choice = input(f"{_PROMPT}") if not yes_all else "y"
+#         while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
+#             rich.print(
+#                 f"[yellow]mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
+#             )
+#             choice = input(f"{_PROMPT}") if not yes_all else "y"
 
-        match choice:
-            case "y" | "yes":
-                _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
+#         match choice:
+#             case "y" | "yes":
+#                 _COMMANDS.append(("mv", Path(file), Path(target_folder) / Path(file)))
 
-            case "a" | "all":
-                _COMMANDS.append((f"mv", Path(file), Path(target_folder) / Path(file)))
-                yes_all = True
+#             case "a" | "all":
+#                 _COMMANDS.append(("mv", Path(file), Path(target_folder) / Path(file)))
+#                 yes_all = True
 
-            case "d" | "del":
-                os.makedirs("delete_me", exist_ok=True)
-                _COMMANDS.append((f"mv", Path(file), Path(f"delete_me") / Path(file)))
+#             case "d" | "del":
+#                 os.makedirs("delete_me", exist_ok=True)
+#                 _COMMANDS.append(("mv", Path(file), Path("delete_me") / Path(file)))
 
 
 #  ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -373,7 +364,7 @@ def remove_empty_dir(path: str | Path):
     try:
         os.rmdir(path)
         print(f"Removing empty folder ({path}).")
-    except OSError as e:
+    except OSError:
         pass
 
 
@@ -473,7 +464,7 @@ def execute_move_commands(commands: dict[Path, Path], target: Path = Path(".")):
         # File of Same Name Has Already Been Moved To Folder
         except shutil.Error as e:
             print(e)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             rich.print(f"{_ERROR_STYLE}{source.absolute()} not found.")
     with shelve.open(str(_UNDO_FILE)) as db:
         db[str(target.absolute())] = commands
@@ -535,13 +526,14 @@ def clean_files(
     if recurse:
         root_files = target.rglob("*.*")
     else:
-        root_files = target.glob("*.*")
+        # root_files = target.glob("*.*")
+        root_files = target.glob("*")
 
     if exclusions:
         root_files = [file for file in root_files if file.name not in exclusions]
 
     target_mvs: dict[Path, Path] = associate_files(
-        files=list(root_files), extension_handler=extension_handler
+        files=list(root_files), extension_handler=extension_handler, yes_all=yes_all
     )
 
     if yes_all:
@@ -549,7 +541,7 @@ def clean_files(
     else:
         approved_mvs = approve_dict(
             target_mvs,
-            f"Targeting '{target.absolute()}' for clean up.\n{_PROMPT_STYLE}Select files to archive:",
+            f"Targeting '{target.absolute()}' for clean up.\n{_PROMPT_STYLE}Select files to archive:"
         )
 
     if approved_mvs:
@@ -620,16 +612,17 @@ def identify_large_files(
     if yes_all:
         approved_files = large_files
     else:
-        show_file_size = (
-            lambda x: f"{x} ({float(os.stat(x.absolute()).st_size/1_000_000):_.2f} Mb)"
-        )
+        def show_file_size(x):
+            return f"{x} ({float(os.stat(x.absolute()).st_size / 1000000):_.2f} Mb)"
         approved_files = approve_list(
             large_files,
             f"{_PROMPT_STYLE}Select large files to isolate:",
             repr_func=show_file_size,
         )
     if approved_files:
-        large_mvs = associate_files(approved_files, default_folder=Path("large_files"))
+        large_mvs = associate_files(approved_files,
+                                    default_folder=Path("large_files"),
+                                    yes_all=yes_all)
 
         execute_move_commands(large_mvs)
 
@@ -670,7 +663,7 @@ def identify_crowded_archives(
         else:
             suggested_mvs = uncrowd_folder(folder)
             approved_mvs = approve_dict(
-                suggested_mvs, f"Are you sure you approve all these file movements?"
+                suggested_mvs, "Are you sure you approve all these file movements?"
             )
 
         uncrowded_mvs.update(approved_mvs)
