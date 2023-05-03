@@ -150,10 +150,10 @@ def concat_and_convert(folder: Path) -> None:
     # inf = taglib.File(f"{mp3s[0]}")
     # outf = taglib.File(f"{Path(mp3s[0]).stem}.m4b")
 
-    outf.tags = inf.tags
-    outf.save()
-    outf.close()
-    inf.close()
+    # outf.tags = inf.tags
+    # outf.save()
+    # outf.close()
+    # inf.close()
     # </Transfer metadata>
 
     return
@@ -337,6 +337,7 @@ def main() -> None:
         + "\n * ".join([str(folder) for folder in folders])
         + f". \n[{_PROMPT_STYLE}]Using {_CPUS} core. Ok?"
     )
+
     input(f"{_PROMPT}")
 
     if _COMMAND:
