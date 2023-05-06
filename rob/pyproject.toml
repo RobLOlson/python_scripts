@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.78"
+version = "0.3.82"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "pyproject.toml", "data/word_list.txt"]
@@ -13,7 +13,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7.1, <3.11"
+python = "^3.7.1"
 rich = "^11.2.0"
 toml = "^0.10.2"
 praw = "^7.5.0"
