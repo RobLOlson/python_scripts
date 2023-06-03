@@ -16,6 +16,7 @@ from typing import Callable
 import appdirs
 import rich
 import rich.traceback
+import survey
 import toml
 import typer
 from typer import Argument, Option
@@ -108,63 +109,72 @@ def approve_list(
         return []
 
     approved_targets = []
-    final_choice = False
-    invalid = False
-    while not final_choice:
-        rich.print(desc, end="\n\n")
-        for count, item in enumerate(target):
-            if repr_func:
-                display = repr_func(item)
-            else:
-                display = item
 
-            style = "[green]" if item in approved_targets else "[red]"
+    approved_targets = survey.routines.basket(desc, options=target)
+    if approved_targets:
+        approved_list = [v for i, v in enumerate(target) if i in approved_targets]
+    else:
+        approved_list = []
 
-            rich.print(f" {style}{count+1}.) {display}")
+    return approved_list
 
-        style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
-        rich.print(
-            f"\n{style}Toggle items by entering their associated list index, enter 'a' to toggle ALL items, or press Enter to continue."
-        )
-        choice = input(f"{_PROMPT}")
-        invalid = False
-        try:
-            if not choice:
-                final_choice = True
+    # final_choice = False
+    # invalid = False
+    # while not final_choice:
+    #     rich.print(desc, end="\n\n")
+    #     for count, item in enumerate(target):
+    #         if repr_func:
+    #             display = repr_func(item)
+    #         else:
+    #             display = item
 
-            if choice in ["a", "A", "all", "ALL"]:
-                count = 1
-                while count <= len(target):
-                    if target[count - 1] in approved_targets:
-                        approved_targets.remove(target[count - 1])
-                    else:
-                        approved_targets.insert(count - 1, target[count - 1])
-                    if maximum and len(approved_targets) > maximum:
-                        approved_targets = approved_targets[
-                            len(approved_targets) - maximum :
-                        ]
-                    count += 1
+    #         style = "[green]" if item in approved_targets else "[red]"
 
-                continue
+    #         rich.print(f" {style}{count+1}.) {display}")
 
-            choice = int(choice)
-            if 1 <= choice <= len(target):
-                if target[choice - 1] in approved_targets:
-                    approved_targets.remove(target[choice - 1])
-                else:
-                    # approved_targets.insert(choice - 1, target[choice - 1])
-                    approved_targets.append(target[choice - 1])
-                if maximum and len(approved_targets) > maximum:
-                    approved_targets = approved_targets[
-                        len(approved_targets) - maximum :
-                    ]
-            else:
-                invalid = True
+    #     style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
+    #     rich.print(
+    #         f"\n{style}Toggle items by entering their associated list index, enter 'a' to toggle ALL items, or press Enter to continue."
+    #     )
+    #     choice = input(f"{_PROMPT}")
+    #     invalid = False
+    #     try:
+    #         if not choice:
+    #             final_choice = True
 
-        except (SyntaxError, ValueError):
-            invalid = True
+    #         if choice in ["a", "A", "all", "ALL"]:
+    #             count = 1
+    #             while count <= len(target):
+    #                 if target[count - 1] in approved_targets:
+    #                     approved_targets.remove(target[count - 1])
+    #                 else:
+    #                     approved_targets.insert(count - 1, target[count - 1])
+    #                 if maximum and len(approved_targets) > maximum:
+    #                     approved_targets = approved_targets[
+    #                         len(approved_targets) - maximum :
+    #                     ]
+    #                 count += 1
 
-    return approved_targets
+    #             continue
+
+    #         choice = int(choice)
+    #         if 1 <= choice <= len(target):
+    #             if target[choice - 1] in approved_targets:
+    #                 approved_targets.remove(target[choice - 1])
+    #             else:
+    #                 # approved_targets.insert(choice - 1, target[choice - 1])
+    #                 approved_targets.append(target[choice - 1])
+    #             if maximum and len(approved_targets) > maximum:
+    #                 approved_targets = approved_targets[
+    #                     len(approved_targets) - maximum :
+    #                 ]
+    #         else:
+    #             invalid = True
+
+    #     except (SyntaxError, ValueError):
+    #         invalid = True
+
+    # return approved_targets
 
 
 def approve_dict(
@@ -187,61 +197,72 @@ def approve_dict(
 
         repr_func = default_format
 
-    approved_keys = []
-    frozen_keys = list(target.keys())
-    final_choice = False
-    invalid = False
-    while not final_choice:
-        rich.print(desc, end="\n\n")
-        for count, key in enumerate(frozen_keys):
-            if key in approved_keys:
-                # rich.print(f" [green]{count+1:2}.) {key}[yellow]->[green]{target[key]}")
-                rich.print(f" [green]{count+1:2}.){repr_func(key)}")
-            else:
-                # rich.print(f" [red]{count+1}.) {key}[yellow]->[red]{target[key]}")
-                rich.print(f" [red]{count+1:2}.){repr_func(key)}")
+    list_of_keys = list(target.keys())
 
-        style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
-        rich.print(
-            f"\n{style}Toggle items by entering their associated list index, or enter 'a' to toggle ALL or press Enter to continue."
-        )
-        choice = input(f"{_PROMPT}")
-        invalid = False
-        try:
-            if not choice:
-                final_choice = True
+    formatted_keys = [repr_func(key) for key in list_of_keys]
 
-            if choice in ["a", "A", "all", "ALL"]:
-                count = 1
-                while count <= len(target):
-                    if frozen_keys[count - 1] in approved_keys:
-                        approved_keys.remove(frozen_keys[count - 1])
-                    else:
-                        approved_keys.insert(count - 1, frozen_keys[count - 1])
+    approved_targets = survey.routines.basket(desc, options=formatted_keys)
+    approved_keys = [key for i, key in enumerate(list_of_keys) if i in approved_targets]
 
-                    count += 1
+    approved_dict = {key: target[key] for key in approved_keys}
 
-                if maximum and len(approved_keys) > maximum:
-                    approved_keys = approved_keys[len(approved_keys) - maximum :]
+    return approved_dict
 
-                continue
+    # approved_keys = []
+    # frozen_keys = list(target.keys())
+    # final_choice = False
+    # invalid = False
+    # while not final_choice:
+    #     rich.print(desc, end="\n\n")
+    #     for count, key in enumerate(frozen_keys):
+    #         if key in approved_keys:
+    #             # rich.print(f" [green]{count+1:2}.) {key}[yellow]->[green]{target[key]}")
+    #             rich.print(f" [green]{count+1:2}.){repr_func(key)}")
+    #         else:
+    #             # rich.print(f" [red]{count+1}.) {key}[yellow]->[red]{target[key]}")
+    #             rich.print(f" [red]{count+1:2}.){repr_func(key)}")
 
-            choice = int(choice)
-            if 1 <= choice <= len(target):
-                if frozen_keys[choice - 1] in approved_keys:
-                    approved_keys.remove(frozen_keys[choice - 1])
-                else:
-                    # approved_keys.insert(choice - 1, frozen_keys[choice - 1])
-                    approved_keys.append(frozen_keys[choice - 1])
-                if maximum and len(approved_keys) > maximum:
-                    approved_keys = approved_keys[len(approved_keys) - maximum :]
-            else:
-                invalid = True
+    #     style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
+    #     rich.print(
+    #         f"\n{style}Toggle items by entering their associated list index, or enter 'a' to toggle ALL or press Enter to continue."
+    #     )
+    #     choice = input(f"{_PROMPT}")
+    #     invalid = False
+    #     try:
+    #         if not choice:
+    #             final_choice = True
 
-        except (SyntaxError, ValueError):
-            invalid = True
+    #         if choice in ["a", "A", "all", "ALL"]:
+    #             count = 1
+    #             while count <= len(target):
+    #                 if frozen_keys[count - 1] in approved_keys:
+    #                     approved_keys.remove(frozen_keys[count - 1])
+    #                 else:
+    #                     approved_keys.insert(count - 1, frozen_keys[count - 1])
 
-    return {key: target[key] for key in approved_keys}
+    #                 count += 1
+
+    #             if maximum and len(approved_keys) > maximum:
+    #                 approved_keys = approved_keys[len(approved_keys) - maximum :]
+
+    #             continue
+
+    #         choice = int(choice)
+    #         if 1 <= choice <= len(target):
+    #             if frozen_keys[choice - 1] in approved_keys:
+    #                 approved_keys.remove(frozen_keys[choice - 1])
+    #             else:
+    #                 # approved_keys.insert(choice - 1, frozen_keys[choice - 1])
+    #                 approved_keys.append(frozen_keys[choice - 1])
+    #             if maximum and len(approved_keys) > maximum:
+    #                 approved_keys = approved_keys[len(approved_keys) - maximum :]
+    #         else:
+    #             invalid = True
+
+    #     except (SyntaxError, ValueError):
+    #         invalid = True
+
+    # return {key: target[key] for key in approved_keys}
 
 
 def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
@@ -434,6 +455,7 @@ def undo(
     if yes_all:
         choice = "y"
     else:
+        breakpoint()
         rich.print("[red]Are you sure? (y/n)")
         choice = input(f"{_PROMPT}")
 
@@ -478,16 +500,23 @@ def execute_move_commands(commands: dict[Path, Path], target: Path = Path(".")):
     sources = list(commands.keys())
     for source in sources:
         if not source.suffix:  # if source is a folder, rather than a file
-            candidate = approve_list(
-                target=list(_FILE_TYPES.keys()),
-                desc=f"Move '{source.absolute()}' to which folder?\n(Or leave selection empty to skip.)",
-                maximum=1,
+            # candidate = approve_list(
+            #     target=list(_FILE_TYPES.keys()),
+            #     desc=f"Move '{source.absolute()}' to which folder?\n(Or leave selection empty to skip.)",
+            #     maximum=1,
+            # )
+
+            # if not candidate:
+            #     continue
+
+            # file_type_folder = Path(candidate[0])
+
+            candidate = survey.routines.select(
+                f"Move '{source.absolute()}' to which folder?",
+                options=ARCHIVE_FOLDERS,
             )
 
-            if not candidate:
-                continue
-
-            file_type_folder = Path(candidate[0])
+            file_type_folder = Path(ARCHIVE_FOLDERS[candidate])
 
             target_folder = associate_files(
                 files=[source],
@@ -618,7 +647,10 @@ def identify_large_files(
 
     file_sizes = [os.stat(file.absolute()).st_size for file in all_files]
     avg_file_size = sum(file_sizes) / len(file_sizes)
-    standard_deviation = statistics.stdev(file_sizes)
+    if len(file_sizes) > 1:
+        standard_deviation = statistics.stdev(file_sizes)
+    else:
+        standard_deviation = 0
 
     if yes_all:
         choice = "y"
