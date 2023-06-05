@@ -11,7 +11,7 @@ import shutil
 import statistics
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import appdirs
 import rich
@@ -19,13 +19,20 @@ import rich.traceback
 import survey
 import toml
 import typer
+from click import option
 from typer import Argument, Option
+
+PathOrNone = Optional[Path]
 
 main_app = typer.Typer()
 
 archive_app = typer.Typer()
-main_app.add_typer(archive_app, name="archive", help="Clean an existing archive.")
+config_app = typer.Typer()
+edit_app = typer.Typer()
 
+main_app.add_typer(archive_app, name="archive", help="Clean an existing archive.")
+main_app.add_typer(config_app, name="config", help="Edit config file.")
+config_app.add_typer(edit_app, name="edit", help="Edit archive parameters.")
 
 _THIS_FILE = Path(__file__)
 
@@ -55,6 +62,12 @@ if _USER_CONFIG_FILE.exists():
     with open(_USER_CONFIG_FILE, "r") as fp:
         USER_SETTINGS = toml.load(fp)
         _SETTINGS.update(USER_SETTINGS)
+
+else:
+    _USER_CONFIG_FILE.parent.mkdir(parents=True)
+    _USER_CONFIG_FILE.touch(exist_ok=True)
+    with open(_USER_CONFIG_FILE, "w") as fp:
+        toml.dump(_SETTINGS, fp)
 
 
 # _CROWDED_FOLDER = _SETTINGS["CROWDED_FOLDER"]  # number of files that is 'crowded'
@@ -101,7 +114,7 @@ def isolate_crowded_folders(
 
 
 def approve_list(
-    target: list, desc: str = "", repr_func=None, maximum: int | None = None
+    target: list, desc: str = "", repr_func=None, maximum: Optional[int] = None
 ) -> list:
     """Returns a user-approved subset of target list."""
 
@@ -200,7 +213,6 @@ def approve_dict(
     list_of_keys = list(target.keys())
 
     formatted_keys = [repr_func(key) for key in list_of_keys]
-
     approved_targets = survey.routines.basket(desc, options=formatted_keys)
     approved_keys = [key for i, key in enumerate(list_of_keys) if i in approved_targets]
 
@@ -589,7 +601,7 @@ def clean_files(
     recurse: bool = False,
     yes_all: bool = False,
     # extension_handler: dict[str, str] | None = None,
-    exclusions: list[Path] | None = None,
+    exclusions: PathOrNone = None,
 ) -> None:
     """Clean the files by extension in target root directory."""
     extension_handler = _EXTENSION_HANDLER
@@ -611,7 +623,7 @@ def clean_files(
     else:
         approved_mvs = approve_dict(
             target_mvs,
-            f"Targeting '{target.absolute()}' for clean up.\n{_PROMPT_STYLE}Select files to archive:",
+            f"Targeting '{target.absolute()}' for clean up.\n\nSelect files to archive:",
         )
 
     if approved_mvs:
@@ -763,6 +775,123 @@ def all(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
     remove_empty_dirs(target=target)
 
     return
+
+
+@config_app.callback(invoke_without_command=True)
+def config(ctx: typer.Context):
+    if not ctx.invoked_subcommand:
+        print("INTERACT")
+        config_interact()
+
+
+@config_app.command(name="add")
+def add_archive(new_archive: str) -> None:
+    """Add a new archive type."""
+    _SETTINGS["FILE_TYPES"][new_archive] = []
+    fp = open(_USER_CONFIG_FILE, "w")
+    toml.dump(_SETTINGS, fp)
+    fp.close()
+
+
+@config_app.command(name="remove")
+def remove_archive(target_archive: str) -> None:
+    """Remove an archive type from the list."""
+    del _SETTINGS["FILE_TYPES"][target_archive]
+    fp = open(_USER_CONFIG_FILE, "w")
+    toml.dump(_SETTINGS, fp)
+    fp.close()
+    print(f"Removed {target_archive} from archive list.")
+
+
+@config_app.command(name="list")
+def list_archives() -> None:
+    """List recognized archive categories."""
+    archives = (file_type for file_type in _SETTINGS["FILE_TYPES"].keys())
+    print(" * " + "\n * ".join(e for e in archives))
+
+
+@config_app.command(name="interact")
+def config_interact() -> None:
+    options = ["add", "remove", "edit", "exit"]
+
+    while True:
+        print("Current Archives\n----------------")
+        list_archives()
+        choice = survey.routines.select(options=options)
+        choice = options[choice]
+
+        match choice:
+            case "add":
+                form = {
+                    "name": survey.widgets.Input(),
+                    "extension": survey.widgets.Input(),
+                }
+                data = survey.routines.form(form=form)
+                add_archive(data["name"])
+
+            case "remove":
+                selection = survey.routines.select(options=ARCHIVE_FOLDERS)
+                remove_archive(ARCHIVE_FOLDERS[selection])
+
+            case "edit":
+                selection = survey.routines.select(options=ARCHIVE_FOLDERS)
+                edit_archive(ARCHIVE_FOLDERS[selection])
+
+            case "exit":  #
+                exit(0)
+
+
+@edit_app.callback(invoke_without_command=True)
+def edit_default(ctx: typer.Context):
+    if ctx.invoked_subcommand:
+        return
+
+    selection = survey.routines.select(options=ARCHIVE_FOLDERS)
+    edit_archive(ARCHIVE_FOLDERS[selection])
+
+
+@config_app.command(name="edit")
+def edit_archive(target_archive: str):
+    extensions = _SETTINGS["FILE_TYPES"][target_archive]
+    print(f"{target_archive} extensions:\n * " + "\n * ".join(extensions))
+    options = ["add", "remove", "edit"]
+    selection = survey.routines.select(options=options)
+    selection = options[selection]
+    match selection:
+        case "add":
+            new_extension = survey.routines.input(
+                f"Enter new extension for {target_archive} archive.\n{_PROMPT}"
+            )
+            add_extension(target_archive=target_archive, new_extension=new_extension)
+
+        case "remove":
+            candidate = survey.routines.select(options=extensions)
+            remove_extension(
+                target_archive=target_archive, target_extension=extensions[candidate]
+            )
+
+    extensions = {}
+    extensions = _SETTINGS["FILE_TYPES"][target_archive]
+
+
+@edit_app.command(name="add")
+def add_extension(target_archive: str, new_extension: str):
+    _SETTINGS["FILE_TYPES"][target_archive].append(new_extension)
+    fp = open(_USER_CONFIG_FILE, "w")
+    toml.dump(_SETTINGS, fp)
+    fp.close()
+
+    print(f"Added {new_extension} to {target_archive}.")
+
+
+@edit_app.command(name="remove")
+def remove_extension(target_archive: str, target_extension: str):
+    _SETTINGS["FILE_TYPES"][target_archive].remove(target_extension)
+    fp = open(_USER_CONFIG_FILE, "w")
+    toml.dump(_SETTINGS, fp)
+    fp.close()
+
+    print(f"Removed {target_extension} from {target_archive}.")
 
 
 @main_app.callback()
