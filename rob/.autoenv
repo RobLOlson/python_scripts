@@ -1,0 +1,1 @@
+Write-Host -NoNewLine -ForegroundColor Green -BackgroundColor Black "Use 'poetry shell' or 'pactivate' to activate venv."

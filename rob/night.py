@@ -38,6 +38,8 @@ def do_hourly_at_night():
     volume = cast(interface, POINTER(IAudioEndpointVolume))
     # Get current volume
     currentVolumeDb = volume.GetMasterVolumeLevel()
+    if currentVolumeDb < -60:
+        currentVolumeDb = -60
     volume.SetMasterVolumeLevel(currentVolumeDb - 0.7, None)
     # </REDUCE SOUND VOLUME>
 
