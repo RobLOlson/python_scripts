@@ -1,0 +1,20 @@
+# This contains snippets of LaTeX to be used in compiling an algebra homework document
+
+doc_header = """\\documentclass[12pt]{article}
+\\usepackage[a4paper,
+            bindingoffset=0.2in,
+            left=0.5in,
+            right=0.5in,
+            top=0.5in,
+            bottom=0.5in,
+            footskip=.25in]{geometry}
+\\begin{document}
+\\pagenumbering{gobble}"""
+
+
+page_header = """\n\\noindent\\makebox[\\textwidth]{
+\\large\\textbf{TITLEGOESHERE}%
+  \\hfill \\hspace{-2.5cm} DATEGOESHERE
+
+}\\newline\\textbf{by AUTHORGOESHERE}\\newline"""
+

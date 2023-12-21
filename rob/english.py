@@ -3,39 +3,49 @@ import re
 import shelve
 from pathlib import Path
 
+import appdirs
+import toml
 import typer
 from openai import OpenAI
 from rst2pdf.createpdf import RstToPdf
 
 app = typer.Typer()
 
-GPT_CLIENT = OpenAI()
+GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
 
 _THIS_FILE = Path(__file__)
 
-_BOOKS_FILE = _THIS_FILE / "data" / "books.pkl"
-_PROGRESS_FILE = _THIS_FILE / "data" / "progress.pkl"
+_BOOKS_FILE = (
+    Path(appdirs.user_data_dir()) / "robolson" / "data" / "english" / "books.pkl"
+)
+_PROGRESS_FILE = (
+    Path(appdirs.user_data_dir()) / "robolson" / "data" / "english" / "progress.pkl"
+)
 # _PROGRESS_FILE = Path("data/progress.pkl")
 
+LATEX_FILE = Path("config/latex_templates.toml")
+LATEX_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
+LATEX_FILE.parent.mkdir(exist_ok=True)
+LATEX_FILE.touch()
+LATEX_TEMPLATES = toml.loads(open(LATEX_FILE.absolute(), "r").read())
+
 _LATEX_PAGE_HEADER = """\n\\noindent\\makebox[\\textwidth]{
-  \\large\\textbf{TEST2}%
-  \\hfill%
-  TEST1
-}"""
+\\large\\textbf{TITLEGOESHERE}%
+  \\hfill \\hspace{-2.5cm} DATEGOESHERE
 
+}\\newline\\textbf{by AUTHORGOESHERE}\\newline"""
+_LATEX_PAGE_HEADER = LATEX_TEMPLATES["page_header"]
 _LATEX_DOC_HEADER = """\\documentclass[12pt]{article}
-
+\\usepackage[a4paper,
+            bindingoffset=0.2in,
+            left=0.5in,
+            right=0.5in,
+            top=0.5in,
+            bottom=0.5in,
+            footskip=.25in]{geometry}
 \\begin{document}
-\\pagenumbering{gobble}
-\\addtolength{\\oddsidemargin}{-1in}
-\\addtolength{\\evensidemargin}{-1in}
-\\addtolength{\\textwidth}{2in}
-
-\\addtolength{\\topmargin}{-1in}
-
-
-\\addtolength{\\textheight}{2in}"""
-
+\\pagenumbering{gobble}"""
+_LATEX_DOC_HEADER = LATEX_TEMPLATES["doc_header"]
 
 PAGEBREAK = """
 .. raw:: pdf
@@ -77,11 +87,11 @@ For the second question, supply the student with the definition of a vocabulary 
 
 "What word from the text means... "
 
-For 3rd and last question, ask the student a question that tests for an overall understanding of its meaning or significance."""
+For 3rd and last question, ask a question that probes the reader's overall understanding of the passage."""
 
 
 @app.command("ingest")
-def import_text_file(target: str, chars_per_page: int = 5_000, debug: bool = False):
+def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = False):
     """Import a (properly formatted) book.txt
 
     line 1: Book Title
@@ -97,10 +107,9 @@ def import_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
     author = lines[1]
 
     text = "\n".join(lines[2:])
-    # sections = text.split("START_OF_NEW_SECTION")
-    # sections = [e.strip() for e in sections]
+
     chapter_pattern = re.compile(r"( *CHAPTER (\d+) ?(.*))")
-    section_pattern = re.compile(r"[^a-z\n\.\?\]\)]+\??\n")
+    section_pattern = re.compile(r"\n[^a-z\n\.\?\]\)]+\??\n")
 
     book = []
     for chapter in chapter_pattern.findall(text):
@@ -112,15 +121,17 @@ def import_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         chapter_text = chapter_pattern.split(chapter_text)[0]
         subsections = []
 
-        if not section_pattern.search(chapter_text):
-            subsections = [{"title": f"{full_chapter}", "text": chapter_text}]
-
-        for subsection in section_pattern.findall(chapter_text):
-            breakpoint()
-            section_text = chapter_text.split(subsection)[0]
-            section_name = subsection
+        breakpoint()
+        section_titles = section_pattern.findall(chapter_text)
+        section_titles = [e.strip() for e in section_titles]
+        section_titles.insert(0, full_chapter)
+        section_texts = section_pattern.sub(r"SPLIT_CHAPTER_HERE", chapter_text).split(
+            "SPLIT_CHAPTER_HERE"
+        )
+        breakpoint()
+        for i, section_title in enumerate(section_titles):
             subsections.append(
-                {"title": f"{full_chapter}\\\\\n{section_name}", "text": section_text}
+                {"title": section_title, "text": section_texts[i].rstrip()}
             )
 
         for section in subsections:
@@ -128,16 +139,17 @@ def import_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
             page_count = section_length // chars_per_page + 1
             if page_count > 1:
                 paragraphs = section["text"].split("\n")
+                paragraphs = [p for p in paragraphs if p]
                 paginated = []
-                counter = 0
+                page_counter = 0
                 while paragraphs:
-                    counter += 1
                     new_page = ""
-                    while len(new_page) < section_length and paragraphs:
-                        new_page += f"{paragraphs[0]}"
+                    page_counter += 1
+                    while len(new_page) < section_length / page_count and paragraphs:
+                        new_page += f"\n\n \\indent {paragraphs[0]}"
                         del paragraphs[0]
                     doc = {
-                        "title": section["title"] + f" (Part {counter})",
+                        "title": section["title"] + f" (Part {page_counter})",
                         "text": new_page,
                     }
 
@@ -147,56 +159,10 @@ def import_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
                     book.append(part)
             else:
                 book.append(section)
-    breakpoint()
-    # paragraph_pattern = re.compile(r"($.+\.\n")
-    chapters = chapter_pattern.split(text)
-    # book = []
 
-    # for i, section in enumerate(sections):
-    #     page = {}
-    #     title = chapter_pattern.search(section)
-    #     if title:
-    #         title = title[0]
-
-    #     else:
-    #         title = f"Section {i}"
-
-    #     page["title"] = title.strip()
-    #     text = chapter_pattern.sub("", section)
-    #     # text = paragraph_pattern.sub()
-    #     page["text"] = text.strip()
-    #     book.append(page)
-
-    # book2 = []
-
-    # for page in book:
-    #     size = len(page["text"])
-    #     pages_of_content = size // 5000 + 1  # 5k chars per page max
-    #     if pages_of_content > 1:
-    #         content_size = size // pages_of_content  # paginate evenly
-    #         paragraphs = page["text"].split("\n")
-    #         paginated_pages = []
-    #         counter = 0
-    #         while paragraphs:
-    #             counter += 1
-    #             new_page = ""
-    #             while len(new_page) < content_size and paragraphs:
-    #                 new_page += f"{paragraphs[0]}"
-    #                 del paragraphs[0]
-    #             doc = {"title": page["title"] + f" (Part {counter})", "text": new_page}
-
-    #             paginated_pages.append(doc)
-
-    #         for part in paginated_pages:
-    #             book2.append(part)
-
-    #     else:
-    #         book2.append(page)
-
-    # book = book2
     if not debug:
         with shelve.open(_BOOKS_FILE.name) as db:
-            db[target] = book
+            db[target] = {"book": book, "author": author, "title": title}
 
 
 @app.command("set_progress")
@@ -206,7 +172,7 @@ def set_progress(target: str, progress: int = 0):
 
 
 @app.command("generate")
-def generate_pages(target: str, n: int = 7, debug: bool = False):
+def generate_pages(target: str, n: int = 7, debug: bool = True):
     with shelve.open(_PROGRESS_FILE.name) as db:
         if target in db.keys():
             PROGRESS_INDEX = db[target]
@@ -222,13 +188,13 @@ def generate_pages(target: str, n: int = 7, debug: bool = False):
         for day in days
     ]
 
-    pdf = RstToPdf()
     with shelve.open(_BOOKS_FILE.name) as db:
-        book_size = len(db[target])
+        book = db[target]["book"]
+        title = db[target]["title"]
+        author = db[target]["author"]
+        book_size = len(book)
         for index in range(n):
-            underline = "#" * len(
-                db[target][(PROGRESS_INDEX + index) % book_size]["title"]
-            )
+            underline = "#" * len(book[(PROGRESS_INDEX + index) % book_size]["title"])
 
             if not debug:
                 response = GPT_CLIENT.chat.completions.create(
@@ -237,7 +203,7 @@ def generate_pages(target: str, n: int = 7, debug: bool = False):
                         {"role": "system", "content": SYSTEM_INSTRUCTION},
                         {
                             "role": "user",
-                            "content": db[target][(PROGRESS_INDEX + index) % book_size][
+                            "content": book[(PROGRESS_INDEX + index) % book_size][
                                 "text"
                             ],
                         },
@@ -251,18 +217,15 @@ def generate_pages(target: str, n: int = 7, debug: bool = False):
                 questions = [f"{i+1}.) {text}" for i, text in enumerate(questions)]
                 questions = "\n\n".join(questions)
             else:
-                questions = "[QUESTIONS GO HERE]"
-
-            mytext += f"{_LATEX_PAGE_HEADER}\n{db[target][(PROGRESS_INDEX + index) % book_size]['title']}{dates[index]}\\newline{db[target][(PROGRESS_INDEX + index) % book_size]['text']} \\newline {questions}\\newpage"
-            # mytext += f"{db[target][(PROGRESS_INDEX + index) % book_size]['title']}{dates[index]}\\\\{db[target][(PROGRESS_INDEX + index) % book_size]['text']} \\\\ {questions}\\newpage\\\\"
-            # mytext += f"{db[target][(PROGRESS_INDEX + index) % book_size]['title']}\n{underline}\n{dates[index]}\n{'='*len(dates[index])}\n{db[target][(PROGRESS_INDEX + index) % book_size]['text']} \n\n {questions}\n\n{PAGEBREAK}\n\n"
+                questions = "QUESTIONS GO HERE"
+            dated_header = re.sub("DATEGOESHERE", dates[index], _LATEX_PAGE_HEADER)
+            titled_header = re.sub("TITLEGOESHERE", title, dated_header)
+            authored_header = re.sub("AUTHORGOESHERE", author, titled_header)
+            breakpoint()
+            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}\\newpage"
 
         mytext = re.sub(pattern=r"&", repl=r"\\&", string=mytext)
         print(mytext)
-        # pdf.createPdf(
-        #     text=mytext,
-        #     output=f"ENGLISH {datetime.datetime.today().day} {datetime.datetime.today().month} {datetime.datetime.today().year}.pdf",
-        # )
         fp = open(
             f"English Reading {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex",
             "w",
@@ -279,6 +242,6 @@ def generate_pages(target: str, n: int = 7, debug: bool = False):
 
 if __name__ == "__main__":
     app()
-    # import_text_file(debug=False)
+    # ingest_text_file(debug=False)
     # generate_pages(7, debug=False)
     # db = shelve.open(_BOOKS_FILE.name)
