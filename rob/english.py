@@ -7,7 +7,6 @@ import appdirs
 import toml
 import typer
 from openai import OpenAI
-from rst2pdf.createpdf import RstToPdf
 
 app = typer.Typer()
 
@@ -21,73 +20,23 @@ _BOOKS_FILE = (
 _PROGRESS_FILE = (
     Path(appdirs.user_data_dir()) / "robolson" / "data" / "english" / "progress.pkl"
 )
-# _PROGRESS_FILE = Path("data/progress.pkl")
 
-LATEX_FILE = Path("config/latex_templates.toml")
-LATEX_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
-LATEX_FILE.parent.mkdir(exist_ok=True)
-LATEX_FILE.touch()
-LATEX_TEMPLATES = toml.loads(open(LATEX_FILE.absolute(), "r").read())
+_LATEX_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
+_LATEX_FILE.parent.mkdir(exist_ok=True)
+_LATEX_FILE.touch()
+LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
 
-_LATEX_PAGE_HEADER = """\n\\noindent\\makebox[\\textwidth]{
-\\large\\textbf{TITLEGOESHERE}%
-  \\hfill \\hspace{-2.5cm} DATEGOESHERE
-
-}\\newline\\textbf{by AUTHORGOESHERE}\\newline"""
 _LATEX_PAGE_HEADER = LATEX_TEMPLATES["page_header"]
-_LATEX_DOC_HEADER = """\\documentclass[12pt]{article}
-\\usepackage[a4paper,
-            bindingoffset=0.2in,
-            left=0.5in,
-            right=0.5in,
-            top=0.5in,
-            bottom=0.5in,
-            footskip=.25in]{geometry}
-\\begin{document}
-\\pagenumbering{gobble}"""
 _LATEX_DOC_HEADER = LATEX_TEMPLATES["doc_header"]
 
-PAGEBREAK = """
-.. raw:: pdf
+_CONFIG_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "config.toml"
+_CONFIG_FILE.parent.mkdir(exist_ok=True)
+_CONFIG_FILE.touch()
+CONFIGURATION = toml.loads(open(_CONFIG_FILE.absolute(), "r").read())
 
-    PageBreak"""
-
-WEEKDAYS = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-]
-MONTHS = [
-    0,
-    "Jan",
-    "Feb",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "Aug",
-    "Sept",
-    "Oct",
-    "Nov",
-    "Dec",
-]
-
-SYSTEM_INSTRUCTION = """You are helping a student comprehend a passage by asking a few probing questions.  All questions should be one sentence at most.
-
-The first question begins:
-
-"Circle or highlight the section of the passage which ..."
-
-For the second question, supply the student with the definition of a vocabulary word from the passage and instruct them to determine which word matches the definition.  The second question begins:
-
-"What word from the text means... "
-
-For 3rd and last question, ask a question that probes the reader's overall understanding of the passage."""
+_WEEKDAYS = CONFIGURATION["constants"]["weekdays"]
+_MONTHS = CONFIGURATION["constants"]["months"]
+_SYSTEM_INSTRUCTION = CONFIGURATION["constants"]["instruction"]
 
 
 @app.command("ingest")
@@ -121,14 +70,13 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         chapter_text = chapter_pattern.split(chapter_text)[0]
         subsections = []
 
-        breakpoint()
         section_titles = section_pattern.findall(chapter_text)
         section_titles = [e.strip() for e in section_titles]
         section_titles.insert(0, full_chapter)
         section_texts = section_pattern.sub(r"SPLIT_CHAPTER_HERE", chapter_text).split(
             "SPLIT_CHAPTER_HERE"
         )
-        breakpoint()
+
         for i, section_title in enumerate(section_titles):
             subsections.append(
                 {"title": section_title, "text": section_texts[i].rstrip()}
@@ -184,23 +132,22 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
     start = datetime.datetime.today()
     days = [start + datetime.timedelta(days=i) for i in range(30)]
     dates = [
-        f"{WEEKDAYS[day.weekday()]} {MONTHS[day.month]} {day.day}, {day.year}"
+        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
         for day in days
     ]
 
     with shelve.open(_BOOKS_FILE.name) as db:
+        breakpoint()
         book = db[target]["book"]
         title = db[target]["title"]
         author = db[target]["author"]
         book_size = len(book)
         for index in range(n):
-            underline = "#" * len(book[(PROGRESS_INDEX + index) % book_size]["title"])
-
             if not debug:
                 response = GPT_CLIENT.chat.completions.create(
                     model="gpt-4",
                     messages=[
-                        {"role": "system", "content": SYSTEM_INSTRUCTION},
+                        {"role": "system", "content": _SYSTEM_INSTRUCTION},
                         {
                             "role": "user",
                             "content": book[(PROGRESS_INDEX + index) % book_size][
@@ -221,13 +168,12 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
             dated_header = re.sub("DATEGOESHERE", dates[index], _LATEX_PAGE_HEADER)
             titled_header = re.sub("TITLEGOESHERE", title, dated_header)
             authored_header = re.sub("AUTHORGOESHERE", author, titled_header)
-            breakpoint()
             mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}\\newpage"
 
         mytext = re.sub(pattern=r"&", repl=r"\\&", string=mytext)
         print(mytext)
         fp = open(
-            f"English Reading {MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex",
+            f"English Reading {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex",
             "w",
             encoding="utf-8",
         )

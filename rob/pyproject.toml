@@ -1,9 +1,9 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.82"
+version = "0.3.85"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
-include = ["config/clean.toml", "pyproject.toml", "data/word_list.txt"]
+include = ["config/clean.toml", "config/english/latex_templates.toml", "config/english/config.toml", "config/algebra/config.toml", "config/english/latex_templates.toml", "pyproject.toml", "data/word_list.txt"]
 exclude = []
 packages = [
     {include="rob", from=".."},
@@ -13,7 +13,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7.1"
+python = "^3.8.1"
 rich = "^11.2.0"
 toml = "^0.10.2"
 praw = "^7.5.0"
@@ -26,6 +26,8 @@ docopt = "^0.6.2"
 typer = {extras = ["all"], version = "^0.7.0"}
 pycaw = "^20230407"
 rocketry = "^2.5.1"
+WMI = "^1.5.1"
+gkeepapi = "^0.14.2"
 
 [tool.poetry.dev-dependencies]
 crosshair-tool = "^0.0.36"
