@@ -157,7 +157,7 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
                     ],
                 )
 
-                questions = response.choices[0].message.content
+                questions = str(response.choices[0].message.content)
                 lines = questions.split("\n")
 
                 questions = [line for line in lines if len(line) > 0]

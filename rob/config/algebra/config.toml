@@ -1,0 +1,11 @@
+[constants]
+weekdays = [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",]
+months = [ "N/a", "Jan", "Feb", "March", "April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec",]
+variables = [ "x", "y", "z", "a", "b", "c", "k", "m", "n", "i", "p", "q",]
+
+[weights]
+generate_simple_x_expression = 1000
+generate_expression_evaluation = 1000
+generate_simple_x_equation = 1000
+generate_decimal_x_equation = 1000
+generate_variable_isolation = 1000

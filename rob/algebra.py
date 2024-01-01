@@ -7,15 +7,18 @@ import pathlib
 import random
 
 import appdirs
+import survey
 import toml
 import typer
+
+app = typer.Typer()
 
 _DEBUG = False
 
 _THIS_FILE = pathlib.Path(__file__)
 
 # LATEX_FILE = pathlib.Path("config/latex_templates.toml")
-_LATEX_FILE = _THIS_FILE / "config" / "algebra" / "latex_templates.toml"
+_LATEX_FILE = _THIS_FILE.parent / "config" / "algebra" / "latex_templates.toml"
 _LATEX_FILE.parent.mkdir(exist_ok=True)
 _LATEX_FILE.touch()
 _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
@@ -25,8 +28,12 @@ _SAVE_FILE = (
 )
 if not _SAVE_FILE.exists():
     # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
-    NEW_SAVE_FILE = _THIS_FILE / "config" / "algebra" / "config.toml"
+    NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
     _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
+    _SAVE_FILE.parent.mkdir(exist_ok=True)
+    _SAVE_FILE.touch()
+    toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.name, "w"))
+
 else:
     _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
 
@@ -41,9 +48,17 @@ _DATES = [
     for day in _days
 ]
 
+# To write a new algebra problem generator you must:
+# * begin the function name with 'generate'
+# * return a 2-tuple of strings ('problem', 'answer')
+# * the last line of the doc string should describe or name the problem type
+
 
 def generate_simple_x_expression(rarity: int = 1000) -> tuple[str, str]:
-    """Generate an expression in one variable where coefficients and exponents are all integers."""
+    """Generate an expression in one variable where coefficients and exponents are all integers.
+    Problem Description:
+    Simplifying Expressions"""
+
     difficulty = int(3 - math.log(rarity, 10))
     term_count = random.randint(2, 2 + difficulty)
     # variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
@@ -72,7 +87,9 @@ def generate_simple_x_expression(rarity: int = 1000) -> tuple[str, str]:
 
 
 def generate_expression_evaluation(rarity: int = 1000) -> tuple[str, str]:
-    """Generate an expression in one variable where coefficients and exponents are all integers."""
+    """Generate an expression in one variable where coefficients and exponents are all integers.
+    Problem Description:
+    Evaluating Expressions"""
 
     term_count = random.randint(2, 4)
     # variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
@@ -120,11 +137,11 @@ def generate_expression_evaluation(rarity: int = 1000) -> tuple[str, str]:
 
 
 def generate_simple_x_equation(rarity: int = 1000) -> tuple[str, str]:
-    # variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
-    variable = random.choice(_VARIABLES)
+    """Generate a single variable equation.
+    Problem Description:
+    Solving Equations with One Variable"""
 
-    # factor1 = random.randint(2, 7)
-    # factor2 = random.randint(2, 7)
+    variable = random.choice(_VARIABLES)
 
     dist_coef = random.randint(2, 3)  # distribution coef i.e.,the 2 in '2(x+1)'
     dist_offset = random.randint(1, 9)  # distribution offset i.e., the 1 in '2(x+1)'
@@ -182,6 +199,10 @@ def random_decimal(n="0.05"):
 
 
 def generate_decimal_x_equation(rarity: int = 1000) -> tuple[str, str]:
+    """Generate an equation with decimal coefficients.
+    Problem Description:
+    Solving Equations with Decimal Coefficients"""
+
     variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
 
     left_c = decimal.Decimal(0)
@@ -222,6 +243,10 @@ def generate_decimal_x_equation(rarity: int = 1000) -> tuple[str, str]:
 
 
 def generate_variable_isolation(rarity: int = 1000) -> tuple[str, str]:
+    """Generate a linear equation with 2 variables.
+    Problem Description:
+    Isolating Variables in a Linear Equation"""
+
     variable = random.choice(["x"])
     unknown = random.choice(["y"])
 
@@ -274,33 +299,21 @@ def generate_variable_isolation(rarity: int = 1000) -> tuple[str, str]:
     )
 
 
-WEIGHTS = []
-PROBLEM_GENERATORS = [e for e in locals() if "generate" in e]
-for generator in PROBLEM_GENERATORS:
-    if generator not in _SAVE_DATA["weights"].keys():
-        _SAVE_DATA["weights"][generator] = 1000
+@app.command("weights")
+def print_weights() -> None:
+    """List the frequency weights for each problem type."""
 
-    WEIGHTS.append(1 + _SAVE_DATA["weights"][generator])
-
-    # if _SAVE_DATA["weights"][generator]:
-    #     WEIGHTS.append(_SAVE_DATA["weights"][generator])
-    # else:
-    #     WEIGHTS.append(1)
-
-for generator in list(_SAVE_DATA["weights"].keys()):
-    if generator not in globals().keys():
-        del _SAVE_DATA["weights"][generator]
-
-_SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
-_SAVE_DATA["constants"]["months"] = _MONTHS
-_SAVE_DATA["constants"]["variables"] = _VARIABLES
-
-toml.dump(o=_SAVE_DATA, f=open(SAVE_FILE.absolute(), "w"))
+    for problem in _PROBLEM_GENERATORS:
+        statement = globals()[problem].__doc__.split("\n")[-1]
+        print(f"{statement}: {_SAVE_DATA['weights'][problem]}")
 
 
-def render_latex(page_count: int = 1, problem_count: int = 4) -> str:
+# @app.callback(invoke_without_command=True)
+@app.command("render")
+def render_latex(
+    page_count: int = 1, problem_count: int = 4, debug: bool = False
+) -> None:
     """Return a string coding for {page_count} pages of LaTeX algebra problems."""
-
     pages = []
     solutions = []
 
@@ -313,8 +326,7 @@ def render_latex(page_count: int = 1, problem_count: int = 4) -> str:
         page_header = _DATES[i].join(parts)
 
         problems = ""
-
-        generators = random.sample(PROBLEM_GENERATORS, k=problem_count, counts=WEIGHTS)
+        generators = random.sample(_PROBLEM_GENERATORS, k=problem_count, counts=WEIGHTS)
 
         for k, generator in enumerate(generators):
             if k % 3 == 0 and k != 0:
@@ -336,7 +348,7 @@ def render_latex(page_count: int = 1, problem_count: int = 4) -> str:
 
     doc_footer = r"\end{document}"
 
-    return (
+    document = (
         doc_header
         + r"\newpage".join(pages)
         + r"\newpage "
@@ -344,15 +356,70 @@ def render_latex(page_count: int = 1, problem_count: int = 4) -> str:
         + doc_footer
     )
 
+    document_name = f"Algebra Homework {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex"
 
-def main():
-    fp = open("Algebra.tex", "w")
-    fp.write(render_latex(page_count=7))
+    print(f"Writing LaTeX document to '{document_name}")
+
+    fp = open(document_name, "w")
+    fp.write(document)
     fp.close()
 
-    if not _DEBUG:
+    if not debug:
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
+
+@app.command("config")
+def configure_problem_set():
+    name_to_description = {
+        name: globals()[name].__doc__.split("\n")[-1].strip()
+        for name in _PROBLEM_GENERATORS
+    }
+    description_to_name = {
+        globals()[name].__doc__.split("\n")[-1].strip(): name
+        for name in _PROBLEM_GENERATORS
+    }
+
+    form = {
+        name_to_description[problem_type]: survey.widgets.Count(
+            value=_SAVE_DATA["weights"][problem_type]
+        )
+        for problem_type in _PROBLEM_GENERATORS
+    }
+
+    data = survey.routines.form(
+        "Frequency Weights (higher -> more frequent): ", form=form
+    )
+
+    if not data:
+        return
+
+    data = {description_to_name[desc]: data[desc] for desc in data.keys()}
+    _SAVE_DATA["weights"] = data
+    toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+    print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
+
+
+def main():
+    app()
+
+
+WEIGHTS = []
+_PROBLEM_GENERATORS = [e for e in locals() if "generate" in e]
+for generator in _PROBLEM_GENERATORS:
+    if generator not in _SAVE_DATA["weights"].keys():
+        _SAVE_DATA["weights"][generator] = 1000
+
+    WEIGHTS.append(1 + _SAVE_DATA["weights"][generator])
+
+for generator in list(_SAVE_DATA["weights"].keys()):
+    if generator not in globals().keys():
+        del _SAVE_DATA["weights"][generator]
+
+_SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
+_SAVE_DATA["constants"]["months"] = _MONTHS
+_SAVE_DATA["constants"]["variables"] = _VARIABLES
+
+toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 if __name__ == "__main__":
     main()
