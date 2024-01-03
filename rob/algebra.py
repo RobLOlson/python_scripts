@@ -12,6 +12,8 @@ import toml
 import typer
 
 app = typer.Typer()
+list_app = typer.Typer()
+app.add_typer(list_app, name="list")
 
 _DEBUG = False
 
@@ -26,6 +28,7 @@ _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
 _SAVE_FILE = (
     pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
 )
+
 if not _SAVE_FILE.exists():
     # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
     NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
@@ -41,8 +44,8 @@ _WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
 _MONTHS = _SAVE_DATA["constants"]["months"]
 _VARIABLES = _SAVE_DATA["constants"]["variables"]
 
-_start = datetime.datetime.today()
-_days = [_start + datetime.timedelta(days=i) for i in range(30)]
+_START = datetime.datetime.today()
+_days = [_START + datetime.timedelta(days=i) for i in range(30)]
 _DATES = [
     f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
     for day in _days
@@ -50,16 +53,17 @@ _DATES = [
 
 # To write a new algebra problem generator you must:
 # * begin the function name with 'generate'
-# * return a 2-tuple of strings ('problem', 'answer')
+# * return a 2-tuple of strings ('TeX problem', 'answer')
 # * the last line of the doc string should describe or name the problem type
 
 
-def generate_simple_x_expression(rarity: int = 1000) -> tuple[str, str]:
+def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate an expression in one variable where coefficients and exponents are all integers.
     Problem Description:
     Simplifying Expressions"""
 
-    difficulty = int(3 - math.log(rarity, 10))
+    difficulty = int(3 - math.log(freq_weight, 10))
+
     term_count = random.randint(2, 2 + difficulty)
     # variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
     variable = random.choice(_VARIABLES)
@@ -86,7 +90,7 @@ def generate_simple_x_expression(rarity: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_expression_evaluation(rarity: int = 1000) -> tuple[str, str]:
+def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate an expression in one variable where coefficients and exponents are all integers.
     Problem Description:
     Evaluating Expressions"""
@@ -136,7 +140,7 @@ def generate_expression_evaluation(rarity: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_simple_x_equation(rarity: int = 1000) -> tuple[str, str]:
+def generate_simple_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate a single variable equation.
     Problem Description:
     Solving Equations with One Variable"""
@@ -198,7 +202,7 @@ def random_decimal(n="0.05"):
     ) / decimal.Decimal(100)
 
 
-def generate_decimal_x_equation(rarity: int = 1000) -> tuple[str, str]:
+def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate an equation with decimal coefficients.
     Problem Description:
     Solving Equations with Decimal Coefficients"""
@@ -242,7 +246,7 @@ def generate_decimal_x_equation(rarity: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_variable_isolation(rarity: int = 1000) -> tuple[str, str]:
+def generate_variable_isolation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate a linear equation with 2 variables.
     Problem Description:
     Isolating Variables in a Linear Equation"""
@@ -299,7 +303,7 @@ def generate_variable_isolation(rarity: int = 1000) -> tuple[str, str]:
     )
 
 
-@app.command("weights")
+@list_app.command("weights")
 def print_weights() -> None:
     """List the frequency weights for each problem type."""
 
@@ -308,18 +312,17 @@ def print_weights() -> None:
         print(f"{statement}: {_SAVE_DATA['weights'][problem]}")
 
 
-# @app.callback(invoke_without_command=True)
 @app.command("render")
 def render_latex(
-    page_count: int = 1, problem_count: int = 4, debug: bool = False
+    assignment_count: int = 1, problem_count: int = 4, debug: bool = False
 ) -> None:
-    """Return a string coding for {page_count} pages of LaTeX algebra problems."""
+    """Return a string coding for {assignment_count} pages of LaTeX algebra problems."""
     pages = []
     solutions = []
 
     doc_header = _LATEX_TEMPLATES["doc_header"]
 
-    for i in range(page_count):
+    for i in range(assignment_count):
         solution = rf"{_DATES[i]}\\"
         page_header = _LATEX_TEMPLATES["page_header"]
         parts = page_header.split("INSERT_DATE_HERE")
@@ -333,7 +336,7 @@ def render_latex(
                 problems += r"\newpage"
 
             # call candidate generator function
-            candidate = globals()[generator](rarity=WEIGHTS[k])
+            candidate = globals()[generator](freq_weight=WEIGHTS[k])
             _SAVE_DATA["weights"][generator] = int(
                 _SAVE_DATA["weights"][generator] * 0.9
             )
@@ -368,19 +371,37 @@ def render_latex(
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 
+@app.command("reset")
+def reset_weights(debug: bool = True):
+    """Reset problem frequency rates to default."""
+
+    # weights: dict[str, int] = _SAVE_DATA["weights"]
+    for key in _SAVE_DATA["weights"].keys():
+        _SAVE_DATA["weights"][key] = 1000
+
+    if not debug:
+        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+        print("Frequency weights reset to default (1000).")
+    else:
+        print("Invoke with --no-debug to save changes.")
+    exit(0)
+
+
 @app.command("config")
 def configure_problem_set():
-    name_to_description = {
-        name: globals()[name].__doc__.split("\n")[-1].strip()
-        for name in _PROBLEM_GENERATORS
-    }
-    description_to_name = {
-        globals()[name].__doc__.split("\n")[-1].strip(): name
-        for name in _PROBLEM_GENERATORS
-    }
+    """Configures the frequency rates of problems."""
+
+    # name_to_description = {
+    #     name: globals()[name].__doc__.split("\n")[-1].strip()
+    #     for name in _PROBLEM_GENERATORS
+    # }
+    # description_to_name = {
+    #     globals()[name].__doc__.split("\n")[-1].strip(): name
+    #     for name in _PROBLEM_GENERATORS
+    # }
 
     form = {
-        name_to_description[problem_type]: survey.widgets.Count(
+        _NAME_TO_DESCRIPTION[problem_type]: survey.widgets.Count(
             value=_SAVE_DATA["weights"][problem_type]
         )
         for problem_type in _PROBLEM_GENERATORS
@@ -393,10 +414,55 @@ def configure_problem_set():
     if not data:
         return
 
-    data = {description_to_name[desc]: data[desc] for desc in data.keys()}
+    data = {_DESCRIPTION_TO_NAME[desc]: data[desc] for desc in data.keys()}
     _SAVE_DATA["weights"] = data
     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
+
+
+@app.callback(invoke_without_command=True)
+def default(ctx: typer.Context, debug: bool = False):
+    """Invoke the module to create algebra problems in LaTeX."""
+    if ctx.invoked_subcommand:
+        return
+
+    descriptions = [description for description in _DESCRIPTION_TO_NAME.keys()]
+
+    problem_types = survey.routines.basket(
+        "Select problem types to include.", options=descriptions
+    )
+
+    start_date = survey.routines.datetime(
+        "Select assignment date: ",
+        attrs=("month", "day", "year"),
+    )
+    assignment_count = survey.routines.numeric(
+        "How many algebra assignments to generate? ", decimal=False, value=5
+    )
+    problem_count = survey.routines.numeric(
+        "How many problems per assignment? ", decimal=False, value=4
+    )
+    start = datetime.datetime.today()
+    days = [start + datetime.timedelta(days=i) for i in range(30)]
+
+    global _DATES
+    _DATES = [
+        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
+        for day in days
+    ]
+
+    render_latex(
+        assignment_count=assignment_count, problem_count=problem_count, debug=debug
+    )
+
+
+@list_app.callback(invoke_without_command=True)
+def list_default(ctx: typer.Context):
+    """List problem types, frequency weights, etc."""
+    if ctx.invoked_subcommand:
+        return
+
+    print("NO SUBCOMMAND")
 
 
 def main():
@@ -410,6 +476,18 @@ for generator in _PROBLEM_GENERATORS:
         _SAVE_DATA["weights"][generator] = 1000
 
     WEIGHTS.append(1 + _SAVE_DATA["weights"][generator])
+
+# mapping of problem function name to problem description
+_NAME_TO_DESCRIPTION = {
+    name: globals()[name].__doc__.split("\n")[-1].strip()
+    for name in _PROBLEM_GENERATORS
+}
+
+# mapping of problem description to problem function name
+_DESCRIPTION_TO_NAME = {
+    globals()[name].__doc__.split("\n")[-1].strip(): name
+    for name in _PROBLEM_GENERATORS
+}
 
 for generator in list(_SAVE_DATA["weights"].keys()):
     if generator not in globals().keys():

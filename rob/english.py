@@ -8,6 +8,8 @@ import toml
 import typer
 from openai import OpenAI
 
+from . import tomlshelve
+
 app = typer.Typer()
 
 GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
@@ -15,11 +17,17 @@ GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
 _THIS_FILE = Path(__file__)
 
 _BOOKS_FILE = (
-    Path(appdirs.user_data_dir()) / "robolson" / "data" / "english" / "books.pkl"
+    Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "books.toml"
 )
 _PROGRESS_FILE = (
-    Path(appdirs.user_data_dir()) / "robolson" / "data" / "english" / "progress.pkl"
+    Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "progress.toml"
 )
+
+_BOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+_PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+_BOOKS_FILE.touch()
+_PROGRESS_FILE.touch()
 
 _LATEX_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
 _LATEX_FILE.parent.mkdir(exist_ok=True)
@@ -49,11 +57,13 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
     SUBSECTION IN ALL CAPS
     One line of text per paragraph."""
 
+    target = Path(target).name
+
     fp = open(target, "r", encoding="utf-8")
     lines = fp.readlines()
 
-    title = lines[0]
-    author = lines[1]
+    title = lines[0].strip()
+    author = lines[1].strip()
 
     text = "\n".join(lines[2:])
 
@@ -109,19 +119,25 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
                 book.append(section)
 
     if not debug:
-        with shelve.open(_BOOKS_FILE.name) as db:
+        with tomlshelve.open(str(_BOOKS_FILE)) as db:
             db[target] = {"book": book, "author": author, "title": title}
+
+    # with tomlshelve.open(str(_BOOKS_FILE) + ".toml") as db:
+    #     breakpoint()
+    #     db[target] = {"book": book, "author": author, "title": title}
 
 
 @app.command("set_progress")
 def set_progress(target: str, progress: int = 0):
-    with shelve.open(_PROGRESS_FILE.name) as db:
+    with tomlshelve.open(str(_PROGRESS_FILE)) as db:
         db[target] = progress
 
 
 @app.command("generate")
 def generate_pages(target: str, n: int = 7, debug: bool = True):
-    with shelve.open(_PROGRESS_FILE.name) as db:
+    target = Path(target).name
+
+    with tomlshelve.open(str(_PROGRESS_FILE)) as db:
         if target in db.keys():
             PROGRESS_INDEX = db[target]
         else:
@@ -136,8 +152,12 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
         for day in days
     ]
 
-    with shelve.open(_BOOKS_FILE.name) as db:
-        breakpoint()
+    # with shelve.open(_BOOKS_FILE.name) as db:
+    with tomlshelve.open(str(_BOOKS_FILE)) as db:
+        if target not in db.keys():
+            print(f"{target} not ingested.")
+            return
+
         book = db[target]["book"]
         title = db[target]["title"]
         author = db[target]["author"]
@@ -182,7 +202,7 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
         fp.write(mytext)
 
     if not debug:
-        with shelve.open(_PROGRESS_FILE.name) as db:
+        with tomlshelve.open(str(_PROGRESS_FILE)) as db:
             db[target] = PROGRESS_INDEX + n
 
 

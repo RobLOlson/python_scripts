@@ -5,17 +5,16 @@ from pathlib import Path
 import rich
 import toml
 
-_EXCLUSIONS = ["__init__", "__main__"]
+_EXCLUSIONS = ["__init__", "__main__", "tomldict", "tomlshelve", "help"]
 
 
 def main():
-
     tom = toml.load(Path(__file__).parent / "pyproject.toml")
     version = tom["tool"]["poetry"]["version"]
     package_name = tom["tool"]["poetry"]["name"]
 
     rich.print(
-        f"[red]Rob's Utility Scripts[/red]\n[green]Version: {version}[/green]\n\nAvailable scripts (pass -h for CLI usage):"
+        f"[red]Rob's Utility Scripts[/red]\n[green]Version: {version}[/green]\n\nAvailable scripts (pass --help for CLI usage):"
     )
 
     scripts = []
