@@ -5,6 +5,7 @@ import math
 import operator
 import pathlib
 import random
+from typing import Callable
 
 import appdirs
 import survey
@@ -12,7 +13,7 @@ import toml
 import typer
 
 app = typer.Typer()
-list_app = typer.Typer()
+list_app = typer.Typer(no_args_is_help=True)
 app.add_typer(list_app, name="list")
 
 _DEBUG = False
@@ -45,11 +46,46 @@ _MONTHS = _SAVE_DATA["constants"]["months"]
 _VARIABLES = _SAVE_DATA["constants"]["variables"]
 
 _START = datetime.datetime.today()
-_days = [_START + datetime.timedelta(days=i) for i in range(30)]
+_DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
 _DATES = [
     f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
-    for day in _days
+    for day in _DAYS
 ]
+
+
+class ProblemCategory:
+    """Represents a category of algebra problem.
+    Must supply the logic for generating a problem statement as a valid function.
+    Function must include a description of the problem type as the last line of its docstring.
+    """
+
+    def __init__(self, logic: Callable, weight: int):
+        self.name = logic.__name__
+        self.weight = weight
+        self.logic = logic
+        if logic.__doc__:
+            self.description = logic.__doc__.split("\n")[-1].strip()
+        else:
+            print(f"Problem generator requires docstring: {logic.__name__}")
+            exit(0)
+        self.long_description = f"{self.description} ({self.weight})"
+
+    def generate(self):
+        """Return a tuple of strings ('problem statement', 'solution')"""
+
+        # return self.logic(self.weight)
+        problem, solution = self.logic(self.weight)
+        return Problem(problem, solution, self.name)
+
+
+class Problem:
+    """Represents a specific algebra problem and its solution."""
+
+    def __init__(self, problem: str, solution: str, name: str):
+        self.problem = rf"\item {problem}"
+        self.solution = solution
+        self.name = name
+
 
 # To write a new algebra problem generator you must:
 # * begin the function name with 'generate'
@@ -314,40 +350,80 @@ def print_weights() -> None:
 
 @app.command("render")
 def render_latex(
-    assignment_count: int = 1, problem_count: int = 4, debug: bool = False
+    assignment_count: int = 1,
+    problem_count: int = 4,
+    debug: bool = False,
+    threshold: int = 0,
+    problem_set=None,  # type: ignore
 ) -> None:
     """Return a string coding for {assignment_count} pages of LaTeX algebra problems."""
+
+    if not problem_set:
+        problem_set: list[ProblemCategory] = _ALL_PROBLEMS
+
     pages = []
     solutions = []
 
     doc_header = _LATEX_TEMPLATES["doc_header"]
 
     for i in range(assignment_count):
-        solution = rf"{_DATES[i]}\\"
+        solution_set = rf"{_DATES[i]}\\"
         page_header = _LATEX_TEMPLATES["page_header"]
         parts = page_header.split("INSERT_DATE_HERE")
         page_header = _DATES[i].join(parts)
 
-        problems = ""
-        generators = random.sample(_PROBLEM_GENERATORS, k=problem_count, counts=WEIGHTS)
+        problem_statement = ""
 
-        for k, generator in enumerate(generators):
+        # generators = random.sample(_PROBLEM_GENERATORS, k=problem_count, counts=WEIGHTS)
+        problem_generators = random.sample(
+            problem_set,
+            k=problem_count,
+            counts=[problem.weight for problem in problem_set],
+        )
+
+        problems: list[Problem] = [problem.generate() for problem in problem_generators]
+
+        for k, problem in enumerate(problems):
             if k % 3 == 0 and k != 0:
-                problems += r"\newpage"
+                problem_statement += r"\newpage"
 
-            # call candidate generator function
-            candidate = globals()[generator](freq_weight=WEIGHTS[k])
-            _SAVE_DATA["weights"][generator] = int(
-                _SAVE_DATA["weights"][generator] * 0.9
+            problem_statement += problem.problem
+            solution_set += rf"{k+1}: {problem.solution}\;\;"
+
+            _SAVE_DATA["weights"][problem.name] = int(
+                _SAVE_DATA["weights"][problem.name] * 0.9
             )
-            solution += rf"{k+1}: {candidate[1]}\;\;"
-            problem = rf"\item {candidate[0]}"
-            problems += problem
+
+        # for k, generator in enumerate(problem_generators):
+        #     if k % 3 == 0 and k != 0:
+        #         problem_statement += r"\newpage"
+
+        #     problem, solution = generator.generate()
+        #     problem = rf"\item {problem}"
+        #     problem_statement += problem
+        #     solution_set += rf"{k+1}: {solution}\;\;"
+
+        #     _SAVE_DATA["weights"][generator.name] = int(
+        #         _SAVE_DATA["weights"][generator.name] * 0.9
+        #     )
+
+        # for k, generator in enumerate(generators):
+        #     if k % 3 == 0 and k != 0:
+        #         problem_statement += r"\newpage"
+
+        #     # call candidate generator function
+        #     candidate = globals()[generator](freq_weight=WEIGHTS[k])
+        #     _SAVE_DATA["weights"][generator] = int(
+        #         _SAVE_DATA["weights"][generator] * 0.9
+        #     )
+        #     solution += rf"{k+1}: {candidate[1]}\;\;"
+        #     problem = rf"\item {candidate[0]}"
+        #     problem_statement += problem
 
         page_footer = r"\end{enumerate}"
         # solution += r"\\"
-        solutions.append(solution)
-        pages.append(page_header + problems + page_footer)
+        solutions.append(solution_set)
+        pages.append(page_header + problem_statement + page_footer)
 
     doc_footer = r"\end{document}"
 
@@ -428,22 +504,61 @@ def default(ctx: typer.Context, debug: bool = False):
 
     descriptions = [description for description in _DESCRIPTION_TO_NAME.keys()]
 
-    problem_types = survey.routines.basket(
-        "Select problem types to include.", options=descriptions
+    # long_descriptions = [
+    #     f"{description} ({_SAVE_DATA['weights'][_DESCRIPTION_TO_NAME[description]]})"
+    #     for name in _PROBLEM_GENERATORS
+    # ]
+
+    global _PROBLEM_GENERATORS
+
+    problem_indeces = survey.routines.basket(
+        "Select problem types to include.  (Numbers indicate relative frequency rate.)",
+        options=[problem.long_description for problem in _ALL_PROBLEMS],
     )
+
+    selected_problems = [_ALL_PROBLEMS[i] for i in problem_indeces]  # type: ignore
+
+    # long_descriptions: dict[str, str] = {
+    #     name: f"{_NAME_TO_DESCRIPTION[name]} ({_SAVE_DATA['weights'][name]})"
+    #     for name in _PROBLEM_GENERATORS
+    # }
+
+    # problem_indeces = survey.routines.basket(
+    #     "Select problem types to include.  (Numbers indicate relative frequency rate.)",
+    #     options=long_descriptions.values(),
+    # )
+
+    # problem_types = [k: f"{_NAME_TO_DESCRIPTION}" for ]
+
+    # if problem_types:
+    #     _PROBLEM_GENERATORS = [
+    #         k for k, v in long_descriptions.items() if v in [problem_types
+    #     ]
 
     start_date = survey.routines.datetime(
         "Select assignment date: ",
         attrs=("month", "day", "year"),
     )
+    if not start_date:
+        start_date = datetime.datetime.today()
+
     assignment_count = survey.routines.numeric(
         "How many algebra assignments to generate? ", decimal=False, value=5
     )
+
+    if not assignment_count:
+        assignment_count = 5
+
     problem_count = survey.routines.numeric(
         "How many problems per assignment? ", decimal=False, value=4
     )
-    start = datetime.datetime.today()
-    days = [start + datetime.timedelta(days=i) for i in range(30)]
+
+    if not problem_count:
+        problem_count = 4
+
+    days = [
+        start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)
+    ]
 
     global _DATES
     _DATES = [
@@ -452,7 +567,10 @@ def default(ctx: typer.Context, debug: bool = False):
     ]
 
     render_latex(
-        assignment_count=assignment_count, problem_count=problem_count, debug=debug
+        assignment_count=assignment_count,
+        problem_count=problem_count,
+        debug=debug,
+        problem_set=selected_problems,
     )
 
 
@@ -462,7 +580,7 @@ def list_default(ctx: typer.Context):
     if ctx.invoked_subcommand:
         return
 
-    print("NO SUBCOMMAND")
+    list_app.rich_help_panel
 
 
 def main():
@@ -476,6 +594,12 @@ for generator in _PROBLEM_GENERATORS:
         _SAVE_DATA["weights"][generator] = 1000
 
     WEIGHTS.append(1 + _SAVE_DATA["weights"][generator])
+
+_ALL_PROBLEMS = [
+    ProblemCategory(logic=v, weight=int(_SAVE_DATA["weights"][k]))
+    for k, v in locals().items()
+    if "generate" in k
+]
 
 # mapping of problem function name to problem description
 _NAME_TO_DESCRIPTION = {
