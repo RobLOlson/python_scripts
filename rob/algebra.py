@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import datetime
-import decimal
 import itertools
 import math
 import operator
 import pathlib
 import random
+import re
+from decimal import Decimal
 from typing import Callable
 
 import appdirs
@@ -53,6 +56,14 @@ _DATES = [
 ]
 
 
+class CoefficientError(Exception):
+    pass
+
+
+class UnlikeTermsError(Exception):
+    pass
+
+
 class ProblemCategory:
     """Represents a category of algebra problem.
     Must supply the logic for generating a problem statement as a valid function.
@@ -87,6 +98,345 @@ class Problem:
         self.name = name
 
 
+class Term:
+    """Represents a simple term."""
+
+    # term_pattern = re.compile(r"^(\d+|\d+\.\d+|-)?([a-z])?(?:\^(-?\d+\.?\d*))?$")
+    term_pattern = re.compile(r"^(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?$")
+
+    integer_pattern = re.compile(r"^\d+$")
+
+    def __init__(
+        self,
+        coefficient: str | int | float | None = None,
+        variable: str | None = None,
+        power: int | float | None = None,
+    ):
+        expression = self.term_pattern.match(str(coefficient))
+
+        if expression and not variable and not power:
+            coefficient, self.variable, inline_power = expression.groups()
+            if coefficient == "-":
+                coefficient = -1
+            if coefficient:
+                if int(float(coefficient)) - float(coefficient) == 0:
+                    self.coefficient = int(float(coefficient))
+                else:
+                    self.coefficient = float(coefficient)
+            else:
+                self.coefficient = 1
+
+            if inline_power != None:
+                if int(float(inline_power)) - float(inline_power) == 0:
+                    self.power = int(inline_power)
+                else:
+                    self.power = float(inline_power)
+
+                if not self.power:
+                    self.variable = None
+            else:
+                self.power = 1
+
+            # self.power = int(power) if power else 1
+
+            return
+
+        if coefficient:
+            if int(float(coefficient)) - float(coefficient) == 0:
+                self.coefficient = int(coefficient)
+            else:
+                self.coefficient = float(coefficient)
+        else:
+            self.coefficient = 1
+            # self.variable = variable
+            # self.power = 1
+            # return
+
+        # self.coefficient = float(coefficient) if coefficient else 0
+
+        if power is None:
+            self.power = 1
+            self.variable = variable
+        else:
+            if float(power) == 0:
+                self.variable = None
+                self.power = 1
+                return
+            elif int(float(power)) - float(power) == 0:
+                self.power = int(power)
+                # self.variable = variable
+            else:
+                self.power = float(power)
+                # self.variable = variable
+
+        self.variable = variable
+        # self.power = power if power else 1
+
+    @classmethod
+    def random_coef(cls, variable: str | None = None):
+        """Generate a first-order Term with a random coefficient in {2..9}."""
+
+        if not variable:
+            variable = random.choice(_VARIABLES)
+        coefficient = random.randint(1, 9)
+        return cls(coefficient=coefficient, variable=variable, power=None)
+
+    def __str__(self):
+        if not self.coefficient:
+            return "0"
+
+        if self.power == 1:
+            power = ""
+
+        else:
+            if type(self.power) == float:
+                numerator, denominator = self.power.as_integer_ratio()
+                power = rf"^\frac{{{numerator}}}{{{denominator}}}"
+            else:
+                power = rf"^{{{self.power}}}"
+
+        coefficient = self.coefficient if self.coefficient != 1 else ""
+
+        variable = self.variable if self.variable else ""
+
+        return rf"{coefficient}{variable}{power}"
+
+    def __repr__(self):
+        return f"Term(coefficient={self.coefficient}, variable={self.variable}, power={self.power})"
+
+    def __add__(self, __value: Term | Binomial) -> Term:
+        if type(__value) == Binomial:
+            __value = __value.simplify()
+            if type(__value) == Binomial:
+                raise UnlikeTermsError
+
+        assert type(__value) == Term
+
+        left = self.coefficient if self.coefficient else 1
+        right = __value.coefficient if __value.coefficient else 1
+
+        if self.variable != __value.variable or self.power != __value.power:
+            raise UnlikeTermsError
+
+        else:
+            coefficient = left + right
+            if coefficient == 0:
+                variable = None
+                power = 1
+            else:
+                variable = self.variable
+                power = self.power
+            return Term(
+                coefficient=coefficient, variable=self.variable, power=self.power
+            )
+
+    def __sub__(self, __value: Term) -> Term:
+        # left = self.coefficient if self.coefficient else 1
+        # right = __value.coefficient if __value.coefficient else 1
+
+        left = self.coefficient
+        right = __value.coefficient
+
+        if self.variable != __value.variable or self.power != __value.power:
+            raise CoefficientError
+        else:
+            coefficient = left - right
+            if coefficient == 0:
+                variable = None
+                power = 1
+            else:
+                variable = self.variable
+                power = self.power
+
+            return Term(coefficient=coefficient, variable=variable, power=power)
+
+    def __mul__(self, __value: Term) -> Term:
+        if self.variable and __value.variable and self.variable != __value.variable:
+            raise CoefficientError
+
+        left_power = self.power if self.variable else 0
+        right_power = __value.power if __value.variable else 0
+
+        new_power = left_power + right_power
+
+        if int(new_power) - new_power == 0:
+            new_power = int(new_power)
+
+        variable = self.variable if self.variable else __value.variable
+
+        return Term(
+            coefficient=round(self.coefficient * __value.coefficient, 2),
+            variable=variable,
+            power=new_power,
+        )
+
+    def __eq__(self, __value: Term) -> bool:
+        return (
+            self.coefficient == __value.coefficient
+            and self.variable == __value.variable
+            and self.power == __value.power
+        )
+
+    def __truediv__(self, __value: Term) -> Term:
+        if self.variable and __value.variable and self.variable != __value.variable:
+            raise CoefficientError
+
+        left_power = self.power if self.variable else 0
+        right_power = __value.power if __value.variable else 0
+
+        variable = self.variable if self.variable else __value.variable
+
+        return Term(
+            coefficient=round(float(self.coefficient) / float(__value.coefficient), 2),
+            variable=variable,
+            power=left_power - right_power,
+        )
+
+    def evaluated_at(self, val: int | float) -> int | float:
+        temp = val**self.power
+        if int(temp) - temp == 0:
+            temp = int(temp)
+
+        return temp * self.coefficient
+
+
+class Binomial:
+    """Represents the sum of two terms (with an optional multiplier)."""
+
+    basic_binomial_pattern = re.compile(
+        # r"^(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\s*(\+|\-)\s*(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?$"
+        # r"^(-?\d+\.?\d*|-)?\*?\((-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\s*(\+|\-)\s*(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\)"
+        r"^(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\*?\((-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\s*(\+|\-)\s*(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\)"
+    )
+
+    def __init__(
+        self,
+        # coefficient: int | float | str | None = None,
+        multiplier: str | Term | Binomial | None = None,
+        left: Term | Binomial | None = None,
+        right: Term | Binomial | None = None,
+    ):
+        expression = self.basic_binomial_pattern.match(str(multiplier))
+
+        if expression and not left and not right:
+            (
+                multiplier_coefficient,
+                multiplier_variable,
+                multiplier_power,
+                left_coefficient,
+                left_variable,
+                left_power,
+                sign,
+                right_coefficient,
+                right_variable,
+                right_power,
+            ) = expression.groups()
+
+            if not left_power:
+                left_power = 1
+
+            if not right_power:
+                right_power = 1
+
+            if not multiplier_power:
+                multiplier_power = 1
+
+            self.multiplier = Term(
+                multiplier_coefficient, multiplier_variable, float(multiplier_power)
+            )
+            self.left = Term(left_coefficient, left_variable, float(left_power))
+            self.right = Term(right_coefficient, right_variable, float(right_power))
+
+            # print(f"{right_coefficient}{right_variable}{right_power}")
+            if sign == "-":
+                self.right.coefficient *= -1
+
+            # self.coefficient = coefficient if coefficient != None else 1
+
+            # if int(float(self.coefficient)) - float(self.coefficient) == 0:
+            #     self.coefficient = int(self.coefficient)
+            # else:
+            #     self.coefficient = float(self.coefficient)
+            return
+
+        # self.coefficient = coefficient if coefficient != None else 1
+
+        # if int(float(self.coefficient)) - float(self.coefficient) == 0:
+        #     self.coefficient = int(self.coefficient)
+        # else:
+        #     self.coefficient = float(self.coefficient)
+
+        self.multiplier = multiplier if multiplier else Term(1)
+        self.left = left if left else Term(1)
+        self.right = right if right else Term(1)
+
+    def __repr__(self) -> str:
+        if self.multiplier == Term(1):
+            multiplier = ""
+        else:
+            multiplier = self.multiplier
+        return f"Binomial('{multiplier!s}({self.left!s} + {self.right!s})')"
+
+    def __add__(self, __value: Binomial | Term) -> Binomial | Term:
+        self_simple = self.simplify()
+        if type(__value) == Binomial:
+            other_simple = __value.simplify()
+        else:
+            other_simple = __value
+
+        if type(other_simple) == Term and type(self_simple) == Term:
+            if self_simple.variable == other_simple.variable:
+                return self_simple + __value
+
+        if type(other_simple) == Binomial and type(self_simple) == Binomial:
+            if (
+                self_simple.left == other_simple.left
+                and self_simple.right == other_simple.right
+            ):
+                # breakpoint()
+                new_coef = self_simple.coefficient + other_simple.coefficient
+
+                return Binomial(new_coef, self.left, self.right)
+
+            # if self_simple and other_simple:
+            #     if self_simple.variable == other_simple.variable:
+            #         return self_simple + other_simple
+
+        raise UnlikeTermsError
+
+    def simplify(self) -> Term | Binomial:
+        if (
+            self.left.variable == self.right.variable
+            and self.left.power == self.right.power
+        ):
+            # print(f"{self.left.variable}{self.right.variable}")
+            return Term(self.coefficient) * (self.left + self.right)
+
+        else:
+            return self
+
+
+class Expression:
+    """Represents a sum of terms and/or binomials."""
+
+    def __init__(self, terms: list[Term | Binomial] | None = None):
+        self.terms = terms
+
+
+class Equation:
+    """Represents a flat equation in one or more variables."""
+
+    def __init__(self, left=list[Term], right=list[Term]):
+        pass
+
+
+class Factor:
+    """Represents a multiplicative factor."""
+
+    def __init__(self, terms=list[Term] | Term, coefficient=int | None):
+        self.terms = terms
+
+
 # To write a new algebra problem generator you must:
 # * begin the function name with 'generate'
 # * return a 2-tuple of strings ('TeX problem', 'answer')
@@ -110,7 +460,7 @@ def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
         xs = []
         for i in range(random.randint(1, 3)):
             if random.randint(0, 1):
-                xs.append(variable)
+                xs.append(f"{random.randint(2,4)}({variable}+{random.randint(2,5)})")
             else:
                 xs.append(f"{random.randint(2,9)}{variable}")
 
@@ -232,10 +582,8 @@ def generate_simple_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
 
 def random_decimal(n="0.05"):
     """Return a fractional decimal rounded to the nearest 'n'"""
-    target = decimal.Decimal(n) * 100
-    return decimal.Decimal(
-        target * round(random.randint(1, 100) / target)
-    ) / decimal.Decimal(100)
+    target = Decimal(n) * 100
+    return Decimal(target * round(random.randint(1, 100) / target)) / Decimal(100)
 
 
 def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
@@ -245,19 +593,19 @@ def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
 
     variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
 
-    left_c = decimal.Decimal(0)
-    right_c = decimal.Decimal(random.randint(-9, 9)) + random.randint(
-        0, 3
-    ) * random_decimal("0.25")
-    delta_c = decimal.Decimal(random.randint(-9, 9)) + random.randint(
-        0, 3
-    ) * random_decimal("0.25")
+    left_c = Decimal(0)
+    right_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal(
+        "0.25"
+    )
+    delta_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal(
+        "0.25"
+    )
     left_c += delta_c
     right_c += delta_c
 
-    left_x = random.randint(1, 4) * decimal.Decimal("0.25")
-    right_x = decimal.Decimal(0)
-    delta_x = decimal.Decimal(random.randint(-3, 3))
+    left_x = random.randint(1, 4) * Decimal("0.25")
+    right_x = Decimal(0)
+    delta_x = Decimal(random.randint(-3, 3))
     left_x += delta_x
     right_x += delta_x
     left_x = f"{left_x}{variable}"
