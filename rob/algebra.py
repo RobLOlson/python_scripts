@@ -126,7 +126,7 @@ class Term:
             else:
                 self.coefficient = 1
 
-            if inline_power != None:
+            if inline_power is not None:
                 if int(float(inline_power)) - float(inline_power) == 0:
                     self.power = int(inline_power)
                 else:
@@ -141,7 +141,7 @@ class Term:
 
             return
 
-        if coefficient:
+        if coefficient is not None:
             if int(float(coefficient)) - float(coefficient) == 0:
                 self.coefficient = int(coefficient)
             else:
@@ -189,7 +189,8 @@ class Term:
             power = ""
 
         else:
-            if type(self.power) == float:
+            if isinstance(self.power, float):
+                # if type(self.power) == float:
                 numerator, denominator = self.power.as_integer_ratio()
                 power = rf"^\frac{{{numerator}}}{{{denominator}}}"
             else:
@@ -226,9 +227,8 @@ class Term:
             else:
                 variable = self.variable
                 power = self.power
-            return Term(
-                coefficient=coefficient, variable=self.variable, power=self.power
-            )
+
+        return Term(coefficient=coefficient, variable=variable, power=power)
 
     def __sub__(self, __value: Term) -> Term:
         # left = self.coefficient if self.coefficient else 1
@@ -247,7 +247,6 @@ class Term:
             else:
                 variable = self.variable
                 power = self.power
-
             return Term(coefficient=coefficient, variable=variable, power=power)
 
     def __mul__(self, __value: Term) -> Term:

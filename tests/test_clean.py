@@ -2,7 +2,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from click import decorators
+
+# from click import decorators
 
 # from hypothesis import given, strategies
 
