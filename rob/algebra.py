@@ -99,12 +99,10 @@ class Problem:
 
 
 class Term:
-    """Represents a simple term."""
+    """Represents a polynomial term."""
 
     # term_pattern = re.compile(r"^(\d+|\d+\.\d+|-)?([a-z])?(?:\^(-?\d+\.?\d*))?$")
     term_pattern = re.compile(r"^(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?$")
-
-    integer_pattern = re.compile(r"^\d+$")
 
     def __init__(
         self,
@@ -137,6 +135,9 @@ class Term:
             else:
                 self.power = 1
 
+            if not self.variable:
+                self.coefficient = self.coefficient**self.power
+                self.power = 1
             # self.power = int(power) if power else 1
 
             return
@@ -148,11 +149,6 @@ class Term:
                 self.coefficient = float(coefficient)
         else:
             self.coefficient = 1
-            # self.variable = variable
-            # self.power = 1
-            # return
-
-        # self.coefficient = float(coefficient) if coefficient else 0
 
         if power is None:
             self.power = 1
@@ -162,12 +158,12 @@ class Term:
                 self.variable = None
                 self.power = 1
                 return
-            elif int(float(power)) - float(power) == 0:
-                self.power = int(power)
-                # self.variable = variable
-            else:
-                self.power = float(power)
-                # self.variable = variable
+            self.power = int(power) if int(power) == float(power) else float(power)
+            # elif int(float(power)) - float(power) == 0:
+            #     self.power = int(power)
+
+            # else:
+            #     self.power = float(power)
 
         self.variable = variable
         # self.power = power if power else 1
@@ -200,23 +196,33 @@ class Term:
 
         variable = self.variable if self.variable else ""
 
+        if not variable and self.coefficient == 1:
+            coefficient = "1"
+
         return rf"{coefficient}{variable}{power}"
 
     def __repr__(self):
         return f"Term(coefficient={self.coefficient}, variable={self.variable}, power={self.power})"
 
-    def __add__(self, __value: Term | Binomial) -> Term:
+    def __add__(self, __value: Term | Binomial) -> Term | Binomial:
         if type(__value) == Binomial:
             __value = __value.simplify()
             if type(__value) == Binomial:
+                return Binomial(left=__value, right=self)
                 raise UnlikeTermsError
 
         assert type(__value) == Term
+
+        if __value == Term(0):
+            return self
+        if self == Term(0):
+            return __value
 
         left = self.coefficient if self.coefficient else 1
         right = __value.coefficient if __value.coefficient else 1
 
         if self.variable != __value.variable or self.power != __value.power:
+            return Binomial(left=self, right=__value)
             raise UnlikeTermsError
 
         else:
@@ -238,7 +244,7 @@ class Term:
         right = __value.coefficient
 
         if self.variable != __value.variable or self.power != __value.power:
-            raise CoefficientError
+            raise UnlikeTermsError
         else:
             coefficient = left - right
             if coefficient == 0:
@@ -249,19 +255,29 @@ class Term:
                 power = self.power
             return Term(coefficient=coefficient, variable=variable, power=power)
 
-    def __mul__(self, __value: Term) -> Term:
+    def __mul__(self, __value: Term | Binomial) -> Term | Binomial:
+        # multiplication between Term and Binomial is handled in Binomial class
+        if isinstance(__value, Binomial):
+            return __value * self
+
         if self.variable and __value.variable and self.variable != __value.variable:
-            raise CoefficientError
+            raise UnlikeTermsError
 
-        left_power = self.power if self.variable else 0
-        right_power = __value.power if __value.variable else 0
+        # left_power = self.power if self.variable else 1
+        # right_power = __value.power if __value.variable else 1
 
-        new_power = left_power + right_power
+        # new_power = left_power + right_power
+        new_coef = self.coefficient * __value.coefficient
+        new_power = self.power + __value.power
+        if not self.variable or not __value.variable:
+            new_power -= 1
 
         if int(new_power) - new_power == 0:
             new_power = int(new_power)
 
         variable = self.variable if self.variable else __value.variable
+        if not variable:
+            return Term(round(self.coefficient * __value.coefficient, 2))
 
         return Term(
             coefficient=round(self.coefficient * __value.coefficient, 2),
@@ -269,11 +285,17 @@ class Term:
             power=new_power,
         )
 
-    def __eq__(self, __value: Term) -> bool:
+    def __eq__(self, __value: Term | Binomial) -> bool:
+        simple_value = __value.simplify()
+        if isinstance(simple_value, Binomial):
+            return False
+
+        assert isinstance(simple_value, Term)
+
         return (
-            self.coefficient == __value.coefficient
-            and self.variable == __value.variable
-            and self.power == __value.power
+            self.coefficient == simple_value.coefficient
+            and self.variable == simple_value.variable
+            and self.power == simple_value.power
         )
 
     def __truediv__(self, __value: Term) -> Term:
@@ -291,8 +313,24 @@ class Term:
             power=left_power - right_power,
         )
 
+    def simplify(self) -> Term:
+        return self
+
+    def copy(self) -> Term:
+        return Term(
+            coefficient=self.coefficient, variable=self.variable, power=self.power
+        )
+
     def evaluated_at(self, val: int | float) -> int | float:
+        if not self.variable:
+            return self.coefficient
+
         temp = val**self.power
+        if isinstance(temp, complex):
+            # temp = round(temp.real, 2) + round(temp.imag, 2) * complex()
+            temp = complex(round(temp.real, 2), round(temp.imag, 2))
+            return temp * self.coefficient
+
         if int(temp) - temp == 0:
             temp = int(temp)
 
@@ -305,7 +343,7 @@ class Binomial:
     basic_binomial_pattern = re.compile(
         # r"^(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\s*(\+|\-)\s*(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?$"
         # r"^(-?\d+\.?\d*|-)?\*?\((-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\s*(\+|\-)\s*(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\)"
-        r"^(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\*?\((-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\s*(\+|\-)\s*(-?\d+\.?\d*|-)?([a-z])?(?:\^(-?\d+\.?\d*))?\)"
+        r"^(-?\d+\.?\d*|-)?([a-z])?(?:\^\{?(-?\d+\.?\d*)\}?)?\*?\(?(-?\d+\.?\d*|-)?([a-z])?(?:\^\{?(-?\d+\.?\d*)\}?)?\s*(\+|\-)\s*(-?\d+\.?\d*|-)?([a-z])?(?:\^\{?(-?\d+\.?\d*)\}?)?\)?(?:\^\{?(-?\d+\.?\d*)\}?)?$"
     )
 
     def __init__(
@@ -314,8 +352,11 @@ class Binomial:
         multiplier: str | Term | Binomial | None = None,
         left: Term | Binomial | None = None,
         right: Term | Binomial | None = None,
+        power: float | int | None = None,
     ):
         expression = self.basic_binomial_pattern.match(str(multiplier))
+        if expression and "(" not in multiplier:
+            expression = self.basic_binomial_pattern.match(f"({multiplier})")
 
         if expression and not left and not right:
             (
@@ -329,6 +370,7 @@ class Binomial:
                 right_coefficient,
                 right_variable,
                 right_power,
+                power,
             ) = expression.groups()
 
             if not left_power:
@@ -350,12 +392,11 @@ class Binomial:
             if sign == "-":
                 self.right.coefficient *= -1
 
-            # self.coefficient = coefficient if coefficient != None else 1
+            self.power = float(power) if power else 1
 
-            # if int(float(self.coefficient)) - float(self.coefficient) == 0:
-            #     self.coefficient = int(self.coefficient)
-            # else:
-            #     self.coefficient = float(self.coefficient)
+            # NEXT
+            # if self.multiplier
+
             return
 
         # self.coefficient = coefficient if coefficient != None else 1
@@ -368,18 +409,44 @@ class Binomial:
         self.multiplier = multiplier if multiplier else Term(1)
         self.left = left if left else Term(1)
         self.right = right if right else Term(1)
+        self.power = power if power else 1
 
     def __repr__(self) -> str:
         if self.multiplier == Term(1):
             multiplier = ""
         else:
             multiplier = self.multiplier
-        return f"Binomial('{multiplier!s}({self.left!s} + {self.right!s})')"
+
+        if self.power != 1:
+            power = rf"^{{{self.power}}}"
+        else:
+            power = ""
+        return f"Binomial('{multiplier!s}({self.left!s} + {self.right!s}){power}')"
+
+    def __eq__(self, __value: Binomial | Term) -> bool:
+        if isinstance(__value, Binomial):
+            assert isinstance(__value, Binomial)
+            if (self.left == __value.left and self.right == __value.right) or (
+                self.left == __value.right and self.right == __value.left
+            ):
+                if (
+                    self.multiplier == __value.multiplier
+                    and self.power == __value.power
+                ):
+                    return True
+        else:
+            assert isinstance(__value, Term)
+            if self.simplify() == __value:
+                return True
+
+        return False
 
     def __add__(self, __value: Binomial | Term) -> Binomial | Term:
         self_simple = self.simplify()
+
         if type(__value) == Binomial:
             other_simple = __value.simplify()
+
         else:
             other_simple = __value
 
@@ -387,13 +454,43 @@ class Binomial:
             if self_simple.variable == other_simple.variable:
                 return self_simple + __value
 
-        if type(other_simple) == Binomial and type(self_simple) == Binomial:
-            if (
+        if isinstance(other_simple, Term) and isinstance(self_simple, Binomial):
+            new_term = other_simple + self_simple.left
+            if isinstance(new_term, Term):
+                return Binomial(left=new_term, right=self_simple.right)
+            new_term = other_simple + self_simple.right
+            if isinstance(new_term, Term):
+                return Binomial(left=self_simple.left, right=new_term)
+            else:
+                # 3 candidate terms
+                return Binomial(left=self_simple, right=other_simple)
+                # one, two, three = self_simple.left, self_simple.right, other_simple
+
+                # terms_by_power = sorted(
+                #     [one, two, three],
+                #     key=lambda x: x.power if x.variable else 0,
+                #     reverse=True,
+                # )
+
+                # return Binomial(
+                #     left=Binomial(terms_by_power[0], terms_by_power[1]),
+                #     right=terms_by_power[2],
+                # )
+
+        if isinstance(other_simple, Binomial) and isinstance(self_simple, Binomial):
+            assert isinstance(self_simple, Binomial)
+            assert isinstance(other_simple, Binomial)
+
+            same_case = (
                 self_simple.left == other_simple.left
                 and self_simple.right == other_simple.right
-            ):
-                # breakpoint()
-                new_coef = self_simple.coefficient + other_simple.coefficient
+            )
+            symmetric_case = (
+                self_simple.left == other_simple.right
+                and self_simple.right == other_simple.left
+            )
+            if same_case or symmetric_case:
+                new_coef = self_simple.multiplier + other_simple.multiplier
 
                 return Binomial(new_coef, self.left, self.right)
 
@@ -401,18 +498,95 @@ class Binomial:
             #     if self_simple.variable == other_simple.variable:
             #         return self_simple + other_simple
 
+        return Binomial(left=self_simple, right=other_simple)
         raise UnlikeTermsError
 
-    def simplify(self) -> Term | Binomial:
-        if (
-            self.left.variable == self.right.variable
-            and self.left.power == self.right.power
-        ):
-            # print(f"{self.left.variable}{self.right.variable}")
-            return Term(self.coefficient) * (self.left + self.right)
+    def __mul__(self, __value: Binomial | Term) -> Binomial | Term:
+        simple_self = self.simplify()
+        simple_value = __value.simplify()
+
+        if isinstance(simple_self, Term):
+            return simple_self * __value
+
+        if isinstance(simple_value, Term):
+            assert isinstance(simple_self, Binomial)
+            assert isinstance(simple_value, Term)
+
+            try:
+                new_left = simple_self.left * simple_value
+                new_right = simple_self.right * simple_value
+                return Binomial(left=new_left, right=new_right)
+            except UnlikeTermsError:
+                pass
+
+            new_multiplier = simple_self.multiplier * simple_value
+            return Binomial(
+                multiplier=new_multiplier,
+                left=simple_self.left,
+                right=simple_self.right,
+                power=simple_self.power,
+            )
 
         else:
+            assert isinstance(simple_self, Binomial)
+            assert isinstance(simple_value, Binomial)
+            # terms inside parentheses are identical
+            if Binomial(left=simple_self.left, right=simple_self.right) == Binomial(
+                left=simple_value.left, right=simple_value.right
+            ):
+                return Binomial(
+                    multiplier=simple_self.multiplier * simple_value.multiplier,
+                    left=simple_self.left,
+                    right=simple_self.right,
+                    power=simple_self.power + simple_value.power,
+                )
+
+            if simple_self.power == 1 and simple_value.power == 1:
+                # Four products
+                one = simple_self.left * simple_value.left
+                two = simple_self.left * simple_value.right
+                three = simple_self.right * simple_value.left
+                four = simple_self.right * simple_value.right
+
+                return one + two + three + four
+
+    def __truediv__(self, __value: Binomial | Term) -> Binomial | Term:
+        reciprocal = __value.copy()
+        reciprocal.power *= -1
+
+        return self * reciprocal
+
+    def copy(self) -> Binomial:
+        return Binomial(
+            multiplier=self.multiplier,
+            left=self.left,
+            right=self.right,
+            power=self.power,
+        )
+
+    def simplify(self) -> Term | Binomial:
+        combined = self.left + self.right
+
+        try:
+            if isinstance(combined, Term):
+                return self.multiplier * combined
+
+            if self.power == 1:
+                new_left = self.left * self.multiplier
+                new_right = self.right * self.multiplier
+
+                return Binomial(left=new_left, right=new_right)
+
+        except UnlikeTermsError:
             return self
+        return self
+
+    def evaluated_at(self, n: int | float) -> int | float:
+        # assert type(self.multiplier) == (Term | Binomial)
+        assert isinstance(self.multiplier, Term | Binomial)
+        return self.multiplier.evaluated_at(n) * (
+            self.left.evaluated_at(n) + self.right.evaluated_at(n)
+        )
 
 
 class Expression:
@@ -740,32 +914,6 @@ def render_latex(
             _SAVE_DATA["weights"][problem.name] = int(
                 _SAVE_DATA["weights"][problem.name] * 0.9
             )
-
-        # for k, generator in enumerate(problem_generators):
-        #     if k % 3 == 0 and k != 0:
-        #         problem_statement += r"\newpage"
-
-        #     problem, solution = generator.generate()
-        #     problem = rf"\item {problem}"
-        #     problem_statement += problem
-        #     solution_set += rf"{k+1}: {solution}\;\;"
-
-        #     _SAVE_DATA["weights"][generator.name] = int(
-        #         _SAVE_DATA["weights"][generator.name] * 0.9
-        #     )
-
-        # for k, generator in enumerate(generators):
-        #     if k % 3 == 0 and k != 0:
-        #         problem_statement += r"\newpage"
-
-        #     # call candidate generator function
-        #     candidate = globals()[generator](freq_weight=WEIGHTS[k])
-        #     _SAVE_DATA["weights"][generator] = int(
-        #         _SAVE_DATA["weights"][generator] * 0.9
-        #     )
-        #     solution += rf"{k+1}: {candidate[1]}\;\;"
-        #     problem = rf"\item {candidate[0]}"
-        #     problem_statement += problem
 
         page_footer = r"\end{enumerate}"
         # solution += r"\\"
