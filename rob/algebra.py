@@ -8,6 +8,8 @@ import pathlib
 import random
 import re
 from decimal import Decimal
+from fractions import Fraction
+from functools import reduce
 from typing import Callable
 
 import appdirs
@@ -109,6 +111,7 @@ class Term:
         coefficient: str | int | float | None = None,
         variable: str | None = None,
         power: int | float | None = None,
+        show_fractions: bool = True,
     ):
         expression = self.term_pattern.match(str(coefficient))
 
@@ -140,6 +143,8 @@ class Term:
                 self.power = 1
             # self.power = int(power) if power else 1
 
+            self.show_fractions = show_fractions
+
             return
 
         if coefficient is not None:
@@ -158,6 +163,7 @@ class Term:
                 self.variable = None
                 self.power = 1
                 return
+
             self.power = int(power) if int(power) == float(power) else float(power)
             # elif int(float(power)) - float(power) == 0:
             #     self.power = int(power)
@@ -166,6 +172,7 @@ class Term:
             #     self.power = float(power)
 
         self.variable = variable
+        self.show_fractions = show_fractions
         # self.power = power if power else 1
 
     @classmethod
@@ -185,14 +192,22 @@ class Term:
             power = ""
 
         else:
-            if isinstance(self.power, float):
+            if isinstance(self.power, float) and self.show_fractions:
                 # if type(self.power) == float:
-                numerator, denominator = self.power.as_integer_ratio()
+                numerator, denominator = (
+                    Fraction(self.power).limit_denominator(100).as_integer_ratio()
+                )
                 power = rf"^\frac{{{numerator}}}{{{denominator}}}"
             else:
                 power = rf"^{{{self.power}}}"
 
         coefficient = self.coefficient if self.coefficient != 1 else ""
+
+        if isinstance(coefficient, float) and self.show_fractions:
+            numerator, denominator = (
+                Fraction(coefficient).limit_denominator(100).as_integer_ratio()
+            )
+            coefficient = rf"\frac{{{numerator}}}{{{denominator}}}"
 
         variable = self.variable if self.variable else ""
 
@@ -223,7 +238,6 @@ class Term:
 
         if self.variable != __value.variable or self.power != __value.power:
             return Binomial(left=self, right=__value)
-            raise UnlikeTermsError
 
         else:
             coefficient = left + right
@@ -423,21 +437,40 @@ class Binomial:
             power = ""
         return f"Binomial('{multiplier!s}({self.left!s} + {self.right!s}){power}')"
 
+    def __str__(self) -> str:
+        if self.multiplier == Term(1):
+            multiplier = ""
+        else:
+            multiplier = self.multiplier
+
+        if self.power != 1:
+            power = rf"^{{{self.power}}}"
+        else:
+            power = ""
+        return f"{multiplier!s}({self.left!s} + {self.right!s}){power}"
+
     def __eq__(self, __value: Binomial | Term) -> bool:
-        if isinstance(__value, Binomial):
-            assert isinstance(__value, Binomial)
-            if (self.left == __value.left and self.right == __value.right) or (
-                self.left == __value.right and self.right == __value.left
+        self_simple = self.simplify()
+        value_simple = __value.simplify()
+        if isinstance(self_simple, Term):
+            return self_simple == value_simple
+
+        if isinstance(value_simple, Binomial):
+            assert isinstance(self_simple, Binomial)
+            assert isinstance(value_simple, Binomial)
+
+            if (
+                self_simple.left == value_simple.left
+                and self_simple.right == value_simple.right
+            ) or (
+                self_simple.left == value_simple.right
+                and self_simple.right == value_simple.left
             ):
                 if (
-                    self.multiplier == __value.multiplier
-                    and self.power == __value.power
+                    self_simple.multiplier == value_simple.multiplier
+                    and self_simple.power == value_simple.power
                 ):
                     return True
-        else:
-            assert isinstance(__value, Term)
-            if self.simplify() == __value:
-                return True
 
         return False
 
@@ -480,6 +513,45 @@ class Binomial:
         if isinstance(other_simple, Binomial) and isinstance(self_simple, Binomial):
             assert isinstance(self_simple, Binomial)
             assert isinstance(other_simple, Binomial)
+
+            one = self_simple.left + other_simple.left
+            if other_simple.power == 1 and self_simple.power == 1:
+                if isinstance(one, Term):
+                    other = self_simple.right + other_simple.right
+                    if isinstance(other, Term):
+                        return Binomial(left=one, right=other)
+                    else:
+                        return Binomial(
+                            left=one,
+                            right=Binomial(
+                                left=self_simple.right, right=other_simple.right
+                            ),
+                        )
+                two = self_simple.left + other_simple.right
+                if isinstance(two, Term):
+                    other = self_simple.right + other_simple.left
+                    if isinstance(other, Term):
+                        return Binomial(left=two, right=other)
+                    else:
+                        return Binomial(
+                            left=two,
+                            right=Binomial(
+                                left=self_simple.right, right=other_simple.left
+                            ),
+                        )
+
+                three = self_simple.right + other_simple.right
+                if isinstance(three, Term):
+                    other = self_simple.left + other_simple.left
+                    if isinstance(other, Term):
+                        return Binomial(left=three, right=other)
+                    else:
+                        return Binomial(
+                            left=three,
+                            right=Binomial(
+                                left=self_simple.left, right=other_simple.left
+                            ),
+                        )
 
             same_case = (
                 self_simple.left == other_simple.left
@@ -584,8 +656,9 @@ class Binomial:
     def evaluated_at(self, n: int | float) -> int | float:
         # assert type(self.multiplier) == (Term | Binomial)
         assert isinstance(self.multiplier, Term | Binomial)
-        return self.multiplier.evaluated_at(n) * (
-            self.left.evaluated_at(n) + self.right.evaluated_at(n)
+        return (
+            self.multiplier.evaluated_at(n)
+            * (self.left.evaluated_at(n) + self.right.evaluated_at(n)) ** self.power
         )
 
 
@@ -626,26 +699,54 @@ def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     term_count = random.randint(2, 2 + difficulty)
     # variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
     variable = random.choice(_VARIABLES)
+    coefs = [-4, -3, -2, -1, 1, 2, 3, 4]
+
+    for n in range(-4, 4):
+        coefs.append(n)
+        coefs.append(n + 0.5)
 
     problem = "Simplify the following expression."
     terms = []
+    latex_problem = ""
+    solution_terms = []
+
     for term in range(term_count):
-        xs = []
-        for i in range(random.randint(1, 3)):
-            if random.randint(0, 1):
-                xs.append(f"{random.randint(2,4)}({variable}+{random.randint(2,5)})")
+        factors = []
+        latex_term = ""
+        for i in range(random.randint(1, 2 + difficulty)):
+            if random.random() > 0.8:
+                factors.append(
+                    Binomial(
+                        f"{random.choice(coefs)}({random.choice(coefs)}{variable}+{random.randint(1,5)})"
+                    )
+                )
+                # factors.append(f"{random.randint(2,4)}({variable}+{random.randint(2,5)})")
             else:
-                xs.append(f"{random.randint(2,9)}{variable}")
+                factors.append(
+                    Term(coefficient=random.randint(2, 9), variable=variable)
+                )
+                # factors.append(f"{random.randint(2,9)}{variable}")
 
-        if xs:
-            x_part = " \\cdot ".join(xs)
-            terms.append(x_part)
+            # breakpoint()
+            latex_term += f"{factors[-1]} \\cdot "
 
-    expression = f" {'+' if random.randint(0,1) else '-'} ".join(terms)
+        if factors:
+            latex_term = latex_term[:-7]
+            # latex_problem += " \\cdot ".join(factors)
+
+            latex_problem += f"{latex_term} + "
+            solution_terms.append(reduce(lambda x, y: x * y, factors))
+
+            terms.append(factors)
+
+    solution = reduce(lambda x, y: x + y, solution_terms)
+    latex_problem = latex_problem[:-3]
+
+    # expression = f" {'+' if random.randint(0,1) else '-'} ".join(terms)
 
     return (
-        rf"{problem} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\",
-        "Easy to check.",
+        rf"{problem} \\ \\ \({latex_problem}\) \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({solution}\)",
     )
 
 
