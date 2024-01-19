@@ -3,13 +3,16 @@ import re
 from pathlib import Path
 
 import appdirs
+import survey
 import toml
 import typer
 from openai import OpenAI
 
 from . import tomlshelve
 
-app = typer.Typer()
+app = typer.Typer(no_args_is_help=True)
+list_app = typer.Typer(no_args_is_help=True)
+app.add_typer(list_app, name="list")
 
 GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
 
@@ -44,6 +47,17 @@ CONFIGURATION = toml.loads(open(_CONFIG_FILE.absolute(), "r").read())
 _WEEKDAYS = CONFIGURATION["constants"]["weekdays"]
 _MONTHS = CONFIGURATION["constants"]["months"]
 _SYSTEM_INSTRUCTION = CONFIGURATION["constants"]["instruction"]
+
+_LINES = r"""
+\rule{\linewidth}{.5pt}
+\rule{\linewidth}{.5pt}
+\rule{\linewidth}{.5pt}
+\rule{\linewidth}{.5pt}
+\rule{\linewidth}{.5pt}
+\rule{\linewidth}{.5pt}
+\rule{\linewidth}{.5pt}
+\rule{\linewidth}{.5pt}
+"""
 
 
 @app.command("ingest")
@@ -126,10 +140,29 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
     #     db[target] = {"book": book, "author": author, "title": title}
 
 
-@app.command("set_progress")
-def set_progress(target: str, progress: int = 0):
-    with tomlshelve.open(str(_PROGRESS_FILE)) as db:
-        db[target] = progress
+@app.command("set-progress")
+def set_progress(target: str = None, progress: int = None):
+    """Set progress for registered books.
+    Future generation will proceed from the progress point."""
+
+    with tomlshelve.open(str(_PROGRESS_FILE)) as progress_db:
+        if target and (progress is not None):
+            progress_db[target] = progress
+            return
+
+        with tomlshelve.open(_BOOKS_FILE) as db:
+            form = {
+                k: survey.widgets.Count(
+                    value=progress_db[k] if k in progress_db.keys() else 0
+                )
+                for k in db.keys()
+            }
+
+        data = survey.routines.form("Set Progress:", form=form)
+        progress_db.update(data)
+
+    # survey.routines.select("Pick a book to ")
+    # survey.routines.numeric("")
 
 
 @app.command("generate")
@@ -187,15 +220,19 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
             dated_header = re.sub("DATEGOESHERE", dates[index], _LATEX_PAGE_HEADER)
             titled_header = re.sub("TITLEGOESHERE", title, dated_header)
             authored_header = re.sub("AUTHORGOESHERE", author, titled_header)
-            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}\\newpage"
+            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}{_LINES}\\newpage"
 
         mytext = re.sub(pattern=r"&", repl=r"\\&", string=mytext)
-        print(mytext)
         fp = open(
             f"English Reading {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex",
             "w",
             encoding="utf-8",
         )
+        if not debug:
+            print(f"Writing English homework to {fp.name}")
+        else:
+            print("Use '--no-debug' to save progress.")
+
         mytext += r"\end{document}"
 
         fp.write(mytext)
@@ -203,6 +240,21 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
     if not debug:
         with tomlshelve.open(str(_PROGRESS_FILE)) as db:
             db[target] = PROGRESS_INDEX + n
+
+
+@list_app.command("books")
+def list_books():
+    """List available books and current progress."""
+    progress_db = tomlshelve.open(_PROGRESS_FILE)
+
+    with tomlshelve.open(_BOOKS_FILE) as db:
+        for book in db.keys():
+            try:
+                current_progress = progress_db[book]
+            except KeyError:
+                current_progress = 0
+
+            print(f"{book} (Progress: {current_progress} / {len(db[book]['book'])})")
 
 
 if __name__ == "__main__":

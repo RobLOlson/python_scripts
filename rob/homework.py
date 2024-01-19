@@ -18,9 +18,19 @@ import sympy
 import toml
 import typer
 
-app = typer.Typer()
+from .english import app as english_app
+
+app = typer.Typer(no_args_is_help=True)
+algebra_app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
-app.add_typer(list_app, name="list")
+app.add_typer(algebra_app, name="algebra")
+app.add_typer(
+    english_app,
+    name="english",
+    help="Prepare and generate English homework assignments.",
+)
+algebra_app.add_typer(list_app, name="list")
+
 
 _DEBUG = False
 
@@ -58,6 +68,8 @@ _DATES = [
     for day in _DAYS
 ]
 
+_CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
+
 
 class CoefficientError(Exception):
     pass
@@ -71,8 +83,8 @@ class ProblemCategory:
 
     def __init__(self, logic: Callable, weight: int):
         self.name = logic.__name__
-        self.weight = weight
-        self.logic = logic
+        self.weight: int = weight
+        self.logic: Callable = logic
         if logic.__doc__:
             self.description = logic.__doc__.split("\n")[-1].strip()
         else:
@@ -84,6 +96,7 @@ class ProblemCategory:
         """Return a tuple of strings ('problem statement', 'solution')"""
 
         # return self.logic(self.weight)
+
         problem, solution = self.logic(self.weight)
         return Problem(problem, solution, self.name)
 
@@ -103,94 +116,42 @@ class Problem:
 # * the last line of the doc string should describe or name the problem type
 
 
+def random_factor(
+    var, min_coef: int = 1, max_coef: int = 9, min_order: int = 1, max_order: int = 1
+):
+    return random.randint(min_coef, max_coef) * (
+        var ** random.randint(min_order, max_order)
+    )
+
+
 def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate an expression in one variable where coefficients and exponents are all integers.
     Problem Description:
     Simplifying Expressions"""
 
-    difficulty = int(3 - math.log(freq_weight, 10))
-    var = random.choice(sympy.symbols("a b c x y m n"))
-    term_count = random.randint(2, 2 + difficulty)
-    terms = []
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    var = random.choice(sympy.symbols("a b c x y z m n"))
     problem = "Simplify the following expression."
-    latex_problem = ""
 
-    for term in range(term_count):
-        factors = []
-        for factor in range(random.randint(2, 4)):
-            factor = random.randint(1, 6) * var ** random.randint(1, 3)
-            factors.append(factor)
-            latex_problem += f"{sympy.latex(factor)} \\cdot "
+    def fac():
+        return random_factor(var, max_coef=5, max_order=1 + difficulty)
 
-        terms.append(factors)
-        latex_problem = latex_problem[:-7]
-        latex_problem += " + "
+    expression = f"{fac()} * {fac()} * {fac()} + {fac()} * {fac()} * {fac()}"
+    if difficulty > 1:
+        expression += f" + {fac()} * {fac()} * {fac()}"
 
-    latex_problem = latex_problem[:-3]
-    simplified_terms = []
+    latex_problem = sympy.latex(
+        sympy.sympify(expression, evaluate=False), mul_symbol="dot"
+    )
 
-    for term in terms:
-        simplified_terms.append(reduce(lambda x, y: x * y, term))
+    latex_problem = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", latex_problem)
 
-    expression = reduce(lambda x, y: x + y, simplified_terms)
-    solution = sympy.latex(expression)
+    solution = sympy.latex(sympy.sympify(expression))
 
     return (
         rf"{problem} \\ \\ \({latex_problem}\) \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({solution}\)",
     )
-
-    # term_count = random.randint(2, 2 + difficulty)
-    # # variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
-    # variable = random.choice(_VARIABLES)
-    # coefs = [-4, -3, -2, -1, 1, 2, 3, 4]
-
-    # for n in range(-4, 4):
-    #     coefs.append(n)
-    #     coefs.append(n + 0.5)
-
-    # terms = []
-    # latex_problem = ""
-    # solution_terms = []
-
-    # for term in range(term_count):
-    #     factors = []
-    #     latex_term = ""
-    #     for i in range(random.randint(1, 2 + difficulty)):
-    #         if random.random() > 0.8:
-    #             factors.append(
-    #                 Binomial(
-    #                     f"{random.choice(coefs)}({random.choice(coefs)}{variable}+{random.randint(1,5)})"
-    #                 )
-    #             )
-    #             # factors.append(f"{random.randint(2,4)}({variable}+{random.randint(2,5)})")
-    #         else:
-    #             factors.append(
-    #                 Term(coefficient=random.randint(2, 9), variable=variable)
-    #             )
-    #             # factors.append(f"{random.randint(2,9)}{variable}")
-
-    #         # breakpoint()
-    #         latex_term += f"{factors[-1]} \\cdot "
-
-    #     if factors:
-    #         latex_term = latex_term[:-7]
-    #         # latex_problem += " \\cdot ".join(factors)
-
-    #         latex_problem += f"{latex_term} + "
-    #         solution_terms.append(reduce(lambda x, y: x * y, factors))
-
-    #         terms.append(factors)
-
-    # solution = reduce(lambda x, y: x + y, solution_terms)
-    # latex_problem = latex_problem[:-3]
-
-    # # expression = f" {'+' if random.randint(0,1) else '-'} ".join(terms)
-
-    # return (
-    #     rf"{problem} \\ \\ \({latex_problem}\) \\ \\ \\ \\ \\ \\ \\ \\",
-    #     rf"\({solution}\)",
-    # )
 
 
 def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
@@ -203,7 +164,6 @@ def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
     variable = random.choice(_VARIABLES)
     constant = random.randint(1, 9)
     solution_terms = []
-    factors = []
 
     problem = f"Evaluate the following expression with \\({variable}\\) = {constant}"
     terms = []
@@ -394,7 +354,7 @@ def generate_variable_isolation(freq_weight: int = 1000) -> tuple[str, str]:
 
     left = " + ".join(f"{term}" for term in left)
     right = " + ".join(f"{term}" for term in right)
-    problem = f"Isolate the variable y.  Find the x-intercept and the y-intercept."
+    problem = "Isolate the variable y.  Find the x-intercept and the y-intercept."
 
     expression = f"{left} = {right}"
 
@@ -413,13 +373,13 @@ def print_weights() -> None:
         print(f"{statement}: {_SAVE_DATA['weights'][problem]}")
 
 
-@app.command("render")
+@algebra_app.command("render")
 def render_latex(
     assignment_count: int = 1,
     problem_count: int = 4,
     debug: bool = False,
     threshold: int = 0,
-    problem_set=None,  # type: ignore
+    problem_set=None,  # type: ignore Typer
 ) -> None:
     """Return a string coding for {assignment_count} pages of LaTeX algebra problems."""
 
@@ -440,10 +400,11 @@ def render_latex(
         problem_statement = ""
 
         # generators = random.sample(_PROBLEM_GENERATORS, k=problem_count, counts=WEIGHTS)
+
         problem_generators = random.sample(
             problem_set,
             k=problem_count,
-            counts=[problem.weight for problem in problem_set],
+            counts=[problem.weight + problem_count + 1 for problem in problem_set],
         )
 
         problems: list[Problem] = [problem.generate() for problem in problem_generators]
@@ -486,7 +447,7 @@ def render_latex(
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 
-@app.command("reset")
+@algebra_app.command("reset")
 def reset_weights(debug: bool = True):
     """Reset problem frequency rates to default."""
 
@@ -502,18 +463,9 @@ def reset_weights(debug: bool = True):
     exit(0)
 
 
-@app.command("config")
+@algebra_app.command("config")
 def configure_problem_set():
     """Configures the frequency rates of problems."""
-
-    # name_to_description = {
-    #     name: globals()[name].__doc__.split("\n")[-1].strip()
-    #     for name in _PROBLEM_GENERATORS
-    # }
-    # description_to_name = {
-    #     globals()[name].__doc__.split("\n")[-1].strip(): name
-    #     for name in _PROBLEM_GENERATORS
-    # }
 
     form = {
         _NAME_TO_DESCRIPTION[problem_type]: survey.widgets.Count(
@@ -535,20 +487,16 @@ def configure_problem_set():
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
 
 
-@app.callback(invoke_without_command=True)
+@algebra_app.callback(invoke_without_command=True)
 def default(ctx: typer.Context, debug: bool = False):
-    """Invoke the module to create algebra problems in LaTeX."""
+    """Manage and generate algebra homework assignments."""
+
     if ctx.invoked_subcommand:
         return
 
-    descriptions = [description for description in _DESCRIPTION_TO_NAME.keys()]
-
-    # long_descriptions = [
-    #     f"{description} ({_SAVE_DATA['weights'][_DESCRIPTION_TO_NAME[description]]})"
-    #     for name in _PROBLEM_GENERATORS
-    # ]
-
     global _PROBLEM_GENERATORS
+
+    # descriptions = [description for description in _DESCRIPTION_TO_NAME.keys()]
 
     problem_indeces = survey.routines.basket(
         "Select problem types to include.  (Numbers indicate relative frequency rate.)",
@@ -556,23 +504,6 @@ def default(ctx: typer.Context, debug: bool = False):
     )
 
     selected_problems = [_ALL_PROBLEMS[i] for i in problem_indeces]  # type: ignore
-
-    # long_descriptions: dict[str, str] = {
-    #     name: f"{_NAME_TO_DESCRIPTION[name]} ({_SAVE_DATA['weights'][name]})"
-    #     for name in _PROBLEM_GENERATORS
-    # }
-
-    # problem_indeces = survey.routines.basket(
-    #     "Select problem types to include.  (Numbers indicate relative frequency rate.)",
-    #     options=long_descriptions.values(),
-    # )
-
-    # problem_types = [k: f"{_NAME_TO_DESCRIPTION}" for ]
-
-    # if problem_types:
-    #     _PROBLEM_GENERATORS = [
-    #         k for k, v in long_descriptions.items() if v in [problem_types
-    #     ]
 
     start_date = survey.routines.datetime(
         "Select assignment date: ",

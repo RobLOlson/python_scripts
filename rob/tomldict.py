@@ -30,6 +30,10 @@ class TomlDict:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    def update(self, target):
+        for k in target.keys():
+            self.data[k] = target[k]
+
     def close(self):
         self.sync()
 
