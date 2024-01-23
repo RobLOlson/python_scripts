@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.85"
+version = "0.3.87"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "config/english/latex_templates.toml", "config/english/config.toml", "config/algebra/config.toml", "config/english/latex_templates.toml", "pyproject.toml", "data/word_list.txt"]
@@ -28,6 +28,7 @@ pycaw = "^20230407"
 rocketry = "^2.5.1"
 WMI = "^1.5.1"
 gkeepapi = "^0.14.2"
+sympy = "^1.12"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.1.2"
