@@ -13,7 +13,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8.1"
+python = "^3.9.1"
 rich = "^11.2.0"
 toml = "^0.10.2"
 praw = "^7.5.0"
