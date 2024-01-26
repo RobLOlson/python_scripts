@@ -19,8 +19,9 @@ import toml
 import typer
 
 from .english import app as english_app
+from .english import english_default
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer()
 algebra_app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
 app.add_typer(algebra_app, name="algebra")
@@ -159,47 +160,35 @@ def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
     Problem Description:
     Evaluating Expressions"""
 
-    term_count = random.randint(2, 4)
-    # variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
-    variable = random.choice(_VARIABLES)
-    constant = random.randint(1, 9)
-    solution_terms = []
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    var = random.choice(sympy.symbols("a b c x y z m n"))
+    if difficulty > 1:
+        constant = random_decimal("0.05") + random.randint(0, 4)
+    else:
+        constant = random.randint(1, 9)
 
-    problem = f"Evaluate the following expression with \\({variable}\\) = {constant}"
-    terms = []
-    signs = []
-    for term in range(term_count):
-        exponent = random.randint(1, 3)
-        coefs = random.sample(
-            range(1, 10), exponent, counts=[10, 1, 1, 1, 1, 1, 1, 1, 1]
+    def fac():
+        return random_factor(
+            var, max_coef=3 + difficulty, max_order=max(1 + difficulty, 2)
         )
 
-        sign = random.choice([1, -1])
-        if not term:
-            sign = 1
+    expression = f"{fac()} * {fac()} + {fac()} * {fac()}"
+    if difficulty > 1:
+        expression += f" + {fac()} * {fac()}"
 
-        solution = 1
-        for coef in coefs:
-            solution *= coef * constant * sign
+    latex_expression = sympy.latex(
+        sympy.sympify(expression, evaluate=False), mul_symbol="dot"
+    )
 
-        terms.append("\\cdot ".join(f"{coefs[i]}{variable}" for i in range(exponent)))
-        solution_terms.append(solution)
-        signs.append(sign)
+    latex_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", latex_expression)
 
-    solution = 0
-    for term in solution_terms:
-        solution += term
+    solution = round(sympy.sympify(expression).evalf(subs={var: constant}))
 
-    expression = terms[0]
-    for i, term in enumerate(terms[1:]):
-        if signs[i + 1] == -1:
-            expression += f" - {term}"
-        else:
-            expression += f" + {term}"
+    prompt = f"Evaluate the following expression with \\({var}\\) = {constant}"
 
     return (
-        rf"{problem} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\",
-        rf"\({list(itertools.accumulate(solution_terms, operator.add))[-1]}\)",
+        rf"{prompt} \\ \\ \({latex_expression}\) \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({solution!s}\)",
     )
 
 
@@ -488,10 +477,10 @@ def configure_problem_set():
 
 
 @algebra_app.callback(invoke_without_command=True)
-def default(ctx: typer.Context, debug: bool = False):
+def algebra_default(ctx: typer.Context, debug: bool = False):
     """Manage and generate algebra homework assignments."""
 
-    if ctx.invoked_subcommand:
+    if ctx and ctx.invoked_subcommand:
         return
 
     global _PROBLEM_GENERATORS
@@ -506,7 +495,7 @@ def default(ctx: typer.Context, debug: bool = False):
     selected_problems = [_ALL_PROBLEMS[i] for i in problem_indeces]  # type: ignore
 
     start_date = survey.routines.datetime(
-        "Select assignment date: ",
+        "Select assignment start date: ",
         attrs=("month", "day", "year"),
     )
     if not start_date:
@@ -551,6 +540,27 @@ def list_default(ctx: typer.Context):
         return
 
     list_app.rich_help_panel
+
+
+@app.callback(invoke_without_command=True)
+def default_homework(ctx: typer.Context):
+    if ctx.invoked_subcommand:
+        return
+
+    available_apps = ["algebra", "english"]
+
+    choice = survey.routines.select(
+        "Select the homework generation app: ", options=available_apps
+    )
+
+    choice = available_apps[choice]
+
+    match choice:
+        case "algebra":
+            algebra_default(None)
+
+        case "english":
+            english_default(None)
 
 
 def main():

@@ -10,7 +10,7 @@ from openai import OpenAI
 
 from . import tomlshelve
 
-app = typer.Typer(no_args_is_help=True)
+app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
 app.add_typer(list_app, name="list")
 
@@ -49,13 +49,27 @@ _MONTHS = CONFIGURATION["constants"]["months"]
 _SYSTEM_INSTRUCTION = CONFIGURATION["constants"]["instruction"]
 
 _LINES = r"""
+\\[12pt]
 \rule{\linewidth}{.5pt}
+\\[12pt]
 \rule{\linewidth}{.5pt}
+\\[12pt]
 \rule{\linewidth}{.5pt}
+\\[12pt]
 \rule{\linewidth}{.5pt}
+\\[12pt]
 \rule{\linewidth}{.5pt}
+\\
+Write a brief summary of the passage.
+\\[12pt]
 \rule{\linewidth}{.5pt}
+\\[12pt]
 \rule{\linewidth}{.5pt}
+\\[12pt]
+\rule{\linewidth}{.5pt}
+\\[12pt]
+\rule{\linewidth}{.5pt}
+\\[12pt]
 \rule{\linewidth}{.5pt}
 """
 
@@ -119,6 +133,13 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
                     while len(new_page) < section_length / page_count and paragraphs:
                         new_page += f"\n\n \\indent {paragraphs[0]}"
                         del paragraphs[0]
+
+                    # If remaining text is less than half the size of a normal excerpt
+                    # Then just append it to the penultimate excerpt
+                    if len("\n".join(paragraphs)) < chars_per_page / 2:
+                        while paragraphs:
+                            new_page += f"\n\n \\indent {paragraphs[0]}"
+                            del paragraphs[0]
                     doc = {
                         "title": section["title"] + f" (Part {page_counter})",
                         "text": new_page,
@@ -157,16 +178,34 @@ def set_progress(target: str = None, progress: int = None):
                 )
                 for k in db.keys()
             }
-
-        data = survey.routines.form("Set Progress:", form=form)
-        progress_db.update(data)
-
-    # survey.routines.select("Pick a book to ")
-    # survey.routines.numeric("")
+        if form:
+            data = survey.routines.form("Set Progress:", form=form)
+            progress_db.update(data)
+        else:
+            print("No books have been ingested yet.  Aborting.")
+            exit(1)
 
 
 @app.command("generate")
-def generate_pages(target: str, n: int = 7, debug: bool = True):
+def generate_pages(
+    target: str = None,
+    n: int = 7,
+    debug: bool = True,
+    start_date: datetime.datetime = datetime.datetime.today(),
+):
+    if target is None:
+        with tomlshelve.open(_BOOKS_FILE) as db:
+            candidates = list(db.keys())
+
+            index = survey.routines.select(
+                "Select book to generate questions: ", options=candidates
+            )
+            if index is None:
+                print("No books ingested.  Aborting.")
+                exit(1)
+
+            target = candidates[index]
+
     target = Path(target).name
 
     with tomlshelve.open(str(_PROGRESS_FILE)) as db:
@@ -223,19 +262,21 @@ def generate_pages(target: str, n: int = 7, debug: bool = True):
             mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}{_LINES}\\newpage"
 
         mytext = re.sub(pattern=r"&", repl=r"\\&", string=mytext)
-        fp = open(
-            f"English Reading {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex",
-            "w",
-            encoding="utf-8",
-        )
         if not debug:
+            fp = open(
+                f"English Reading {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex",
+                "w",
+                encoding="utf-8",
+            )
             print(f"Writing English homework to {fp.name}")
         else:
             print("Use '--no-debug' to save progress.")
+            fp = open("English Sample.tex", "w", encoding="utf-8")
 
         mytext += r"\end{document}"
 
         fp.write(mytext)
+        fp.close()
 
     if not debug:
         with tomlshelve.open(str(_PROGRESS_FILE)) as db:
@@ -255,6 +296,37 @@ def list_books():
                 current_progress = 0
 
             print(f"{book} (Progress: {current_progress} / {len(db[book]['book'])})")
+
+
+@app.callback(invoke_without_command=True)
+def english_default(ctx: typer.Context):
+    if ctx and ctx.invoked_subcommand:
+        return
+
+    available_books = list(tomlshelve.open(_BOOKS_FILE).keys())
+    book_choice = survey.routines.select("Select a book: ", options=available_books)
+    book_choice = available_books[book_choice]
+
+    start_date = survey.routines.datetime(
+        "Select assignment start date: ",
+        attrs=("month", "day", "year"),
+    )
+
+    if not start_date:
+        start_date = datetime.datetime.today()
+
+    assignment_count = survey.routines.numeric(
+        "How many reading assignments to generate? ", decimal=False, value=5
+    )
+
+    debug_status = survey.routines.inquire("Debug? ", default=True)
+
+    generate_pages(
+        target=book_choice,
+        n=assignment_count,
+        start_date=start_date,
+        debug=debug_status,
+    )
 
 
 if __name__ == "__main__":
