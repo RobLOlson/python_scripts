@@ -72,10 +72,6 @@ _DATES = [
 _CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
 
 
-class CoefficientError(Exception):
-    pass
-
-
 class ProblemCategory:
     """Represents a category of algebra problem.
     Must supply the logic for generating a problem statement as a valid function.

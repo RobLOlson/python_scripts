@@ -3,19 +3,21 @@ from ctypes import POINTER, cast
 from pathlib import Path
 
 import wmi
-from appdirs import user_log_dir
-from comtypes import CLSCTX_ALL, logging
+from appdirs import user_data_dir
+from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from rocketry import Rocketry
 from rocketry.conds import cron, daily, every, hourly, retry, time_of_day, weekly
 
-log_dir = Path(user_log_dir(appname="nightlight"))
+log_dir = Path(user_data_dir()) / "robolson" / "nightlight" / "logs"
 log_dir.mkdir(parents=True, exist_ok=True)
 log_file = log_dir / "myapp.log"
 
 logging.basicConfig(filename=log_file, format="%(asctime)s %(levelname)s %(message)s")
 
 app = Rocketry()
+
+logger = logging.getLogger()
 
 
 @app.task(every("5 minutes") & time_of_day.between("20:00", "08:00") | retry(3))
@@ -30,6 +32,7 @@ def do_hourly_at_night():
         brightness = 0
     methods = c.WmiMonitorBrightnessMethods()[0]
     methods.WmiSetBrightness(brightness, 0)
+    logger.warning(f"Brightness set to {brightness}")
     # </REDUCE SCREEN BRIGHTNESS>
 
     # <REDUCE SOUND VOLUME>
@@ -41,6 +44,7 @@ def do_hourly_at_night():
     if currentVolumeDb < -60:
         currentVolumeDb = -60
     volume.SetMasterVolumeLevel(currentVolumeDb - 0.7, None)
+    logger.warning(f"Volume set to {currentVolumeDb - 0.7}")
     # </REDUCE SOUND VOLUME>
 
 
