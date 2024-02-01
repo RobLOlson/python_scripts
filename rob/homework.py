@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import datetime
-import itertools
 import math
-import operator
 import pathlib
 import random
 import re
 from decimal import Decimal
-from fractions import Fraction
-from functools import reduce
 from typing import Callable
 
 import appdirs
@@ -183,77 +179,34 @@ def generate_simple_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
     if difficulty > 1:
-        constant = random_decimal("0.05") + random.randint(0, 4)
+        coef = random_decimal("0.05") + random.randint(-4, 4)
+        coef = coef if coef else 1
+
     else:
-        constant = random.randint(1, 9)
+        coef = random.randint(-2, 4)
+        coef = coef if coef else 1
 
-    def fac():
-        return random_factor(var, max_coef=3 + difficulty, max_order=max(1 + difficulty, 2))
-
-    left_string = f"{random.randint(1,4)} * {var} + {random.randint(1,9)}"
-    right_string = f"{random.randint(1,4)} * {var} + {random.randint(1,9)}"
+    left_string = f"{coef} * ({random.randint(1,4)} * {var} + {random.randint(1,9)})"
+    right_string = f"{random.randint(1,7)} * {var} + {random.randint(1,9)}"
 
     left_latex = sympy.latex(sympy.sympify(left_string, evaluate=False), mul_symbol="dot")
+    right_latex = sympy.latex(sympy.sympify(right_string, evaluate=False), mul_symbol="dot")
 
-    left_latex = sympy.latex(sympy.sympify(left_string, evaluate=False), mul_symbol="dot")
+    # left_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", left_latex)
+    # right_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", right_latex)
 
-    latex_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", latex_expression)
+    solution = sympy.solve(sympy.Eq(sympy.sympify(left_string), sympy.sympify(right_string)), var)
+    if solution:
+        solution = sympy.latex(solution[0])
+        # solution = f"{var} = " + ", ".join(str(round(elem, 2)) for elem in solution)
+    else:
+        solution = "\\text{No solution.}"
 
-    solution = round(sympy.sympify(expression).evalf(subs={var: constant}))
-
-    prompt = f"Evaluate the following expression with \\({var}\\) = {constant}"
+    prompt = f"Solve the following equation for \\({var}\\)."
 
     return (
-        rf"{prompt} \\ \\ \({latex_expression}\) \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"{prompt} \\ \\ \({left_latex} = {right_latex}\) \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({solution!s}\)",
-    )
-
-    variable = random.choice(_VARIABLES)
-
-    dist_coef = random.randint(2, 3)  # distribution coef i.e.,the 2 in '2(x+1)'
-    dist_offset = random.randint(1, 9)  # distribution offset i.e., the 1 in '2(x+1)'
-
-    left_c = 0
-    right_c = random.randint(-9, 9)
-    delta_c = random.randint(-9, 9)
-    left_c += delta_c
-    right_c += delta_c + dist_coef + dist_offset
-
-    left_x = 1
-    right_x = 0
-    delta_x = random.randint(-3, 3)
-    left_x += delta_x
-    right_x += delta_x
-
-    if left_x:
-        left_x = f"{dist_coef}({left_x}{variable}+{dist_offset})"
-    else:
-        left_x = ""
-
-    if right_x:
-        right_x = f"{right_x*dist_coef}{variable}"
-    else:
-        right_x = ""
-
-    left = random.sample([left_x, left_c], 2)
-    right = random.sample([right_x, right_c], 2)
-
-    left = [elem for elem in left if elem]
-    right = [elem for elem in right if elem]
-
-    left = " + ".join(str(term) for term in left)
-    right = " + ".join(str(term) for term in right)
-
-    problem = f"Solve the following equation for \\({variable}\\)"
-
-    if random.randint(0, 1):
-        expression = f"{left} = {right}"
-    else:
-        expression = f"{right} = {left}"
-
-    return (
-        rf"{problem} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\",
-        "Solution here.",
     )
 
 
@@ -268,38 +221,34 @@ def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     Problem Description:
     Solving Equations with Decimal Coefficients"""
 
-    variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
-
-    left_c = Decimal(0)
-    right_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal("0.25")
-    delta_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal("0.25")
-    left_c += delta_c
-    right_c += delta_c
-
-    left_x = random.randint(1, 4) * Decimal("0.25")
-    right_x = Decimal(0)
-    delta_x = Decimal(random.randint(-3, 3))
-    left_x += delta_x
-    right_x += delta_x
-    left_x = f"{left_x}{variable}"
-    right_x = f"{right_x}{variable}"
-
-    left = random.sample([left_x, left_c], 2)
-    right = random.sample([right_x, right_c], 2)
-
-    left = f" + ".join(str(term) for term in left)
-    right = " + ".join(str(term) for term in right)
-
-    problem = f"Solve the following equation for {variable}"
-
-    if random.randint(0, 1):
-        expression = f"{left} = {right}"
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    var = random.choice(sympy.symbols("a b c x y z m n"))
+    if difficulty > 1:
+        denom = random.randint(2, 9)
     else:
-        expression = f"{right} = {left}"
+        denom = random.randint(2, 5)
+
+    left_string = f"({random.randint(1, 4)} / {denom}) * ({random.randint(1, 4)} * {var} + {random.randint(-4, 4)})"
+    right_string = f"{random.randint(1, 7)} * {var} + {random.randint(-9, 9)} / {denom}"
+
+    left_latex = sympy.latex(sympy.sympify(left_string, evaluate=False), mul_symbol="dot")
+    right_latex = sympy.latex(sympy.sympify(right_string, evaluate=False), mul_symbol="dot")
+
+    # left_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", left_latex)
+    # right_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", right_latex)
+
+    solution = sympy.solve(sympy.Eq(sympy.sympify(left_string), sympy.sympify(right_string)), var)
+    if solution:
+        solution = sympy.latex(solution[0])
+        # solution = f"{var} = " + ", ".join(str(round(elem, 2)) for elem in solution)
+    else:
+        solution = "\\text{No solution.}"
+
+    prompt = f"Solve the following equation for \\({var}\\)."
 
     return (
-        rf"{problem} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\",
-        "Solution here.",
+        rf"{prompt} \\ \\ \(\displaystyle {left_latex} = {right_latex}\) \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({solution!s}\)",
     )
 
 
@@ -580,7 +529,7 @@ _NAME_TO_DESCRIPTION = {
     name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
 }
 
-# mapping of problem description to p roblem function name
+# mapping of problem description to problem function name
 _DESCRIPTION_TO_NAME = {
     globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
 }

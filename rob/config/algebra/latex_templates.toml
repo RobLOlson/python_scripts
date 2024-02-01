@@ -8,6 +8,7 @@ doc_header = """\\documentclass[12pt]{article}
             top=0.5in,
             bottom=0.5in,
             footskip=.25in]{geometry}
+\\usepackage{amsmath}
 \\begin{document}
 \\pagenumbering{gobble}"""
 
