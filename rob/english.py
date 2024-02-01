@@ -18,12 +18,8 @@ GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
 
 _THIS_FILE = Path(__file__)
 
-_BOOKS_FILE = (
-    Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "books.toml"
-)
-_PROGRESS_FILE = (
-    Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "progress.toml"
-)
+_BOOKS_FILE = Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "books.toml"
+_PROGRESS_FILE = Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "progress.toml"
 
 _BOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
 _PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -101,7 +97,9 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
     for chapter in chapter_pattern.findall(text):
         chapter_number = int(chapter[1])
         chapter_name = chapter[2]
-        full_chapter = f"Chapter {chapter_number}{f': {chapter_name.title()}' if chapter_name else ''}"
+        full_chapter = (
+            f"Chapter {chapter_number}{f': {chapter_name.title()}' if chapter_name else ''}"
+        )
         split = text.split(str(chapter[0]))  # chapter[0] is the full match
         chapter_text = split[1]
         chapter_text = chapter_pattern.split(chapter_text)[0]
@@ -115,9 +113,7 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         )
 
         for i, section_title in enumerate(section_titles):
-            subsections.append(
-                {"title": section_title, "text": section_texts[i].rstrip()}
-            )
+            subsections.append({"title": section_title, "text": section_texts[i].rstrip()})
 
         for section in subsections:
             section_length = len(section["text"])
@@ -173,9 +169,7 @@ def set_progress(target: str = None, progress: int = None):
 
         with tomlshelve.open(_BOOKS_FILE) as db:
             form = {
-                k: survey.widgets.Count(
-                    value=progress_db[k] if k in progress_db.keys() else 0
-                )
+                k: survey.widgets.Count(value=progress_db[k] if k in progress_db.keys() else 0)
                 for k in db.keys()
             }
         if form:
@@ -219,8 +213,7 @@ def generate_pages(
     start = datetime.datetime.today()
     days = [start + datetime.timedelta(days=i) for i in range(30)]
     dates = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
-        for day in days
+        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
     ]
 
     # with shelve.open(_BOOKS_FILE.name) as db:
@@ -241,9 +234,7 @@ def generate_pages(
                         {"role": "system", "content": _SYSTEM_INSTRUCTION},
                         {
                             "role": "user",
-                            "content": book[(PROGRESS_INDEX + index) % book_size][
-                                "text"
-                            ],
+                            "content": book[(PROGRESS_INDEX + index) % book_size]["text"],
                         },
                     ],
                 )

@@ -30,13 +30,9 @@ _PROMPT = f"rob.{Path(__file__).stem}> "
 _PROMPT_STYLE = "[white on blue]"
 _ERROR_STYLE = "[red on black]"
 
-_USER_CONFIG_FILE = (
-    Path(appdirs.user_config_dir()) / "robolson" / "clean" / "config" / "clean.toml"
-)
+_USER_CONFIG_FILE = Path(appdirs.user_config_dir()) / "robolson" / "clean" / "config" / "clean.toml"
 _UNDO_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "undo.db"
-_BLACKLIST_FILE = (
-    Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "ignore.db"
-)
+_BLACKLIST_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "ignore.db"
 
 if not _UNDO_FILE.exists():
     os.makedirs(_UNDO_FILE.parent, exist_ok=True)
@@ -48,7 +44,7 @@ with open(_BASE_CONFIG_FILE, "r") as fp:
     _SETTINGS = toml.load(fp)
 
 if _USER_CONFIG_FILE.exists():
-    with (open(_USER_CONFIG_FILE, "r")) as fp:
+    with open(_USER_CONFIG_FILE, "r") as fp:
         USER_SETTINGS = toml.load(fp)
         _SETTINGS.update(USER_SETTINGS)
 
@@ -78,9 +74,7 @@ def generate_extension_handler(file_types: dict[str, list[str]]) -> dict[str, st
 _EXTENSION_HANDLER = generate_extension_handler(_FILE_TYPES)
 
 
-def isolate_crowded_folders(
-    folders: list[Path], crowded_threshold: int = 20
-) -> list[Path]:
+def isolate_crowded_folders(folders: list[Path], crowded_threshold: int = 20) -> list[Path]:
     """Return a list of directories with many files inside.
     post: True"""
 
@@ -216,9 +210,7 @@ def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
     files = folder.glob("*.*")
     file_targets: dict[Path, Path] = {}
     for file in files:
-        last_modified = datetime.datetime.fromtimestamp(
-            os.path.getmtime(file.absolute())
-        )
+        last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file.absolute()))
 
         f_month = MONTHS[last_modified.month]
         f_year = last_modified.year
@@ -233,9 +225,7 @@ def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
     if yes_all:
         return file_targets
     else:
-        return approve_dict(
-            file_targets, f"Select files in '{folder.absolute()}' to uncrowd:"
-        )
+        return approve_dict(file_targets, f"Select files in '{folder.absolute()}' to uncrowd:")
 
 
 def associate_files(
@@ -269,8 +259,7 @@ def associate_files(
         # if target folder has sub-folders from previous uncrowding, follow the uncrowded naming protocol
         if any(uncrowded_pattern.match(folder.name) for folder in sub_folders):
             target_folder = (
-                target_folder
-                / f"{file_type_folder} {last_modified.month} ({f_month}) {f_year}"
+                target_folder / f"{file_type_folder} {last_modified.month} ({f_month}) {f_year}"
             )
 
         file_targets[file] = target_folder / file.name
@@ -391,9 +380,7 @@ def undo() -> None:
                 # _COMMANDS.append((command, dest, source))
 
         except KeyError:
-            rich.print(
-                f"[red]No recorded commands executed on ({Path(_CLI_PATH).absolute()})."
-            )
+            rich.print(f"[red]No recorded commands executed on ({Path(_CLI_PATH).absolute()}).")
             exit(1)
 
     preview_mvs(undo_commands)
@@ -542,9 +529,7 @@ def clean_files(
 def identify_large_files(target: Path = Path("."), yes_all: bool = False) -> None:
     """Find large files in target directory and offer to centralize them."""
 
-    archive_folders = [
-        Path(target) / f"{archive_folder}" for archive_folder in _FILE_TYPES.keys()
-    ]
+    archive_folders = [Path(target) / f"{archive_folder}" for archive_folder in _FILE_TYPES.keys()]
     sub_folders = []
     all_files = []
     for folder in archive_folders:
@@ -584,16 +569,12 @@ def identify_large_files(target: Path = Path("."), yes_all: bool = False) -> Non
         case _:
             large = 150_000_000_000_000_000
 
-    large_files = [
-        file for file in all_files if os.stat(file.absolute()).st_size > large
-    ]
+    large_files = [file for file in all_files if os.stat(file.absolute()).st_size > large]
 
     if yes_all:
         approved_files = large_files
     else:
-        show_file_size = (
-            lambda x: f"{x} ({float(os.stat(x.absolute()).st_size/1_000_000):_.2f} Mb)"
-        )
+        show_file_size = lambda x: f"{x} ({float(os.stat(x.absolute()).st_size/1_000_000):_.2f} Mb)"
         approved_files = approve_list(
             large_files,
             f"{_PROMPT_STYLE}Select large files to isolate:",

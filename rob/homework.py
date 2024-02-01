@@ -43,9 +43,7 @@ _LATEX_FILE.parent.mkdir(exist_ok=True)
 _LATEX_FILE.touch()
 _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
 
-_SAVE_FILE = (
-    pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
-)
+_SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
 
 if not _SAVE_FILE.exists():
     # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
@@ -64,10 +62,7 @@ _VARIABLES = _SAVE_DATA["constants"]["variables"]
 
 _START = datetime.datetime.today()
 _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
-_DATES = [
-    f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
-    for day in _DAYS
-]
+_DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS]
 
 _CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
 
@@ -116,9 +111,7 @@ class Problem:
 def random_factor(
     var, min_coef: int = 1, max_coef: int = 9, min_order: int = 1, max_order: int = 1
 ):
-    return random.randint(min_coef, max_coef) * (
-        var ** random.randint(min_order, max_order)
-    )
+    return random.randint(min_coef, max_coef) * (var ** random.randint(min_order, max_order))
 
 
 def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
@@ -137,9 +130,7 @@ def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     if difficulty > 1:
         expression += f" + {fac()} * {fac()} * {fac()}"
 
-    latex_problem = sympy.latex(
-        sympy.sympify(expression, evaluate=False), mul_symbol="dot"
-    )
+    latex_problem = sympy.latex(sympy.sympify(expression, evaluate=False), mul_symbol="dot")
 
     latex_problem = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", latex_problem)
 
@@ -164,17 +155,13 @@ def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
         constant = random.randint(1, 9)
 
     def fac():
-        return random_factor(
-            var, max_coef=3 + difficulty, max_order=max(1 + difficulty, 2)
-        )
+        return random_factor(var, max_coef=3 + difficulty, max_order=max(1 + difficulty, 2))
 
     expression = f"{fac()} * {fac()} + {fac()} * {fac()}"
     if difficulty > 1:
         expression += f" + {fac()} * {fac()}"
 
-    latex_expression = sympy.latex(
-        sympy.sympify(expression, evaluate=False), mul_symbol="dot"
-    )
+    latex_expression = sympy.latex(sympy.sympify(expression, evaluate=False), mul_symbol="dot")
 
     latex_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", latex_expression)
 
@@ -192,6 +179,34 @@ def generate_simple_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate a single variable equation.
     Problem Description:
     Solving Equations with One Variable"""
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    var = random.choice(sympy.symbols("a b c x y z m n"))
+    if difficulty > 1:
+        constant = random_decimal("0.05") + random.randint(0, 4)
+    else:
+        constant = random.randint(1, 9)
+
+    def fac():
+        return random_factor(var, max_coef=3 + difficulty, max_order=max(1 + difficulty, 2))
+
+    left_string = f"{random.randint(1,4)} * {var} + {random.randint(1,9)}"
+    right_string = f"{random.randint(1,4)} * {var} + {random.randint(1,9)}"
+
+    left_latex = sympy.latex(sympy.sympify(left_string, evaluate=False), mul_symbol="dot")
+
+    left_latex = sympy.latex(sympy.sympify(left_string, evaluate=False), mul_symbol="dot")
+
+    latex_expression = _CONSTANT_COEF_DOT_PATTERN.sub(r"\1\2", latex_expression)
+
+    solution = round(sympy.sympify(expression).evalf(subs={var: constant}))
+
+    prompt = f"Evaluate the following expression with \\({var}\\) = {constant}"
+
+    return (
+        rf"{prompt} \\ \\ \({latex_expression}\) \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({solution!s}\)",
+    )
 
     variable = random.choice(_VARIABLES)
 
@@ -256,12 +271,8 @@ def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     variable = random.choice(["a", "b", "c", "x", "y", "m", "n"])
 
     left_c = Decimal(0)
-    right_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal(
-        "0.25"
-    )
-    delta_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal(
-        "0.25"
-    )
+    right_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal("0.25")
+    delta_c = Decimal(random.randint(-9, 9)) + random.randint(0, 3) * random_decimal("0.25")
     left_c += delta_c
     right_c += delta_c
 
@@ -401,9 +412,7 @@ def render_latex(
             problem_statement += problem.problem
             solution_set += rf"{k+1}: {problem.solution}\;\;"
 
-            _SAVE_DATA["weights"][problem.name] = int(
-                _SAVE_DATA["weights"][problem.name] * 0.9
-            )
+            _SAVE_DATA["weights"][problem.name] = int(_SAVE_DATA["weights"][problem.name] * 0.9)
 
         page_footer = r"\end{enumerate}"
         # solution += r"\\"
@@ -413,11 +422,7 @@ def render_latex(
     doc_footer = r"\end{document}"
 
     document = (
-        doc_header
-        + r"\newpage".join(pages)
-        + r"\newpage "
-        + r"\\".join(solutions)
-        + doc_footer
+        doc_header + r"\newpage".join(pages) + r"\newpage " + r"\\".join(solutions) + doc_footer
     )
 
     document_name = f"Algebra Homework {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex"
@@ -459,9 +464,7 @@ def configure_problem_set():
         for problem_type in _PROBLEM_GENERATORS
     }
 
-    data = survey.routines.form(
-        "Frequency Weights (higher -> more frequent): ", form=form
-    )
+    data = survey.routines.form("Frequency Weights (higher -> more frequent): ", form=form)
 
     if not data:
         return
@@ -511,14 +514,11 @@ def algebra_default(ctx: typer.Context, debug: bool = False):
     if not problem_count:
         problem_count = 4
 
-    days = [
-        start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)
-    ]
+    days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
 
     global _DATES
     _DATES = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
-        for day in days
+        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
     ]
 
     render_latex(
@@ -545,9 +545,7 @@ def default_homework(ctx: typer.Context):
 
     available_apps = ["algebra", "english"]
 
-    choice = survey.routines.select(
-        "Select the homework generation app: ", options=available_apps
-    )
+    choice = survey.routines.select("Select the homework generation app: ", options=available_apps)
 
     choice = available_apps[choice]
 
@@ -579,14 +577,12 @@ _ALL_PROBLEMS = [
 
 # mapping of problem function name to problem description
 _NAME_TO_DESCRIPTION = {
-    name: globals()[name].__doc__.split("\n")[-1].strip()
-    for name in _PROBLEM_GENERATORS
+    name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
 }
 
 # mapping of problem description to p roblem function name
 _DESCRIPTION_TO_NAME = {
-    globals()[name].__doc__.split("\n")[-1].strip(): name
-    for name in _PROBLEM_GENERATORS
+    globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
 }
 
 for generator in list(_SAVE_DATA["weights"].keys()):

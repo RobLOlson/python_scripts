@@ -19,6 +19,13 @@ app = Rocketry()
 
 logger = logging.getLogger()
 
+if log_file.stat().st_size > 5 * 1024 * 1024:
+    with open(log_file, "r") as fp:
+        half_log = fp.readlines()
+        half_log = half_log[int(len(half_log) / 2) :]
+    with open(log_file, "w") as fp:
+        fp.writelines(half_log)
+
 
 @app.task(every("5 minutes") & time_of_day.between("20:00", "08:00") | retry(3))
 def do_hourly_at_night():
