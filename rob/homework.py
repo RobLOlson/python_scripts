@@ -309,6 +309,52 @@ def generate_variable_isolation(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
+def generate_system_of_equations(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate a system of equations.
+    Problem Description:
+    Solving a System of Equations"""
+
+    # a * y - a * a * b * x = a * y_sol - a * a * b * x_sol
+
+    x = sympy.symbols("x")
+    y = sympy.symbols("y")
+
+    match freq_weight:
+        case freq_weight if freq_weight < 10:
+            solution_set = [n / 10 for n in range(-30, 30)]
+
+        case freq_weight if 10 < freq_weight < 100:
+            solution_set = [n / 4 for n in range(-12, 12)]
+
+        case _:
+            solution_set = list(range(-3, 3))
+
+    x_sol = random.choice(solution_set)
+    y_sol = random.choice(solution_set)
+
+    a_1, a_2 = random.sample([-3, -2, -1, 1, 2, 3], 2)
+    b_1, b_2 = random.sample([-5, -4, -3, -2, -1, 1, 2, 3, 4, 5], 2)
+
+    # left_1 = sympy.latex(sympy.sympify(f"{a_1} * {y} - {a_1 * a_1 * b_1} * {x}"))
+    # right_1 = sympy.latex(sympy.sympify(f"{a_1} * {y_sol} - {a_1 * a_1 * b_1} * {x_sol}"))
+    # left_2 = sympy.latex(sympy.sympify(f"{a_2} * {y} - {a_2 * a_2 * b_2} * {x}"))
+    # right_2 = sympy.latex(sympy.sympify(f"{a_2} * {y_sol} - {a_2 * a_2 * b_2} * {x_sol}"))
+
+    left_1 = sympy.latex(sympy.sympify(f"{a_1} * {y} - {b_1} * {x}"))
+    right_1 = sympy.latex(sympy.sympify(f"{a_1} * {y_sol} - {b_1} * {x_sol}"))
+    left_2 = sympy.latex(sympy.sympify(f"{a_2} * {y} - {b_2} * {x}"))
+    right_2 = sympy.latex(sympy.sympify(f"{a_2} * {y_sol} - {b_2} * {x_sol}"))
+
+    problem = "Find the solution (x, y) to the system of equations."
+
+    expression = rf"\begin{{align*}}{left_1} &= {right_1} \\ {left_2} &= {right_2}\end{{align*}}"
+
+    return (
+        rf"{problem} \\ \\ {expression} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        f"({x_sol}, {y_sol})",
+    )
+
+
 @list_app.command("weights")
 def print_weights() -> None:
     """List the frequency weights for each problem type."""
@@ -500,10 +546,10 @@ def default_homework(ctx: typer.Context):
 
     match choice:
         case "algebra":
-            algebra_default(None)
+            algebra_default(ctx=None)
 
         case "english":
-            english_default(None)
+            english_default(ctx=None)
 
 
 def main():
