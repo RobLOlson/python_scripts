@@ -1,6 +1,9 @@
 import toml
 
-from . import tomldict
+try:
+    from . import tomldict
+except:
+    import tomldict
 
 
 def open(filename):

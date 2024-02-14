@@ -9,13 +9,31 @@ from decimal import Decimal
 from typing import Callable
 
 import appdirs
-import survey
-import sympy
+
+# import survey
+# import sympy
 import toml
 import typer
 
-from .english import app as english_app
-from .english import english_default
+try:
+    from .english import app as english_app
+    from .english import english_default
+except ImportError:
+    from english import app as english_app
+    from english import english_default
+
+
+def get_sympy():
+    import sympy
+
+    return sympy
+
+
+def get_survey():
+    import survey
+
+    return survey
+
 
 app = typer.Typer()
 algebra_app = typer.Typer()
@@ -26,40 +44,76 @@ app.add_typer(
     name="english",
     help="Prepare and generate English homework assignments.",
 )
-algebra_app.add_typer(list_app, name="list")
 
+algebra_app.add_typer(list_app, name="list")
 
 _DEBUG = False
 
-_THIS_FILE = pathlib.Path(__file__)
 
-# LATEX_FILE = pathlib.Path("config/latex_templates.toml")
-_LATEX_FILE = _THIS_FILE.parent / "config" / "algebra" / "latex_templates.toml"
-_LATEX_FILE.parent.mkdir(exist_ok=True)
-_LATEX_FILE.touch()
-_LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
+def prepare_disk_io():
+    global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START
+    _THIS_FILE = pathlib.Path(__file__)
 
-_SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
+    # LATEX_FILE = pathlib.Path("config/latex_templates.toml")
+    _LATEX_FILE = _THIS_FILE.parent / "config" / "algebra" / "latex_templates.toml"
+    _LATEX_FILE.parent.mkdir(exist_ok=True)
+    # _LATEX_FILE.touch()
+    _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
 
-if not _SAVE_FILE.exists():
-    # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
-    NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
-    _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
-    _SAVE_FILE.parent.mkdir(exist_ok=True)
-    _SAVE_FILE.touch()
-    toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.name, "w"))
+    _SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
 
-else:
-    _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
+    if not _SAVE_FILE.exists():
+        # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
+        NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
+        _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
+        _SAVE_FILE.parent.mkdir(exist_ok=True)
+        # _SAVE_FILE.touch()
+        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.name, "w"))
 
-_WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
-_MONTHS = _SAVE_DATA["constants"]["months"]
-_VARIABLES = _SAVE_DATA["constants"]["variables"]
+    else:
+        _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
 
-_START = datetime.datetime.today()
-_DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
-_DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS]
+    _WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
+    _MONTHS = _SAVE_DATA["constants"]["months"]
+    _VARIABLES = _SAVE_DATA["constants"]["variables"]
 
+    _START = datetime.datetime.today()
+    _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
+    _DATES = [
+        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS
+    ]
+
+
+# _THIS_FILE = pathlib.Path(__file__)
+
+# # LATEX_FILE = pathlib.Path("config/latex_templates.toml")
+# _LATEX_FILE = _THIS_FILE.parent / "config" / "algebra" / "latex_templates.toml"
+# _LATEX_FILE.parent.mkdir(exist_ok=True)
+# # _LATEX_FILE.touch()
+# _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
+
+# _SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
+
+# if not _SAVE_FILE.exists():
+#     # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
+#     NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
+#     _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
+#     _SAVE_FILE.parent.mkdir(exist_ok=True)
+#     # _SAVE_FILE.touch()
+#     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.name, "w"))
+
+# else:
+#     _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
+
+# _WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
+# _MONTHS = _SAVE_DATA["constants"]["months"]
+# _VARIABLES = _SAVE_DATA["constants"]["variables"]
+
+# _START = datetime.datetime.today()
+# _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
+# _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS]
+
+# turns "5 \\cdot x" into "5x"
 _CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
 
 
@@ -115,6 +169,8 @@ def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     Problem Description:
     Simplifying Expressions"""
 
+    sympy = get_sympy()
+
     difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
     problem = "Simplify the following expression."
@@ -142,6 +198,8 @@ def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate an expression in one variable where coefficients and exponents are all integers.
     Problem Description:
     Evaluating Expressions"""
+
+    sympy = get_sympy()
 
     difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
@@ -175,6 +233,8 @@ def generate_simple_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate a single variable equation.
     Problem Description:
     Solving Equations with One Variable"""
+
+    sympy = get_sympy()
 
     difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
@@ -220,6 +280,8 @@ def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate an equation with decimal coefficients.
     Problem Description:
     Solving Equations with Decimal Coefficients"""
+
+    sympy = get_sympy()
 
     difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
@@ -316,6 +378,8 @@ def generate_system_of_equations(freq_weight: int = 1000) -> tuple[str, str]:
 
     # a * y - a * a * b * x = a * y_sol - a * a * b * x_sol
 
+    sympy = get_sympy()
+
     x = sympy.symbols("x")
     y = sympy.symbols("y")
 
@@ -359,6 +423,8 @@ def generate_system_of_equations(freq_weight: int = 1000) -> tuple[str, str]:
 def print_weights() -> None:
     """List the frequency weights for each problem type."""
 
+    prepare_globals()
+
     for problem in _PROBLEM_GENERATORS:
         statement = globals()[problem].__doc__.split("\n")[-1]
         print(f"{statement}: {_SAVE_DATA['weights'][problem]}")
@@ -374,8 +440,19 @@ def render_latex(
 ) -> None:
     """Return a string coding for {assignment_count} pages of LaTeX algebra problems."""
 
-    if not problem_set:
+    prepare_globals()
+    prepare_disk_io()
+
+    if not problem_set or len(problem_set) == len(_ALL_PROBLEMS):
         problem_set: list[ProblemCategory] = _ALL_PROBLEMS
+        problem_mass: int = 1000 * problem_count
+        filtered_set: list[ProblemCategory] = []
+        while problem_mass > 0 and len(filtered_set) < len(_ALL_PROBLEMS):
+            filtered_set.append(problem_set[0])
+            problem_set = problem_set[1:]
+            problem_mass -= filtered_set[-1].weight
+
+        problem_set = filtered_set
 
     pages = []
     solutions = []
@@ -389,8 +466,6 @@ def render_latex(
         page_header = _DATES[i].join(parts)
 
         problem_statement = ""
-
-        # generators = random.sample(_PROBLEM_GENERATORS, k=problem_count, counts=WEIGHTS)
 
         problem_generators = random.sample(
             problem_set,
@@ -410,7 +485,6 @@ def render_latex(
             _SAVE_DATA["weights"][problem.name] = int(_SAVE_DATA["weights"][problem.name] * 0.9)
 
         page_footer = r"\end{enumerate}"
-        # solution += r"\\"
         solutions.append(solution_set)
         pages.append(page_header + problem_statement + page_footer)
 
@@ -436,6 +510,8 @@ def render_latex(
 def reset_weights(debug: bool = True):
     """Reset problem frequency rates to default."""
 
+    prepare_disk_io()
+
     # weights: dict[str, int] = _SAVE_DATA["weights"]
     for key in _SAVE_DATA["weights"].keys():
         _SAVE_DATA["weights"][key] = 1000
@@ -451,6 +527,10 @@ def reset_weights(debug: bool = True):
 @algebra_app.command("config")
 def configure_problem_set():
     """Configures the frequency rates of problems."""
+
+    prepare_globals()
+
+    survey = get_survey()
 
     form = {
         _NAME_TO_DESCRIPTION[problem_type]: survey.widgets.Count(
@@ -477,9 +557,9 @@ def algebra_default(ctx: typer.Context, debug: bool = False):
     if ctx and ctx.invoked_subcommand:
         return
 
-    global _PROBLEM_GENERATORS
+    survey = get_survey()
 
-    # descriptions = [description for description in _DESCRIPTION_TO_NAME.keys()]
+    prepare_globals()
 
     problem_indeces = survey.routines.basket(
         "Select problem types to include.  (Numbers indicate relative frequency rate.)",
@@ -535,8 +615,10 @@ def list_default(ctx: typer.Context):
 
 @app.callback(invoke_without_command=True)
 def default_homework(ctx: typer.Context):
-    if ctx.invoked_subcommand:
+    if ctx and ctx.invoked_subcommand:
         return
+
+    survey = get_survey()
 
     available_apps = ["algebra", "english"]
 
@@ -553,42 +635,93 @@ def default_homework(ctx: typer.Context):
 
 
 def main():
+    # default_homework(None)
     app()
 
 
-WEIGHTS = []
-_PROBLEM_GENERATORS = [e for e in locals() if "generate" in e]
-for generator in _PROBLEM_GENERATORS:
-    if generator not in _SAVE_DATA["weights"].keys():
-        _SAVE_DATA["weights"][generator] = 1000
+_PROBLEM_GENERATORS = []
+_ALL_PROBLEMS = []
+_NAME_TO_DESCRIPTION = {}
+_DESCRIPTION_TO_NAME = {}
 
-    WEIGHTS.append(1 + _SAVE_DATA["weights"][generator])
 
-_ALL_PROBLEMS = [
-    ProblemCategory(logic=v, weight=int(_SAVE_DATA["weights"][k]))
-    for k, v in locals().items()
-    if "generate" in k
-]
+def prepare_globals():
+    global _PROBLEM_GENERATORS, _ALL_PROBLEMS, _NAME_TO_DESCRIPTION, _DESCRIPTION_TO_NAME
 
-# mapping of problem function name to problem description
-_NAME_TO_DESCRIPTION = {
-    name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
-}
+    prepare_disk_io()
 
-# mapping of problem description to problem function name
-_DESCRIPTION_TO_NAME = {
-    globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
-}
+    _problem_dict = {k: v for k, v in globals().items() if k.startswith("generate") and callable(v)}
+    _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
 
-for generator in list(_SAVE_DATA["weights"].keys()):
-    if generator not in globals().keys():
-        del _SAVE_DATA["weights"][generator]
+    _ALL_PROBLEMS = [
+        ProblemCategory(logic=logic, weight=int(_SAVE_DATA["weights"].get(name)))
+        for name, logic in _problem_dict.items()
+    ]
 
-_SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
-_SAVE_DATA["constants"]["months"] = _MONTHS
-_SAVE_DATA["constants"]["variables"] = _VARIABLES
+    for problem in _ALL_PROBLEMS:
+        if problem.weight is None:
+            problem.weight = 1000
+            _SAVE_DATA["weights"][problem.name] = 1000
 
-toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+    # mapping of problem function name to problem description
+    _NAME_TO_DESCRIPTION = {
+        name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
+    }
+
+    # mapping of problem description to problem function name
+    _DESCRIPTION_TO_NAME = {
+        globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
+    }
+
+    removed_old_generator = False
+    for generator in list(_SAVE_DATA["weights"].keys()):
+        if generator not in globals().keys():
+            del _SAVE_DATA["weights"][generator]
+            removed_old_generator = True
+
+    if removed_old_generator:
+        _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
+        _SAVE_DATA["constants"]["months"] = _MONTHS
+        _SAVE_DATA["constants"]["variables"] = _VARIABLES
+
+        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+
+
+# _problem_dict = {k: v for k, v in locals().items() if k.startswith("generate") and callable(v)}
+# _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
+
+# _ALL_PROBLEMS = [
+#     ProblemCategory(logic=logic, weight=int(_SAVE_DATA["weights"].get(name)))
+#     for name, logic in _problem_dict.items()
+# ]
+
+# for problem in _ALL_PROBLEMS:
+#     if problem.weight is None:
+#         problem.weight = 1000
+#         _SAVE_DATA["weights"][problem.name] = 1000
+
+# # mapping of problem function name to problem description
+# _NAME_TO_DESCRIPTION = {
+#     name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
+# }
+
+# # mapping of problem description to problem function name
+# _DESCRIPTION_TO_NAME = {
+#     globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
+# }
+
+# removed_old_generator = False
+# for generator in list(_SAVE_DATA["weights"].keys()):
+#     if generator not in globals().keys():
+#         del _SAVE_DATA["weights"][generator]
+#         removed_old_generator = True
+
+# if removed_old_generator:
+#     _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
+#     _SAVE_DATA["constants"]["months"] = _MONTHS
+#     _SAVE_DATA["constants"]["variables"] = _VARIABLES
+
+#     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,11 @@ import toml
 import typer
 from openai import OpenAI
 
-from . import tomlshelve
+try:
+    from . import tomlshelve
+
+except ImportError:
+    import tomlshelve
 
 app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
