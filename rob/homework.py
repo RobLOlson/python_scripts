@@ -1,4 +1,4 @@
-from __future__ import annotations
+# from __future__ import annotations
 
 import datetime
 import math
@@ -6,14 +6,13 @@ import pathlib
 import random
 import re
 from decimal import Decimal
-from typing import Callable
 
 import appdirs
+import toml
+import typer
 
 # import survey
 # import sympy
-import toml
-import typer
 
 try:
     from .english import app as english_app
@@ -123,10 +122,10 @@ class ProblemCategory:
     Function must include a description of the problem type as the last line of its docstring.
     """
 
-    def __init__(self, logic: Callable, weight: int):
+    def __init__(self, logic, weight: int):
         self.name = logic.__name__
         self.weight: int = weight
-        self.logic: Callable = logic
+        self.logic = logic
         if logic.__doc__:
             self.description = logic.__doc__.split("\n")[-1].strip()
         else:
@@ -194,10 +193,10 @@ def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
-    """Generate an expression in one variable where coefficients and exponents are all integers.
+def generate_function_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate a function in one variable where coefficients and exponents are all integers.
     Problem Description:
-    Evaluating Expressions"""
+    Evaluating Functions"""
 
     sympy = get_sympy()
 
@@ -222,9 +221,9 @@ def generate_expression_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
     solution = round(sympy.sympify(expression).evalf(subs={var: constant}))
 
     prompt = f"Evaluate the following expression with \\({var}\\) = {constant}"
-
+    prompt = f"Evaluate the function.  \\\\ \\begin{{align*}} f({var}) &= {latex_expression} \\\\ f({constant})&=? \\end{{align*}}"
     return (
-        rf"{prompt} \\ \\ \({latex_expression}\) \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"{prompt} \\ \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({solution!s}\)",
     )
 
@@ -361,12 +360,12 @@ def generate_variable_isolation(freq_weight: int = 1000) -> tuple[str, str]:
 
     left = " + ".join(f"{term}" for term in left)
     right = " + ".join(f"{term}" for term in right)
-    problem = "Isolate the variable y.  Find the x-intercept and the y-intercept."
+    problem_statement = "Isolate the variable y.  Find the x-intercept and the y-intercept."
 
     expression = f"{left} = {right}"
 
     return (
-        rf"{problem} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
         "Solution here.",
     )
 
@@ -409,21 +408,160 @@ def generate_system_of_equations(freq_weight: int = 1000) -> tuple[str, str]:
     left_2 = sympy.latex(sympy.sympify(f"{a_2} * {y} - {b_2} * {x}"))
     right_2 = sympy.latex(sympy.sympify(f"{a_2} * {y_sol} - {b_2} * {x_sol}"))
 
-    problem = "Find the solution (x, y) to the system of equations."
+    problem_statement = "Find the solution (x, y) to the system of equations."
 
     expression = rf"\begin{{align*}}{left_1} &= {right_1} \\ {left_2} &= {right_2}\end{{align*}}"
 
     return (
-        rf"{problem} \\ \\ {expression} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"{problem_statement} \\ \\ {expression} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
         f"({x_sol}, {y_sol})",
     )
 
 
+def generate_arithmetic_sequence(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate an arithmetic sequence.
+    Problem Description:
+    Arithmetic Sequences"""
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    step = random.choice([-4, -3, -2, 2, 3, 4, 5])
+
+    init = random.randint(-9, 9)
+
+    if difficulty > 2:
+        step_delta = random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
+        step += step_delta
+
+    sequence = ", ".join([str(init + step * count) for count in range(0, 4)])
+    sequence += ", ..."
+
+    problem_statement = "What is the next term in the arithmetic sequence?"
+
+    return (
+        rf"{problem_statement} \\ \\ {sequence} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        f"{init+4*step}",
+    )
+
+
+def generate_arithmetic_sequence_formula(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate an arithmetic sequence formula.
+    Problem Description:
+    Arithmetic Sequence Formulas"""
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    step = random.choice([-4, -3, -2, 2, 3, 4, 5])
+
+    init = random.randint(-9, 9)
+
+    if difficulty > 2:
+        step_delta = random.choice([0.1, 0.2, 0.3, 0.4, 0.5])
+        step += step_delta
+
+    sequence = ", ".join([str(init + step * count) for count in range(0, 4)])
+    sequence += ", ..."
+
+    problem_statement = (
+        f"Find a function that models the arithmetic sequence. Note that f(1) should equal {init}."
+    )
+
+    return (
+        rf"{problem_statement} \\ \\ {sequence} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        f"\\(f[x] = {step} \\cdot x + {init}\\)",
+    )
+
+
+def generate_geometric_sequence(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate an geometric sequence.
+    Problem Description:
+    Geometric Sequences"""
+
+    sympy = get_sympy()
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    step = random.choice([2, 3, 4, 5])
+    init = random.choice([-10, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 10])
+
+    sequence = [str(init * step**count) for count in range(0, 5)]
+
+    if difficulty > 1:
+        denom_step = random.choice(list({2, 3, 4, 5} - {step}))
+        sequence = [
+            sympy.latex(sympy.sympify(f"{init}*({step}/{denom_step})**{count}"))
+            for count in range(0, 5)
+        ]
+
+    if random.random() > 0.5:
+        sequence = list(reversed(sequence))
+
+    answer = sequence[-1]
+    sequence = sequence[:-1]
+
+    sequence = ", ".join(sequence)
+    sequence += ", ..."
+
+    problem_statement = "What is the next term in the geometric sequence?"
+
+    return (
+        rf"{problem_statement} \\ \\ \({sequence}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+
+def generate_geometric_sequence_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate geometric sequence formula evaluation.
+    Problem Description:
+    Evaluate Geometric Sequence Formula"""
+
+    sympy = get_sympy()
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    step = random.choice([2, 3, 4, 5])
+    init = random.choice([-10, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 10])
+
+    n = random.randint(1, 5)
+    match n:
+        case 1:
+            evaluate_at = "1st"
+        case 2:
+            evaluate_at = "2nd"
+        case 3:
+            evaluate_at = "3rd"
+        case _:
+            evaluate_at = f"{n}th"
+    # if n == 3:
+    #     evaluate_at = "3rd"
+    # else:
+    #     evaluate_at = f"{n}th"
+
+    formula = f"f(n)={init} \\cdot ({step})^{{n-1}}"
+    answer = init * step ** (n - 1)
+
+    if difficulty > 2:
+        denom_step = random.choice(list({2, 3, 4, 5} - {step}))
+        formula = f"f(n)={init} \\cdot (\\frac{{{step}}}{{{denom_step}}})^{{n-1}}"
+        answer = sympy.sympify(f"{init} * ({step} / {denom_step}) ** {n-1}")
+
+    problem_statement = f"What is the {evaluate_at} term in the sequence?"
+
+    return (
+        rf"{problem_statement} \\ \\ \({formula}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+
 @list_app.command("weights")
-def print_weights() -> None:
+def list_weights() -> None:
     """List the frequency weights for each problem type."""
 
     prepare_globals()
+
+    print(
+        "--------------------------------\nProblems start with 1000 weight.  \nWeight decreases exponentially with use.  \nProblems with smaller weight are less likely to appear in problem sets.  \nSome problem types will increase with difficulty as their weight decreases.  \n--------------------------------"
+    )
 
     for problem in _PROBLEM_GENERATORS:
         statement = globals()[problem].__doc__.split("\n")[-1]
@@ -482,7 +620,10 @@ def render_latex(
             problem_statement += problem.problem
             solution_set += rf"{k+1}: {problem.solution}\;\;"
 
-            _SAVE_DATA["weights"][problem.name] = int(_SAVE_DATA["weights"][problem.name] * 0.9)
+            # _SAVE_DATA["weights"][problem.name] = int(_SAVE_DATA["weights"][problem.name] * 0.9)
+            _SAVE_DATA["weights"][problem.name] = int(
+                _SAVE_DATA["weights"].get(problem.name, 1000) * 0.9
+            )
 
         page_footer = r"\end{enumerate}"
         solutions.append(solution_set)
@@ -610,6 +751,7 @@ def list_default(ctx: typer.Context):
     if ctx.invoked_subcommand:
         return
 
+    print("???")
     list_app.rich_help_panel
 
 
@@ -654,7 +796,7 @@ def prepare_globals():
     _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
 
     _ALL_PROBLEMS = [
-        ProblemCategory(logic=logic, weight=int(_SAVE_DATA["weights"].get(name)))
+        ProblemCategory(logic=logic, weight=int(_SAVE_DATA["weights"].get(name, 1000)))
         for name, logic in _problem_dict.items()
     ]
 
@@ -687,41 +829,7 @@ def prepare_globals():
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 
-# _problem_dict = {k: v for k, v in locals().items() if k.startswith("generate") and callable(v)}
-# _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
-
-# _ALL_PROBLEMS = [
-#     ProblemCategory(logic=logic, weight=int(_SAVE_DATA["weights"].get(name)))
-#     for name, logic in _problem_dict.items()
-# ]
-
-# for problem in _ALL_PROBLEMS:
-#     if problem.weight is None:
-#         problem.weight = 1000
-#         _SAVE_DATA["weights"][problem.name] = 1000
-
-# # mapping of problem function name to problem description
-# _NAME_TO_DESCRIPTION = {
-#     name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
-# }
-
-# # mapping of problem description to problem function name
-# _DESCRIPTION_TO_NAME = {
-#     globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
-# }
-
-# removed_old_generator = False
-# for generator in list(_SAVE_DATA["weights"].keys()):
-#     if generator not in globals().keys():
-#         del _SAVE_DATA["weights"][generator]
-#         removed_old_generator = True
-
-# if removed_old_generator:
-#     _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
-#     _SAVE_DATA["constants"]["months"] = _MONTHS
-#     _SAVE_DATA["constants"]["variables"] = _VARIABLES
-
-#     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+# _problem_dict = { =_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 if __name__ == "__main__":
     main()

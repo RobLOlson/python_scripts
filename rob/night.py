@@ -19,7 +19,7 @@ app = Rocketry()
 
 logger = logging.getLogger()
 
-if log_file.stat().st_size > 5 * 1024 * 1024:
+if log_file.stat().st_size > 2 * 1024 * 1024:
     with open(log_file, "r") as fp:
         half_log = fp.readlines()
         half_log = half_log[int(len(half_log) / 2) :]
