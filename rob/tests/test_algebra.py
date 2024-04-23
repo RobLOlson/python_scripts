@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from ..algebra import Binomial, Term, UnlikeTermsError
+from ..old_algebra import Binomial, Term, UnlikeTermsError
 
 
 def test_Terms():
