@@ -22,8 +22,12 @@ GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
 
 _THIS_FILE = Path(__file__)
 
-_BOOKS_FILE = Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "books.toml"
-_PROGRESS_FILE = Path(appdirs.user_data_dir()) / "robolson" / "english" / "data" / "progress.toml"
+_BOOKS_FILE = (
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "books.toml"
+)
+_PROGRESS_FILE = (
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "progress.toml"
+)
 
 _BOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
 _PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -94,9 +98,9 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
 
     text = "\n".join(lines[2:])
 
-    chapter_pattern = re.compile(r"( *CHAPTER (\d+) ?(.*))")
+    chapter_pattern = re.compile(r"( *CHAPTER (\d+) ?(.*))", re.IGNORECASE)
     section_pattern = re.compile(r"\n[^a-z\n\.\?\]\)]+\??\n")
-
+    breakpoint()
     book = []
     for chapter in chapter_pattern.findall(text):
         chapter_number = int(chapter[1])
@@ -152,6 +156,8 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
             else:
                 book.append(section)
 
+    breakpoint()
+
     if not debug:
         with tomlshelve.open(str(_BOOKS_FILE)) as db:
             db[target] = {"book": book, "author": author, "title": title}
@@ -162,7 +168,7 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
 
 
 @app.command("set-progress")
-def set_progress(target: str = None, progress: int = None):
+def set_progress(target: str = None, progress: int = None):  # type: ignore
     """Set progress for registered books.
     Future generation will proceed from the progress point."""
 
@@ -186,7 +192,7 @@ def set_progress(target: str = None, progress: int = None):
 
 @app.command("generate")
 def generate_pages(
-    target: str = None,
+    target: str = None,  # type:ignore
     n: int = 7,
     debug: bool = True,
     start_date: datetime.datetime = datetime.datetime.today(),
@@ -214,8 +220,8 @@ def generate_pages(
             PROGRESS_INDEX = 0
 
     mytext = _LATEX_DOC_HEADER
-    start = datetime.datetime.today()
-    days = [start + datetime.timedelta(days=i) for i in range(30)]
+    # start = datetime.datetime.today()
+    days = [start_date + datetime.timedelta(days=i) for i in range(30)]
     dates = [
         f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
     ]

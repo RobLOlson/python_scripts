@@ -553,6 +553,101 @@ def generate_geometric_sequence_evaluation(freq_weight: int = 1000) -> tuple[str
     )
 
 
+def generate_power_expression(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate power evaluation.
+    Problem Description:
+    Evaluate Power Expression"""
+
+    operation = random.choice(["multiply", "divide"])
+    glyph = random.choice(_VARIABLES + ["2", "3", "4", "5", "6", "7", "8", "9"])
+    exponent_1 = random.choice(["-7", "-6", "-5", "-4", "-3", "-2", "2", "3", "4", "5", "6", "7"])
+    exponent_2 = random.choice(["-7", "-6", "-5", "-4", "-3", "-2", "2", "3", "4", "5", "6", "7"])
+
+    if operation == "multiply":
+        expression = f"({glyph}^{{{exponent_1}}})({glyph}^{{{exponent_2}}})"
+        answer = f"{glyph}^{{{str(int(exponent_1) + int(exponent_2))}}}"
+    else:
+        expression = f"\\dfrac{{{glyph}^{{{exponent_1}}}}}{{{glyph}^{{{exponent_2}}}}}"
+        answer = f"{glyph}^{{{str(int(exponent_1) - int(exponent_2))}}}"
+
+    problem_statement = f"Rewrite the expression in the form of \\({glyph}^n\\)."
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+
+def generate_radical_simplification(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate radical simplification.
+    Problem Description:
+    Simplify Radicals"""
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    primes = [2, 3, 5, 7]
+    sole_factor = random.choice(primes)
+    leftover_primes = set(primes) - {sole_factor}
+
+    if difficulty > 2:
+        squares = random.choices(population=list(leftover_primes), k=2)
+        perfect_square = squares[0] * squares[1]
+    else:
+        perfect_square = random.choice(list(leftover_primes))
+
+    expression = f"\\sqrt{{{sole_factor * perfect_square * perfect_square}}}"
+    answer = f"{perfect_square}\\sqrt{{{sole_factor}}}"
+
+    problem_statement = f"Remove all perfect squares from inside the square root."
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+
+def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate variable radical simplification.
+    Problem Description:
+    Simplify Radicals With Variables"""
+
+    primes = [2, 3, 5, 7]
+    sole_factor = random.choice(primes)
+    leftover_primes = set(primes) - {sole_factor}
+    glyph = random.choice(_VARIABLES)
+    glyph_power = random.choice(range(1, 8))
+
+    perfect_square = random.choice(list(leftover_primes))
+
+    perfect_part = glyph_power // 2
+    radical_part = glyph_power % 2
+    if not radical_part:
+        radical_part = ""
+
+    if glyph_power == 1:
+        glyph_power = ""
+
+    if perfect_part == 1:
+        perfect_part = ""
+
+    # breakpoint()
+
+    expression = (
+        f"\\sqrt{{{sole_factor * perfect_square * perfect_square}{glyph}^{{{glyph_power}}}}}"
+    )
+
+    answer = f"{perfect_square}{glyph if perfect_part else ''}^{{{perfect_part}}}\\sqrt{{{sole_factor}{glyph if radical_part else ''}^{{{radical_part}}}}}"
+
+    problem_statement = (
+        f"Remove all perfect squares from inside the square root.  Assume {glyph} is positive."
+    )
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+
 @list_app.command("weights")
 def list_weights() -> None:
     """List the frequency weights for each problem type."""
