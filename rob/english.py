@@ -168,6 +168,46 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
     #     db[target] = {"book": book, "author": author, "title": title}
 
 
+@app.command("remove")
+def remove_book(target: str = None):
+    """Remove book from database."""
+
+    if target:
+        with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
+            str(_PROGRESS_FILE)
+        ) as progress_db:
+            if target not in book_db.keys():
+                print(f"'{target}' not found in database.")
+                return
+
+            del book_db[target]
+            try:
+                del progress_db[target]
+            except KeyError:
+                pass
+
+            book_db.sync()
+            progress_db.sync()
+
+            print(f"'{target}' removed from database.")
+        return
+
+    # no target supplied
+
+    with tomlshelve.open(str(_BOOKS_FILE)) as book_db:
+        books = list(book_db.keys())
+
+        targets = survey.routines.basket("Remove which book(s)?", options=books)
+        targets = [books[i] for i in targets]
+
+        purge_list = ", ".join(target for target in targets)
+
+        print(f"Removing '{purge_list}'.")
+
+    for target in targets:
+        remove_book(target)
+
+
 @app.command("set-progress")
 def set_progress(target: str = None, progress: int = None):  # type: ignore
     """Set progress for registered books.
@@ -175,6 +215,10 @@ def set_progress(target: str = None, progress: int = None):  # type: ignore
 
     with tomlshelve.open(str(_PROGRESS_FILE)) as progress_db:
         if target and (progress is not None):
+            if target not in progress_db.keys():
+                print(f"{target} not found in database.")
+                return
+
             progress_db[target] = progress
             return
 

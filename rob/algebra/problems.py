@@ -9,7 +9,7 @@ import appdirs
 import toml
 
 _CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
-_VARIABLES = ["x", "y", "z"]
+_VARIABLES = ["o"]
 
 
 def get_sympy():
@@ -425,6 +425,8 @@ def generate_power_expression(freq_weight: int = 1000) -> tuple[str, str]:
     Problem Description:
     Evaluate Power Expression"""
 
+    global _VARIABLES
+
     operation = random.choice(["multiply", "divide"])
     glyph = random.choice(_VARIABLES + ["2", "3", "4", "5", "6", "7", "8", "9"])
     exponent_1 = random.choice(["-7", "-6", "-5", "-4", "-3", "-2", "2", "3", "4", "5", "6", "7"])
@@ -477,6 +479,8 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[
     """Generate variable radical simplification.
     Problem Description:
     Simplify Radicals With Variables"""
+
+    global _VARIABLES
 
     primes = [2, 3, 5, 7]
     sole_factor = random.choice(primes)
