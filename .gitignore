@@ -1,6 +1,7 @@
 rob/db
 rob/dist
 rob/__pycache__
+rob/data/*
 dist
 .tmp*
 __pycache__

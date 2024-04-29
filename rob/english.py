@@ -98,23 +98,26 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
 
     text = "\n".join(lines[2:])
 
-    chapter_pattern = re.compile(r"( *CHAPTER (\d+) ?(.*))", re.IGNORECASE)
-    section_pattern = re.compile(r"\n[^a-z\n\.\?\]\)]+\??\n")
-    breakpoint()
+    chapter_pattern = re.compile(
+        r"^ *((CHAPTER|BOOK|ACT) (\d+) ?(.*))", re.IGNORECASE + re.MULTILINE
+    )
+    section_pattern = re.compile(r"\n([^a-z\n\.\?\]\)]+\??) *\n")
+
     book = []
+
     for chapter in chapter_pattern.findall(text):
-        chapter_number = int(chapter[1])
-        chapter_name = chapter[2]
-        full_chapter = (
-            f"Chapter {chapter_number}{f': {chapter_name.title()}' if chapter_name else ''}"
-        )
+        chapter_type = chapter[1]
+        chapter_number = int(chapter[2])
+        chapter_name = chapter[3]
+        full_chapter = f"{chapter_type.title()} {chapter_number}{f': {chapter_name.title()}' if chapter_name else ''}"
         split = text.split(str(chapter[0]))  # chapter[0] is the full match
         chapter_text = split[1]
         chapter_text = chapter_pattern.split(chapter_text)[0]
         subsections = []
 
         section_titles = section_pattern.findall(chapter_text)
-        section_titles = [e.strip() for e in section_titles]
+        section_titles = [f"{full_chapter} \\newline {e.strip().title()}" for e in section_titles]
+
         section_titles.insert(0, full_chapter)
         section_texts = section_pattern.sub(r"SPLIT_CHAPTER_HERE", chapter_text).split(
             "SPLIT_CHAPTER_HERE"
@@ -155,8 +158,6 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
                     book.append(part)
             else:
                 book.append(section)
-
-    breakpoint()
 
     if not debug:
         with tomlshelve.open(str(_BOOKS_FILE)) as db:

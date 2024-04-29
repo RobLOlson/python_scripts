@@ -9,6 +9,7 @@ import appdirs
 import toml
 
 _CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
+_VARIABLES = ["x", "y", "z"]
 
 
 def get_sympy():
@@ -17,44 +18,16 @@ def get_sympy():
     return sympy
 
 
-def prepare_disk_io():
-    global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START
-    _THIS_FILE = pathlib.Path(__file__)
-
-    # LATEX_FILE = pathlib.Path("config/latex_templates.toml")
-    _LATEX_FILE = _THIS_FILE.parent.parent / "config" / "algebra" / "latex_templates.toml"
-    _LATEX_FILE.parent.mkdir(exist_ok=True)
-    # _LATEX_FILE.touch()
-    _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
-
-    _SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
-
-    if not _SAVE_FILE.exists():
-        # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
-        NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
-        _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
-        _SAVE_FILE.parent.mkdir(exist_ok=True)
-        # _SAVE_FILE.touch()
-        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.name, "w"))
-
-    else:
-        _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
-
-    _WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
-    _MONTHS = _SAVE_DATA["constants"]["months"]
-    _VARIABLES = _SAVE_DATA["constants"]["variables"]
-
-    _START = datetime.datetime.today()
-    _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
-    _DATES = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS
-    ]
-
-
 def random_factor(
     var, min_coef: int = 1, max_coef: int = 9, min_order: int = 1, max_order: int = 1
 ):
     return random.randint(min_coef, max_coef) * (var ** random.randint(min_order, max_order))
+
+
+# To write a new algebra problem generator you must:
+# * begin the function name with 'generate'
+# * return a 2-tuple of strings ('TeX problem', 'answer')
+# * the last line of the doc string should describe or name the problem type
 
 
 def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
