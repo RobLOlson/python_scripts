@@ -18,3 +18,27 @@ page_header = """\n\\noindent\\makebox[\\textwidth]{
 
 }\\newline\\textbf{by AUTHORGOESHERE}\\newline"""
 
+addendum = """
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\
+Write a brief summary of the passage.
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+\\\\[12pt]
+\\rule{\\linewidth}{.5pt}
+"""

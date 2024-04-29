@@ -1,15 +1,10 @@
-import datetime
 import math
-import pathlib
 import random
 import re
 from decimal import Decimal
 
-import appdirs
-import toml
-
 _CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
-_VARIABLES = ["o"]
+_VARIABLES = ["x", "y", "z"]
 
 
 def get_sympy():
@@ -467,7 +462,7 @@ def generate_radical_simplification(freq_weight: int = 1000) -> tuple[str, str]:
     expression = f"\\sqrt{{{sole_factor * perfect_square * perfect_square}}}"
     answer = f"{perfect_square}\\sqrt{{{sole_factor}}}"
 
-    problem_statement = f"Remove all perfect squares from inside the square root."
+    problem_statement = "Remove all perfect squares from inside the square root."
 
     return (
         rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
@@ -481,6 +476,10 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[
     Simplify Radicals With Variables"""
 
     global _VARIABLES
+
+    sympy = get_sympy()
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     primes = [2, 3, 5, 7]
     sole_factor = random.choice(primes)
@@ -508,6 +507,25 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[
     )
 
     answer = f"{perfect_square}{glyph if perfect_part else ''}^{{{perfect_part}}}\\sqrt{{{sole_factor}{glyph if radical_part else ''}^{{{radical_part}}}}}"
+
+    if difficulty > 2:
+        glyph_power = random.choice(range(1, 8))
+        expression_1 = (
+            f"sqrt({sole_factor * perfect_square * perfect_square} * {glyph} ** {glyph_power})"
+        )
+
+        latex_1 = sympy.latex(sympy.sympify(expression_1, evaluate=False))
+
+        sole_factor_2 = random.choice(primes)
+        leftover_primes_2 = set(primes) - {sole_factor_2}
+        glyph_power_2 = random.choice(range(1, 8))
+        perfect_square_2 = random.choice(list(leftover_primes_2))
+
+        expression_2 = f"sqrt({sole_factor_2 * perfect_square_2 * perfect_square_2} * {glyph} ** {glyph_power_2})"
+        latex_2 = sympy.latex(sympy.sympify(expression_2, evaluate=False))
+        expression = f"{latex_1} {latex_2}"
+        simplified_expr, val = sympy.posify(sympy.sympify(f"{expression_1} * {expression_2}"))
+        answer = sympy.latex(simplified_expr.subs(val))
 
     problem_statement = (
         f"Remove all perfect squares from inside the square root.  Assume {glyph} is positive."

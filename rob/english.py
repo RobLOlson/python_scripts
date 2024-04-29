@@ -42,6 +42,7 @@ LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
 
 _LATEX_PAGE_HEADER = LATEX_TEMPLATES["page_header"]
 _LATEX_DOC_HEADER = LATEX_TEMPLATES["doc_header"]
+_LATEX_ADDENDUM = LATEX_TEMPLATES["addendum"]
 
 _CONFIG_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "config.toml"
 _CONFIG_FILE.parent.mkdir(exist_ok=True)
@@ -305,7 +306,7 @@ def generate_pages(
             dated_header = re.sub("DATEGOESHERE", dates[index], _LATEX_PAGE_HEADER)
             titled_header = re.sub("TITLEGOESHERE", title, dated_header)
             authored_header = re.sub("AUTHORGOESHERE", author, titled_header)
-            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}{_LINES}\\newpage"
+            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}{_LATEX_ADDENDUM}\\newpage"
 
         mytext = re.sub(pattern=r"&", repl=r"\\&", string=mytext)
         if not debug:
