@@ -25,6 +25,62 @@ def random_factor(
 # * the last line of the doc string should describe or name the problem type
 
 
+def generate_integer_factorization(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate integer factorization.
+    Problem Description:
+    Factorize Integers"""
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    primes = [2, 3, 5, 7]
+    sole_factor = random.choice(primes)
+    leftover_primes = set(primes) - {sole_factor}
+    perfect_square = random.choice(list(leftover_primes))
+
+    expression = f"{sole_factor * perfect_square * perfect_square}"
+    answer = f"{perfect_square}\\cdot{perfect_square}\\cdot{sole_factor}"
+
+    if difficulty > 2:
+        square_1, square_2 = random.choices(population=list(leftover_primes), k=2)
+        expression = f"{sole_factor * square_1 * square_1 * square_2 * square_2}"
+        answer = f"{square_1}\\cdot{square_1}\\cdot{sole_factor}\\cdot{square_2}\\cdot{square_2}"
+
+    problem_statement = "Factor the integer into a product of its primes."
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+
+def generate_radical_simplification(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate radical simplification.
+    Problem Description:
+    Simplify Radicals"""
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    primes = [2, 3, 5, 7]
+    sole_factor = random.choice(primes)
+    leftover_primes = set(primes) - {sole_factor}
+
+    if difficulty > 2:
+        squares = random.choices(population=list(leftover_primes), k=2)
+        perfect_square = squares[0] * squares[1]
+    else:
+        perfect_square = random.choice(list(leftover_primes))
+
+    expression = f"\\sqrt{{{sole_factor * perfect_square * perfect_square}}}"
+    answer = f"{perfect_square}\\sqrt{{{sole_factor}}}"
+
+    problem_statement = "Remove all perfect squares from inside the square root."
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+
 def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate an expression in one variable where coefficients and exponents are all integers.
     Problem Description:
@@ -180,8 +236,8 @@ def generate_variable_isolation(freq_weight: int = 1000) -> tuple[str, str]:
     Problem Description:
     Isolating Variables in a Linear Equation"""
 
-    variable = random.choice(["x"])
-    unknown = random.choice(["y"])
+    # variable = random.choice(["x"])
+    # unknown = random.choice(["y"])
 
     term_count = random.randint(1, 3)
     terms = [
@@ -435,34 +491,6 @@ def generate_power_expression(freq_weight: int = 1000) -> tuple[str, str]:
         answer = f"{glyph}^{{{str(int(exponent_1) - int(exponent_2))}}}"
 
     problem_statement = f"Rewrite the expression in the form of \\({glyph}^n\\)."
-
-    return (
-        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
-        rf"\({answer}\)",
-    )
-
-
-def generate_radical_simplification(freq_weight: int = 1000) -> tuple[str, str]:
-    """Generate radical simplification.
-    Problem Description:
-    Simplify Radicals"""
-
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
-
-    primes = [2, 3, 5, 7]
-    sole_factor = random.choice(primes)
-    leftover_primes = set(primes) - {sole_factor}
-
-    if difficulty > 2:
-        squares = random.choices(population=list(leftover_primes), k=2)
-        perfect_square = squares[0] * squares[1]
-    else:
-        perfect_square = random.choice(list(leftover_primes))
-
-    expression = f"\\sqrt{{{sole_factor * perfect_square * perfect_square}}}"
-    answer = f"{perfect_square}\\sqrt{{{sole_factor}}}"
-
-    problem_statement = "Remove all perfect squares from inside the square root."
 
     return (
         rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
