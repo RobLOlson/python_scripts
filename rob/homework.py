@@ -8,7 +8,7 @@ import appdirs
 import toml
 import typer
 
-from .algebra.problems import *
+from .algebra.problems import *  # noqa: F403
 
 try:
     from .english import app as english_app
@@ -18,10 +18,10 @@ except ImportError:
     from english import english_default
 
 
-def get_sympy():
-    import sympy
+# def get_sympy():
+#     import sympy
 
-    return sympy
+#     return sympy
 
 
 def get_survey():
