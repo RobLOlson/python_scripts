@@ -24,18 +24,30 @@ config_app = typer.Typer()
 app.add_typer(list_app, name="list")
 app.add_typer(config_app, name="config")
 
-GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
-_GEMINI_CREDENTIAL = os.environ.get("GOOGLE_AI_KEY")
-genai.configure(api_key=_GEMINI_CREDENTIAL)
+_GPT_CLIENT = None
+_GOOGLE_LLM_MODELS: list[str] = []
+_OPENAI_LLM_MODELS: list[str] = []
+_LLM_BOILERPLATE = False
 
-_GOOGLE_AI_MODELS = []
-_OPEN_AI_MODELS = ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"]
 
-for m in genai.list_models():
-    if "generateContent" in m.supported_generation_methods:
-        _GOOGLE_AI_MODELS.append(m.name)
+def boilerplate_LLM():
+    global _GPT_CLIENT, _GOOGLE_LLM_MODELS, _OPENAI_LLM_MODELS, _LLM_BOILERPLATE, _GOOGLE_LLM, _MODEL
 
-_GOOGLE_LLM = genai.GenerativeModel("gemini-1.5-pro-latest")
+    _GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
+    gemini_credential = os.environ.get("GOOGLE_AI_KEY")
+    genai.configure(api_key=gemini_credential)
+    _GOOGLE_LLM = genai.GenerativeModel(_MODEL)
+
+    for model in _GPT_CLIENT.models.list():
+        if "gpt" in model.id:
+            _OPENAI_LLM_MODELS.append(model.id)
+
+    for m in genai.list_models():
+        if "generateContent" in m.supported_generation_methods:
+            _GOOGLE_LLM_MODELS.append(m.name)
+
+    _LLM_BOILERPLATE: bool = True
+
 
 _THIS_FILE = Path(__file__)
 
@@ -45,12 +57,19 @@ _BOOKS_FILE = (
 _PROGRESS_FILE = (
     Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "progress.toml"
 )
+_REVIEW_FILE = (
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "review.toml"
+)
+
 
 _BOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
 _PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
+_REVIEW_FILE.parent.mkdir(parents=True, exist_ok=True)
+
 
 _BOOKS_FILE.touch()
 _PROGRESS_FILE.touch()
+_REVIEW_FILE.touch()
 
 _LATEX_DEFAULT_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
 _LATEX_FILE = (
@@ -83,51 +102,42 @@ if not _CONFIG_FILE.exists():
     _CONFIG_FILE.touch()
     _CONFIG = toml.loads(open(_CONFIG_DEFAULT_FILE.absolute(), "r").read())
     toml.dump(o=_CONFIG, f=open(_CONFIG_FILE.absolute(), "w"))
-breakpoint()
+
 _CONFIG = toml.loads(open(_CONFIG_FILE, "r").read())
 
 _WEEKDAYS = _CONFIG["constants"]["weekdays"]
 _MONTHS = _CONFIG["constants"]["months"]
 _MODEL = _CONFIG["LLM"]["model"]
-breakpoint()
-_SYSTEM_INSTRUCTION = _CONFIG["LLM"]["instruction"]
 
-_JSON_PATTERN = re.compile(r"```json\n(.*)\n```", flags=re.DOTALL + re.MULTILINE)
+_JSON_PATTERN = re.compile(r"\[.*\]", flags=re.DOTALL + re.MULTILINE)
 
-instruction2 = """You are helping a student comprehend a passage by asking probing questions.  Your questions will be served to the student by an application and must therefore conform to the following JSON schema, where {relevant_paragraph} is the single most relevant paragraph from the passage for that question:
+instruction2 = """You are helping a student comprehend a passage by asking three probing questions.  Your questions will be served to the student by an application and must therefore conform to the following JSON schema (make sure to escape quotation marks), where {paragraph_index} is an integer giving the Nth paragraph in the text and indicates the most relevant paragraph for that question:
 {
     [
         {
-            "question": "[Ask a question to test the reader's surface understanding of a salient paragraph in the passage.]",
+            "question": "Consider paragraph {paragraph_index}. [Ask a question testing whether the student understands the surface level of the text.]",
             "answer": "[Example answer.],
-            "paragraph": "{relevant_paragraph}"
+            "paragraph": {paragraph_index},
+            "type": "narrow"
         },
         {
             "question": "Based on the context of the passage define the word {SAT_word}.",
             "answer": "[Example answer.],
-            "paragraph": "{relevant_paragraph}"
+            "paragraph": {paragraph_index},
+            "type": "vocabulary"
         },
         {
             "question": "[Ask a question that probes the reader's overall understanding of the passage.]",
             "answer": "[Example answer.],
-            "paragraph": "{relevant_paragraph}"
+            "paragraph": {paragraph_index},
+            "type": "broad"
         }
     ]
 }"""
 
-_LINES = r"""
-\\[12pt]
-\rule{\linewidth}{.5pt}
-\\[12pt]
-\rule{\linewidth}{.5pt}
-\\[12pt]
-\rule{\linewidth}{.5pt}
-\\[12pt]
-\rule{\linewidth}{.5pt}
-\\[12pt]
-\rule{\linewidth}{.5pt}
-\\
-Write a brief summary of the passage.
+# _SYSTEM_INSTRUCTION = _CONFIG["LLM"]["instruction"]
+_SYSTEM_INSTRUCTION = instruction2
+_ANSWER_LINES = r"""
 \\[12pt]
 \rule{\linewidth}{.5pt}
 \\[12pt]
@@ -257,6 +267,9 @@ def remove_book(target: str = None):
         books = list(book_db.keys())
 
         targets = survey.routines.basket("Remove which book(s)?", options=books)
+        if not targets:
+            return
+
         targets = [books[i] for i in targets]
 
         purge_list = ", ".join(target for target in targets)
@@ -294,12 +307,79 @@ def set_progress(target: str = None, progress: int = None):  # type: ignore
             exit(1)
 
 
+def fetch_LLM_output(model: str, system_instruction: str, prompt: str) -> list[dict]:
+    """Requests response from an LLM model and converts that response into a list[dict].
+
+    Args:
+        model: (str) LLM model to be queried.
+        system_instruction: (str) System instruction to be given to the LLM.
+        prompt: (str) Prompt used to generate LLM output.
+
+    Returns:
+        Returns a list of dicts, each element of which represents a question about the text.
+
+        [{'question': ..., 'paragraph': ..., 'answer': ...}, ...]
+    """
+
+    if not _LLM_BOILERPLATE:
+        boilerplate_LLM()
+
+    match model:
+        case model if model in _OPENAI_LLM_MODELS and _GPT_CLIENT:
+            response = _GPT_CLIENT.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": system_instruction},
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+            )
+            raw_response = response.choices[0].message.content
+            regex_match = _JSON_PATTERN.search(raw_response if raw_response else "")
+            if not regex_match:
+                return []
+            else:
+                serialized_json = regex_match.group()
+
+        case model if model in _OPENAI_LLM_MODELS and not _GPT_CLIENT:
+            print("OpenAI credentials not validating.")
+            exit(1)
+
+        case model if model in _GOOGLE_LLM_MODELS:
+            response = _GOOGLE_LLM.generate_content(f"{system_instruction}\n\n{prompt}")
+            try:
+                regex_match = _JSON_PATTERN.search(response.text)
+            except ValueError:
+                breakpoint()
+
+            if not regex_match:
+                return []
+            else:
+                serialized_json = regex_match.group()
+
+    try:
+        candidate_questions = json.loads(serialized_json)
+    except json.JSONDecodeError:
+        breakpoint()
+
+    valid_questions = []
+
+    for question in candidate_questions:
+        if {"question", "paragraph", "answer"} <= set(question.keys()):
+            valid_questions.append(question)
+
+    return valid_questions
+
+
 @app.command("generate")
 def generate_pages(
     target: str = None,  # type:ignore
     n: int = 7,
     debug: bool = True,
     start_date: datetime.datetime = datetime.datetime.today(),
+    review: bool = True,
 ):
     if target is None:
         with tomlshelve.open(_BOOKS_FILE) as db:
@@ -331,54 +411,120 @@ def generate_pages(
     ]
 
     # with shelve.open(_BOOKS_FILE.name) as db:
-    with tomlshelve.open(str(_BOOKS_FILE)) as db:
-        if target not in db.keys():
+    with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
+        str(_REVIEW_FILE)
+    ) as review_db:
+        try:
+            reviews = review_db["reviews"][target]
+        except KeyError:
+            review_db["reviews"] = {}
+            review_db["reviews"][target] = []
+            reviews = []
+
+        if target not in book_db.keys():
             print(f"{target} not ingested.")
             return
 
-        book = db[target]["book"]
-        title = db[target]["title"]
-        author = db[target]["author"]
+        book = book_db[target]["book"]
+        title = book_db[target]["title"]
+        author = book_db[target]["author"]
+
+        new_reviews = []
+        answer_latex = "\\newpage"
         book_size = len(book)
         for index in range(n):
+            book_index = (PROGRESS_INDEX + index) % book_size
+
+            raw_text = book_db[target]["book"][book_index]["text"]
+            part_title = book_db[target]["book"][book_index]["title"]
+
+            count = 1
+            while "\\indent" in raw_text:
+                raw_text = raw_text.replace("\\indent", f"\\paragraph{{{count}}}", 1)
+                # raw_text = re.sub(r"\\indent", rf"\paragraph{{{count}}}", raw_text)
+                count += 1
+
+            question_latex = rf"\newpage \section{{Questions for {part_title}}}"
             if not debug:
-                breakpoint()
-                response = GPT_CLIENT.chat.completions.create(
-                    model="gpt-4",
-                    messages=[
-                        {"role": "system", "content": _SYSTEM_INSTRUCTION},
-                        {
-                            "role": "user",
-                            "content": book[(PROGRESS_INDEX + index) % book_size]["text"],
-                        },
-                    ],
+                questions: list[dict] = fetch_LLM_output(
+                    model=_MODEL,
+                    system_instruction=_SYSTEM_INSTRUCTION,
+                    prompt=raw_text,
+                    # prompt=book[book_index]["text"],
                 )
 
-                questions = str(response.choices[0].message.content)
-                lines = questions.split("\n")
+                # This loop expands the 'context' of the question, i.e., the excerpt
+                for question in questions:
+                    question["title"] = part_title
+                    question["book"] = target
+                    excerpt_index = int(question["paragraph"])
 
-                questions = [line for line in lines if len(line) > 0]
-                questions = [f"{i+1}.) {text}" for i, text in enumerate(questions)]
-                questions = "\n\n".join(questions)
+                    excerpt_start_index = raw_text.find(f"paragraph{{{excerpt_index}}}")
+                    excerpt_stop_index = raw_text.find(f"paragraph{{{excerpt_index+2}}}")
+
+                    excerpt = raw_text[excerpt_start_index - 1 : excerpt_stop_index - 1]
+                    question["paragraph"] = excerpt
+
+                    if question["type"] in ["vocabulary"]:
+                        question["mastery"] = 0
+                        new_reviews.append(question)
+
+                answer_latex += "\\hspace{{12pt}} \\section{{Answers}} \\hspace{{12pt}}"
+                for i, question in enumerate(questions):
+                    question_latex += f"{i + 1}. {question['question']}"
+                    answer_latex += f"""
+{i + 1}. {question['answer']}\\newline """
+                    if question["type"] in ["narrow", "broad"]:
+                        question_latex += _ANSWER_LINES
+                    else:
+                        question_latex += r"\\\\"
+
             else:
-                json_response = None
-                while not json_response:
-                    response = _GOOGLE_LLM.generate_content(
-                        f"{instruction2}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}"
-                    )
-                    breakpoint()
-                    json_response = _JSON_PATTERN.search(response.text)
-
-                json_response = json_response.groups(0)[0]
-
-                questions = "QUESTIONS GO HERE"
+                question_latex = "QUESTIONS GO HERE"
 
             dated_header = re.sub("DATEGOESHERE", dates[index], _LATEX_PAGE_HEADER)
             titled_header = re.sub("TITLEGOESHERE", title, dated_header)
             authored_header = re.sub("AUTHORGOESHERE", author, titled_header)
-            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{questions}{_LATEX_ADDENDUM}\\newpage"
+            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{question_latex}\\newpage"
+
+        review_latex = ""
+
+        if review and reviews:
+            review_latex = r"\section{Review Questions}"
+            weight = n * 1000
+            review_indeces = []
+
+            for i, review_question in enumerate(sorted(reviews, key=lambda x: int(x["mastery"]))):
+                if review_question["book"] != target:
+                    continue
+
+                review_indeces.append(i)
+                old_mastery = int(review_question["mastery"])
+                weight -= 1000 - old_mastery
+
+                # rhs is a sigmoid function that goes from 0 to 1000 and is roughly linear with slope 250 across the interval (0, 750) after which it asymptotically approaches 1000
+                new_mastery = 1000 // (1 + 3 / (7 ^ (old_mastery // 500)))
+
+                review_question["mastery"] = new_mastery
+
+                if weight < 0:
+                    break
+
+            for i in review_indeces:
+                hspace = r"\hspace{24pt}"
+                review_latex += f"{reviews[i]['paragraph']} \\paragraph{{}} {i+1}.) {reviews[i]['question']} {_ANSWER_LINES if reviews[i]['type']!='vocabulary' else hspace}"
+                answer_latex += f"Review \\#{i+1}: {reviews[i]['answer']}"
+
+        if not debug:
+            review_db["reviews"][target].extend(new_reviews)
+            review_db.sync()
+
+        mytext += review_latex
+        mytext += answer_latex
 
         mytext = re.sub(pattern=r"&", repl=r"\\&", string=mytext)
+        # mytext = mytext.replace(r"&", r"\\&")
+
         if not debug:
             fp = open(
                 f"English Reading {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex",
@@ -390,7 +536,8 @@ def generate_pages(
             print("Use '--no-debug' to save progress.")
             fp = open("English Sample.tex", "w", encoding="utf-8")
 
-        mytext += r"\end{document}"
+        mytext += r"""
+\end{document}"""
 
         fp.write(mytext)
         fp.close()
@@ -482,8 +629,11 @@ def config_prompt():
 def config_model(target: str | None = None):
     """Select an LLM to use for question generation."""
 
-    models = (_GOOGLE_AI_MODELS if os.environ.get("GOOGLE_AI_KEY") else []) + (
-        _OPEN_AI_MODELS if os.environ.get("OPENAI_API_KEY") else []
+    if not _LLM_BOILERPLATE:
+        boilerplate_LLM()
+
+    models = (_GOOGLE_LLM_MODELS if os.environ.get("GOOGLE_AI_KEY") else []) + (
+        _OPENAI_LLM_MODELS if os.environ.get("OPENAI_API_KEY") else []
     )
 
     if target in models:
