@@ -450,10 +450,6 @@ def generate_geometric_sequence_evaluation(freq_weight: int = 1000) -> tuple[str
             evaluate_at = "3rd"
         case _:
             evaluate_at = f"{n}th"
-    # if n == 3:
-    #     evaluate_at = "3rd"
-    # else:
-    #     evaluate_at = f"{n}th"
 
     formula = f"f(n)={init} \\cdot ({step})^{{n-1}}"
     answer = init * step ** (n - 1)
@@ -528,8 +524,6 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[
     if perfect_part == 1:
         perfect_part = ""
 
-    # breakpoint()
-
     expression = (
         f"\\sqrt{{{sole_factor * perfect_square * perfect_square}{glyph}^{{{glyph_power}}}}}"
     )
@@ -562,4 +556,129 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[
     return (
         rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({answer}\)",
+    )
+
+
+def generate_binomial_product_expansion(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate binomial product expansion.
+    Problem Description:
+    Binomial Product Expansion"""
+
+    global _VARIABLES
+
+    sympy = get_sympy()
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    glyph = random.choice(_VARIABLES)
+    constant_1 = random.choice(["-6", "-5", "-4", "-3", "-2", "-1", "1", "2", "3", "4", "5", "6"])
+    constant_2 = random.choice(["-6", "-5", "-4", "-3", "-2", "-1", "1", "2", "3", "4", "5", "6"])
+    coef_1 = random.choice(["-5", "-4", "-3", "-2", "2", "3", "4", "5"])
+    coef_2 = random.choice(["-5", "-4", "-3", "-2", "2", "3", "4", "5"])
+
+    match difficulty:
+        case difficulty if difficulty <= 1:
+            expression = f"({glyph} + {constant_1})*({glyph} + {constant_2})"
+        case difficulty if difficulty == 2:
+            expression = f"({coef_1}*{glyph} + {constant_1}) * ({glyph} + {constant_2})"
+        case difficulty if difficulty > 3:
+            left_1 = f"{coef_1}*{glyph}"
+            right_1 = constant_1
+            if random.random() > 0.5:
+                left_1, right_1 = right_1, left_1
+
+            left_2 = f"{coef_2}*{glyph}"
+            right_2 = constant_2
+            if random.random() > 0.5:
+                left_2, right_2 = right_2, left_2
+
+            expression = f"({left_1} + {right_1}) * ({left_2} + {right_2})"
+        case _:
+            expression = f"({glyph} + {constant_1})*({glyph} + {constant_2})"
+
+    expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
+    answer_latex = sympy.latex(sympy.expand(expression))
+
+    problem_statement = f"Expand the binomial product into a standard form polynomial."
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer_latex}\)",
+    )
+
+
+def generate_multiply_difference_of_squares(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate multiply difference of squares binomial.
+    Problem Description:
+    Multiply Difference of Squares Binomial"""
+
+    global _VARIABLES
+
+    sympy = get_sympy()
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    glyph = random.choice(_VARIABLES)
+    constant = random.choice(["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+    coef = random.choice(["2", "3", "4", "5"])
+
+    match difficulty:
+        case difficulty if difficulty <= 2:
+            expression = f"({glyph} + {constant})*({glyph} - {constant})"
+        case difficulty if difficulty > 2:
+            expression = f"({coef}*{glyph} + {constant}) * ({coef}*{glyph} - {constant})"
+        case _:
+            expression = f"({glyph} + {constant})*({glyph} - {constant})"
+
+    expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
+    answer_latex = sympy.latex(sympy.expand(expression))
+
+    problem_statement = f"Expand the binomial product into a standard form polynomial."
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer_latex}\)",
+    )
+
+
+def generate_multiply_squares_of_binomials(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate multiply squares of binomials.
+    Problem Description:
+    Multiply Squares of Binomials"""
+
+    global _VARIABLES
+
+    sympy = get_sympy()
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    glyph = random.choice(_VARIABLES)
+    constant = random.choice(["1", "2", "3", "4", "5", "6", "7", "8", "9"])
+    coef = random.choice(["2", "3", "4", "5"])
+
+    match difficulty:
+        case difficulty if difficulty <= 1:
+            expression = f"({glyph} + {constant})**2"
+        case difficulty if difficulty == 2:
+            expression = f"({coef}*{glyph} + {constant})**2"
+        case difficulty if difficulty > 2:
+            left = f"{coef}*{glyph}"
+            right = constant
+            if random.random() > 0.5:
+                left, right = right, left
+
+            expression = f"({left} + {right})**2"
+            if random.random() > 0.5:
+                expression.replace("+", "-")
+        case _:
+            expression = f"({glyph} + {constant})*({glyph} - {constant})"
+
+    expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
+    answer_latex = sympy.latex(sympy.expand(expression))
+
+    problem_statement = f"Expand the binomial product into a standard form polynomial.  (Don't forget to combine like terms.)"
+
+    return (
+        rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer_latex}\)",
     )
