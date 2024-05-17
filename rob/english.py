@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import re
+import time
 from pathlib import Path
 
 import appdirs
@@ -9,6 +10,7 @@ import google.generativeai as genai
 import survey
 import toml
 import typer
+from google.api_core.exceptions import ResourceExhausted
 from openai import OpenAI
 
 try:
@@ -46,7 +48,7 @@ def boilerplate_LLM():
         if "generateContent" in m.supported_generation_methods:
             _GOOGLE_LLM_MODELS.append(m.name)
 
-    _LLM_BOILERPLATE: bool = True
+    _LLM_BOILERPLATE = True
 
 
 _THIS_FILE = Path(__file__)
@@ -111,25 +113,25 @@ _MODEL = _CONFIG["LLM"]["model"]
 
 _JSON_PATTERN = re.compile(r"\[.*\]", flags=re.DOTALL + re.MULTILINE)
 
-instruction2 = """You are helping a student comprehend a passage by asking three probing questions.  Your questions will be served to the student by an application and must therefore conform to the following JSON schema (make sure to escape quotation marks), where {paragraph_index} is an integer giving the Nth paragraph in the text and indicates the most relevant paragraph for that question:
+instruction2 = """You are helping a student comprehend a passage by asking three probing questions.  Your questions will be served to the student by an application and must therefore conform to the following JSON schema (make sure to escape quotation marks), where {paragraph_index} is an INTEGER giving the Nth paragraph in the text and indicates the most relevant paragraph for that question:
 {
     [
         {
-            "question": "Consider paragraph {paragraph_index}. [Ask a question testing whether the student understands the surface level of the text.]",
+            "question": "Circle or highlight the part of the passage that ...",
             "answer": "[Example answer.],
-            "paragraph": {paragraph_index},
+            "paragraph_index": {paragraph_index},
             "type": "narrow"
         },
         {
             "question": "Based on the context of the passage define the word {SAT_word}.",
             "answer": "[Example answer.],
-            "paragraph": {paragraph_index},
+            "paragraph_index": {paragraph_index},
             "type": "vocabulary"
         },
         {
             "question": "[Ask a question that probes the reader's overall understanding of the passage.]",
             "answer": "[Example answer.],
-            "paragraph": {paragraph_index},
+            "paragraph_index": {paragraph_index},
             "type": "broad"
         }
     ]
@@ -348,7 +350,44 @@ def fetch_LLM_output(model: str, system_instruction: str, prompt: str) -> list[d
             exit(1)
 
         case model if model in _GOOGLE_LLM_MODELS:
-            response = _GOOGLE_LLM.generate_content(f"{system_instruction}\n\n{prompt}")
+            attempts = 0
+            success = False
+            while attempts < 5 and not success:
+                try:
+                    attempt_text = f" ({attempts+1}/5 attempts)" if attempts else ""
+                    print(f"Querying Google's LLM ({model}) {attempt_text}")
+                    response = _GOOGLE_LLM.generate_content(
+                        f"{system_instruction}\n\n{prompt}",
+                        safety_settings=[
+                            {
+                                "category": "HARM_CATEGORY_DANGEROUS",
+                                "threshold": "BLOCK_NONE",
+                            },
+                            {
+                                "category": "HARM_CATEGORY_HARASSMENT",
+                                "threshold": "BLOCK_NONE",
+                            },
+                            {
+                                "category": "HARM_CATEGORY_HATE_SPEECH",
+                                "threshold": "BLOCK_NONE",
+                            },
+                            {
+                                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                                "threshold": "BLOCK_NONE",
+                            },
+                            {
+                                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                                "threshold": "BLOCK_NONE",
+                            },
+                        ],
+                    )
+                    print("Success!")
+                    success = True
+                except ResourceExhausted:
+                    print("Google resources exhausted.  Waiting 60s...")
+                    time.sleep(60)
+                    attempts += 1
+
             try:
                 regex_match = _JSON_PATTERN.search(response.text)
             except ValueError:
@@ -367,7 +406,7 @@ def fetch_LLM_output(model: str, system_instruction: str, prompt: str) -> list[d
     valid_questions = []
 
     for question in candidate_questions:
-        if {"question", "paragraph", "answer"} <= set(question.keys()):
+        if {"question", "paragraph_index", "answer"} <= set(question.keys()):
             valid_questions.append(question)
 
     return valid_questions
@@ -444,7 +483,7 @@ def generate_pages(
                 # raw_text = re.sub(r"\\indent", rf"\paragraph{{{count}}}", raw_text)
                 count += 1
 
-            question_latex = rf"\newpage \section{{Questions for {part_title}}}"
+            question_latex = rf"\newpage \section*{{Questions for {part_title}}}"
             if not debug:
                 questions: list[dict] = fetch_LLM_output(
                     model=_MODEL,
@@ -457,27 +496,30 @@ def generate_pages(
                 for question in questions:
                     question["title"] = part_title
                     question["book"] = target
-                    excerpt_index = int(question["paragraph"])
+
+                    excerpt_index = int(
+                        re.search(pattern=r"\d+", string=str(question["paragraph_index"])).group(0)
+                    )
 
                     excerpt_start_index = raw_text.find(f"paragraph{{{excerpt_index}}}")
                     excerpt_stop_index = raw_text.find(f"paragraph{{{excerpt_index+2}}}")
 
                     excerpt = raw_text[excerpt_start_index - 1 : excerpt_stop_index - 1]
-                    question["paragraph"] = excerpt
+                    question["paragraph_index"] = excerpt
 
                     if question["type"] in ["vocabulary"]:
                         question["mastery"] = 0
                         new_reviews.append(question)
 
-                answer_latex += "\\hspace{{12pt}} \\section{{Answers}} \\hspace{{12pt}}"
+                answer_latex += f"\\section*{{Answers for {part_title}}}"
                 for i, question in enumerate(questions):
                     question_latex += f"{i + 1}. {question['question']}"
                     answer_latex += f"""
 {i + 1}. {question['answer']}\\newline """
-                    if question["type"] in ["narrow", "broad"]:
+                    if question["type"] in ["broad"]:
                         question_latex += _ANSWER_LINES
                     else:
-                        question_latex += r"\\\\"
+                        question_latex += r"\vspace{36pt} \newline"
 
             else:
                 question_latex = "QUESTIONS GO HERE"
@@ -485,12 +527,12 @@ def generate_pages(
             dated_header = re.sub("DATEGOESHERE", dates[index], _LATEX_PAGE_HEADER)
             titled_header = re.sub("TITLEGOESHERE", title, dated_header)
             authored_header = re.sub("AUTHORGOESHERE", author, titled_header)
-            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{question_latex}\\newpage"
+            mytext += f"{authored_header}\n\\section*{{{book[(PROGRESS_INDEX + index) % book_size]['title']}}}\n\n{book[(PROGRESS_INDEX + index) % book_size]['text']}\n\n{question_latex}\\newpage\\shipout\\null\\newpage"
 
         review_latex = ""
 
         if review and reviews:
-            review_latex = r"\section{Review Questions}"
+            review_latex = r"\section*{Review Questions}"
             weight = n * 1000
             review_indeces = []
 
@@ -512,7 +554,7 @@ def generate_pages(
 
             for i in review_indeces:
                 hspace = r"\hspace{24pt}"
-                review_latex += f"{reviews[i]['paragraph']} \\paragraph{{}} {i+1}.) {reviews[i]['question']} {_ANSWER_LINES if reviews[i]['type']!='vocabulary' else hspace}"
+                review_latex += f"{reviews[i]['paragraph_index']} \\paragraph{{}} {i+1}.) {reviews[i]['question']} {_ANSWER_LINES if reviews[i]['type']!='vocabulary' else hspace}"
                 answer_latex += f"Review \\#{i+1}: {reviews[i]['answer']}"
 
         if not debug:
@@ -545,6 +587,25 @@ def generate_pages(
     if not debug:
         with tomlshelve.open(str(_PROGRESS_FILE)) as db:
             db[target] = PROGRESS_INDEX + n
+
+
+@list_app.command("reviews")
+def list_reviews(book: str | None = None):
+    """List saved review questions for a book."""
+
+    with tomlshelve.open(_REVIEW_FILE) as review_db:
+        if not book:
+            available_books = [str(e) for e in review_db["reviews"].keys()]
+
+            choice = survey.routines.select("Select a book: ", options=available_books)
+            if choice is None:
+                return
+            book = available_books[choice]
+
+        reviews = review_db["reviews"][book]
+        print(f"{len(reviews)} review(s).")
+        for review in reviews:
+            print(f"{review['title']}")
 
 
 @list_app.command("books")
