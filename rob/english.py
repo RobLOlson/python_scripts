@@ -36,17 +36,19 @@ def boilerplate_LLM():
     global _GPT_CLIENT, _GOOGLE_LLM_MODELS, _OPENAI_LLM_MODELS, _LLM_BOILERPLATE, _GOOGLE_LLM, _MODEL
 
     _GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
+
     gemini_credential = os.environ.get("GOOGLE_AI_KEY")
     genai.configure(api_key=gemini_credential)
-    _GOOGLE_LLM = genai.GenerativeModel(_MODEL)
+    _GOOGLE_LLM = genai.GenerativeModel(_MODEL) if gemini_credential else None
 
     for model in _GPT_CLIENT.models.list():
         if "gpt" in model.id:
             _OPENAI_LLM_MODELS.append(model.id)
 
-    for m in genai.list_models():
-        if "generateContent" in m.supported_generation_methods:
-            _GOOGLE_LLM_MODELS.append(m.name)
+    if _GOOGLE_LLM is not None:
+        for m in genai.list_models():
+            if "generateContent" in m.supported_generation_methods:
+                _GOOGLE_LLM_MODELS.append(m.name)
 
     _LLM_BOILERPLATE = True
 
@@ -54,13 +56,25 @@ def boilerplate_LLM():
 _THIS_FILE = Path(__file__)
 
 _BOOKS_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "books.toml"
+    Path(appdirs.user_data_dir(roaming=True))
+    / "robolson"
+    / "english"
+    / "data"
+    / "books.toml"
 )
 _PROGRESS_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "progress.toml"
+    Path(appdirs.user_data_dir(roaming=True))
+    / "robolson"
+    / "english"
+    / "data"
+    / "progress.toml"
 )
 _REVIEW_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "review.toml"
+    Path(appdirs.user_data_dir(roaming=True))
+    / "robolson"
+    / "english"
+    / "data"
+    / "review.toml"
 )
 
 
@@ -73,7 +87,9 @@ _BOOKS_FILE.touch()
 _PROGRESS_FILE.touch()
 _REVIEW_FILE.touch()
 
-_LATEX_DEFAULT_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
+_LATEX_DEFAULT_FILE = (
+    Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
+)
 _LATEX_FILE = (
     Path(appdirs.user_data_dir(roaming=True))
     / "robolson"
@@ -96,7 +112,11 @@ _LATEX_ADDENDUM = _LATEX_TEMPLATES["addendum"]
 
 _CONFIG_DEFAULT_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "config.toml"
 _CONFIG_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "config" / "config.toml"
+    Path(appdirs.user_data_dir(roaming=True))
+    / "robolson"
+    / "english"
+    / "config"
+    / "config.toml"
 )
 _CONFIG_FILE.parent.mkdir(exist_ok=True, parents=True)
 
@@ -191,7 +211,9 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         subsections = []
 
         section_titles = section_pattern.findall(chapter_text)
-        section_titles = [f"{full_chapter} \\newline {e.strip().title()}" for e in section_titles]
+        section_titles = [
+            f"{full_chapter} \\newline {e.strip().title()}" for e in section_titles
+        ]
 
         section_titles.insert(0, full_chapter)
         section_texts = section_pattern.sub(r"SPLIT_CHAPTER_HERE", chapter_text).split(
@@ -199,7 +221,9 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         )
 
         for i, section_title in enumerate(section_titles):
-            subsections.append({"title": section_title, "text": section_texts[i].rstrip()})
+            subsections.append(
+                {"title": section_title, "text": section_texts[i].rstrip()}
+            )
 
         for section in subsections:
             section_length = len(section["text"])
@@ -298,7 +322,9 @@ def set_progress(target: str = None, progress: int = None):  # type: ignore
 
         with tomlshelve.open(_BOOKS_FILE) as db:
             form = {
-                k: survey.widgets.Count(value=progress_db[k] if k in progress_db.keys() else 0)
+                k: survey.widgets.Count(
+                    value=progress_db[k] if k in progress_db.keys() else 0
+                )
                 for k in db.keys()
             }
         if form:
@@ -446,7 +472,8 @@ def generate_pages(
     # start = datetime.datetime.today()
     days = [start_date + datetime.timedelta(days=i) for i in range(30)]
     dates = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
+        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
+        for day in days
     ]
 
     # with shelve.open(_BOOKS_FILE.name) as db:
@@ -498,11 +525,15 @@ def generate_pages(
                     question["book"] = target
 
                     excerpt_index = int(
-                        re.search(pattern=r"\d+", string=str(question["paragraph_index"])).group(0)
+                        re.search(
+                            pattern=r"\d+", string=str(question["paragraph_index"])
+                        ).group(0)
                     )
 
                     excerpt_start_index = raw_text.find(f"paragraph{{{excerpt_index}}}")
-                    excerpt_stop_index = raw_text.find(f"paragraph{{{excerpt_index+2}}}")
+                    excerpt_stop_index = raw_text.find(
+                        f"paragraph{{{excerpt_index+2}}}"
+                    )
 
                     excerpt = raw_text[excerpt_start_index - 1 : excerpt_stop_index - 1]
                     question["paragraph_index"] = excerpt
@@ -536,7 +567,9 @@ def generate_pages(
             weight = n * 1000
             review_indeces = []
 
-            for i, review_question in enumerate(sorted(reviews, key=lambda x: int(x["mastery"]))):
+            for i, review_question in enumerate(
+                sorted(reviews, key=lambda x: int(x["mastery"]))
+            ):
                 if review_question["book"] != target:
                     continue
 
@@ -590,7 +623,7 @@ def generate_pages(
 
 
 @list_app.command("reviews")
-def list_reviews(book: str | None = None):
+def list_reviews(book=None):
     """List saved review questions for a book."""
 
     with tomlshelve.open(_REVIEW_FILE) as review_db:
@@ -631,8 +664,21 @@ def config_file():
 
 
 @config_app.command("creds")
-def config_creds(google_api_key: str | None = None, openai_api_key: str | None = None):
+def config_creds(google_api_key=None, openai_api_key=None):
     """Save your LLM API key to the appropriate environment variable."""
+
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    google_key = os.environ.get("GOOGLE_AI_KEY")
+
+    google_annotated = (
+        f"Google (No Key)" if not google_key else f"Google ({google_key[:5]}...)"
+    )
+    openai_annotated = (
+        f"OpenAI (No Key)" if not openai_key else f"OpenAI ({openai_key[:5]}...)"
+    )
+
+    LLM_providers = ["Google", "OpenAI"]
+    LLM_providers_annotated = [google_annotated, openai_annotated]
 
     if google_api_key:
         os.system(f"setx GOOGLE_AI_KEY {google_api_key}")
@@ -643,20 +689,26 @@ def config_creds(google_api_key: str | None = None, openai_api_key: str | None =
     if google_api_key or openai_api_key:
         return
 
-    choices = survey.routines.select("Set which API keys?", options=["Google", "OpenAI"])
+    choice = survey.routines.select(
+        "Set which API keys?", options=LLM_providers_annotated
+    )
 
-    if not choices:
+    if choice is None:
         return
 
-    for choice in choices:
-        key = input(f"Enter your {choice} API key: ")
+    key = input(f"Enter your {LLM_providers[choice]} API key: ")
+    choice = LLM_providers[choice]
 
-        match choice:
-            case "Google":
-                os.system(f"setx GOOGLE_AI_KEY {key}")
+    match choice:
+        case "Google":
+            print(f"Running command: `setx GOOGLE_AI_KEY {key[:5]}...`")
+            os.system(f"setx GOOGLE_AI_KEY {key}")
+            print(f"Success! Restart console to refresh environment variables.")
 
-            case "OpenAI":
-                os.system(f"setx OPENAI_API_KEY {key}")
+        case "OpenAI":
+            print(f"Running command: `setx OPENAI_API_KEY {key[:5]}...`")
+            os.system(f"setx OPENAI_API_KEY {key}")
+            print(f"Success! Restart console to refresh environment variables.")
 
 
 @config_app.command("prompt")
@@ -687,7 +739,7 @@ def config_prompt():
 
 
 @config_app.command("model")
-def config_model(target: str | None = None):
+def config_model(target=None):
     """Select an LLM to use for question generation."""
 
     if not _LLM_BOILERPLATE:
@@ -734,6 +786,11 @@ def english_default(ctx: typer.Context):
         config_model()
 
     available_books = list(tomlshelve.open(_BOOKS_FILE).keys())
+
+    if not available_books:
+        print("No books have been ingested.")
+        exit(1)
+
     book_choice = survey.routines.select("Select a book: ", options=available_books)
     book_choice = available_books[book_choice]
 
