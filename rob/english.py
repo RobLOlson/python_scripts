@@ -794,14 +794,14 @@ def english_default(ctx: typer.Context):
         config_model()
 
     # available_books = list(tomlshelve.open(_BOOKS_FILE).keys())
-    available_books = tomlshelve.open(_SAVE_FILE)["books"]
+    save_db = tomlshelve.open(_SAVE_FILE)
 
-    if not available_books:
+    if not save_db or "books" not in save_db.keys():
         print("No books have been ingested.")
         exit(1)
 
-    book_choice = survey.routines.select("Select a book: ", options=available_books)
-    book_choice = available_books[book_choice]
+    book_choice = survey.routines.select("Select a book: ", options=save_db["books"])
+    book_choice = save_db["books"][book_choice]
 
     start_date = survey.routines.datetime(
         "Select assignment start date: ",

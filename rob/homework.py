@@ -11,7 +11,7 @@ import typer
 
 from .algebra.problems import *  # noqa: F403
 
-_DEBUG = True
+_DEBUG = False
 
 _typer_start = time.perf_counter()
 
