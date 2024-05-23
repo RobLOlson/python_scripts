@@ -6,18 +6,20 @@ import time
 from pathlib import Path
 
 import appdirs
-import google.generativeai as genai
 import survey
 import toml
 import typer
-from google.api_core.exceptions import ResourceExhausted
-from openai import OpenAI
 
 try:
-    from . import tomlshelve
+    # from . import tomlshelve
+    from .utilities import tomlshelve
 
 except ImportError:
     import tomlshelve
+
+_DEBUG = False
+
+english_typer_app_start = time.perf_counter()
 
 app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
@@ -25,6 +27,12 @@ config_app = typer.Typer()
 
 app.add_typer(list_app, name="list")
 app.add_typer(config_app, name="config")
+english_typer_app_stop = time.perf_counter()
+
+if _DEBUG:
+    print(
+        f"English Typer app initialized. ({english_typer_app_stop - english_typer_app_start:.3f}s)"
+    )
 
 _GPT_CLIENT = None
 _GOOGLE_LLM_MODELS: list[str] = []
@@ -33,7 +41,12 @@ _LLM_BOILERPLATE = False
 
 
 def boilerplate_LLM():
+    LLM_start = time.perf_counter()
     global _GPT_CLIENT, _GOOGLE_LLM_MODELS, _OPENAI_LLM_MODELS, _LLM_BOILERPLATE, _GOOGLE_LLM, _MODEL
+
+    import google.generativeai as genai
+    from google.api_core.exceptions import ResourceExhausted
+    from openai import OpenAI
 
     _GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
 
@@ -51,45 +64,42 @@ def boilerplate_LLM():
                 _GOOGLE_LLM_MODELS.append(m.name)
 
     _LLM_BOILERPLATE = True
+    LLM_stop = time.perf_counter()
+    if _DEBUG:
+        print(f"LLM boilerplate executed. ({LLM_stop - LLM_start:.3f}s)")
 
+
+_file_io_start = time.perf_counter()
 
 _THIS_FILE = Path(__file__)
 
 _BOOKS_FILE = (
-    Path(appdirs.user_data_dir(roaming=True))
-    / "robolson"
-    / "english"
-    / "data"
-    / "books.toml"
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "books.toml"
 )
 _PROGRESS_FILE = (
-    Path(appdirs.user_data_dir(roaming=True))
-    / "robolson"
-    / "english"
-    / "data"
-    / "progress.toml"
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "progress.toml"
 )
 _REVIEW_FILE = (
-    Path(appdirs.user_data_dir(roaming=True))
-    / "robolson"
-    / "english"
-    / "data"
-    / "review.toml"
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "review.toml"
+)
+_SAVE_FILE = (
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "save.toml"
 )
 
 
 _BOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
 _PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
 _REVIEW_FILE.parent.mkdir(parents=True, exist_ok=True)
+_SAVE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
-_BOOKS_FILE.touch()
-_PROGRESS_FILE.touch()
-_REVIEW_FILE.touch()
+_BOOKS_FILE.touch(exist_ok=True)
+_PROGRESS_FILE.touch(exist_ok=True)
+_REVIEW_FILE.touch(exist_ok=True)
+_SAVE_FILE.touch(exist_ok=True)
 
-_LATEX_DEFAULT_FILE = (
-    Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
-)
+
+_LATEX_DEFAULT_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
 _LATEX_FILE = (
     Path(appdirs.user_data_dir(roaming=True))
     / "robolson"
@@ -112,11 +122,7 @@ _LATEX_ADDENDUM = _LATEX_TEMPLATES["addendum"]
 
 _CONFIG_DEFAULT_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "config.toml"
 _CONFIG_FILE = (
-    Path(appdirs.user_data_dir(roaming=True))
-    / "robolson"
-    / "english"
-    / "config"
-    / "config.toml"
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "config" / "config.toml"
 )
 _CONFIG_FILE.parent.mkdir(exist_ok=True, parents=True)
 
@@ -172,6 +178,10 @@ _ANSWER_LINES = r"""
 \rule{\linewidth}{.5pt}
 """
 
+_file_io_stop = time.perf_counter()
+if _DEBUG:
+    print(f"File i/o setup finished. ({_file_io_stop - _file_io_start:.3f}s)")
+
 
 @app.command("ingest")
 def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = False):
@@ -211,9 +221,7 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         subsections = []
 
         section_titles = section_pattern.findall(chapter_text)
-        section_titles = [
-            f"{full_chapter} \\newline {e.strip().title()}" for e in section_titles
-        ]
+        section_titles = [f"{full_chapter} \\newline {e.strip().title()}" for e in section_titles]
 
         section_titles.insert(0, full_chapter)
         section_texts = section_pattern.sub(r"SPLIT_CHAPTER_HERE", chapter_text).split(
@@ -221,9 +229,7 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         )
 
         for i, section_title in enumerate(section_titles):
-            subsections.append(
-                {"title": section_title, "text": section_texts[i].rstrip()}
-            )
+            subsections.append({"title": section_title, "text": section_texts[i].rstrip()})
 
         for section in subsections:
             section_length = len(section["text"])
@@ -259,8 +265,14 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
                 book.append(section)
 
     if not debug:
-        with tomlshelve.open(str(_BOOKS_FILE)) as db:
-            db[target] = {"book": book, "author": author, "title": title}
+        with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
+            str(_SAVE_FILE)
+        ) as save_db:
+            book_db[target] = {"book": book, "author": author, "title": title}
+            try:
+                save_db["books"].append(target)
+            except KeyError:
+                save_db["books"] = [target]
 
 
 @app.command("remove")
@@ -270,7 +282,7 @@ def remove_book(target: str = None):
     if target:
         with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
             str(_PROGRESS_FILE)
-        ) as progress_db:
+        ) as progress_db, tomlshelve.open(str(_SAVE_FILE)) as save_db:
             if target not in book_db.keys():
                 print(f"'{target}' not found in database.")
                 return
@@ -280,9 +292,14 @@ def remove_book(target: str = None):
                 del progress_db[target]
             except KeyError:
                 pass
+            try:
+                save_db["books"].remove(target)
+            except KeyError:
+                pass
 
             book_db.sync()
             progress_db.sync()
+            save_db.sync()
 
             print(f"'{target}' removed from database.")
         return
@@ -320,12 +337,15 @@ def set_progress(target: str = None, progress: int = None):  # type: ignore
             progress_db[target] = progress
             return
 
-        with tomlshelve.open(_BOOKS_FILE) as db:
+        with tomlshelve.open(_SAVE_FILE) as db:
+            # with tomlshelve.open(_BOOKS_FILE) as db:
+            # form = {
+            #     k: survey.widgets.Count(value=progress_db[k] if k in progress_db.keys() else 0)
+            #     for k in db.keys()
+            # }
             form = {
-                k: survey.widgets.Count(
-                    value=progress_db[k] if k in progress_db.keys() else 0
-                )
-                for k in db.keys()
+                k: survey.widgets.Count(value=progress_db[k] if k in progress_db.keys() else 0)
+                for k in db["books"]
             }
         if form:
             data = survey.routines.form("Set Progress:", form=form)
@@ -447,9 +467,10 @@ def generate_pages(
     review: bool = True,
 ):
     if target is None:
-        with tomlshelve.open(_BOOKS_FILE) as db:
-            candidates = list(db.keys())
-
+        # with tomlshelve.open(_BOOKS_FILE) as db:
+        # candidates = list(db.keys())
+        with tomlshelve.open(_SAVE_FILE) as db:
+            candidates = db["books"]
             index = survey.routines.select(
                 "Select book to generate questions: ", options=candidates
             )
@@ -472,8 +493,7 @@ def generate_pages(
     # start = datetime.datetime.today()
     days = [start_date + datetime.timedelta(days=i) for i in range(30)]
     dates = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}"
-        for day in days
+        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
     ]
 
     # with shelve.open(_BOOKS_FILE.name) as db:
@@ -525,15 +545,11 @@ def generate_pages(
                     question["book"] = target
 
                     excerpt_index = int(
-                        re.search(
-                            pattern=r"\d+", string=str(question["paragraph_index"])
-                        ).group(0)
+                        re.search(pattern=r"\d+", string=str(question["paragraph_index"])).group(0)
                     )
 
                     excerpt_start_index = raw_text.find(f"paragraph{{{excerpt_index}}}")
-                    excerpt_stop_index = raw_text.find(
-                        f"paragraph{{{excerpt_index+2}}}"
-                    )
+                    excerpt_stop_index = raw_text.find(f"paragraph{{{excerpt_index+2}}}")
 
                     excerpt = raw_text[excerpt_start_index - 1 : excerpt_stop_index - 1]
                     question["paragraph_index"] = excerpt
@@ -562,14 +578,12 @@ def generate_pages(
 
         review_latex = ""
 
-        if review and reviews:
+        if review and reviews and not debug:
             review_latex = r"\section*{Review Questions}"
             weight = n * 1000
             review_indeces = []
 
-            for i, review_question in enumerate(
-                sorted(reviews, key=lambda x: int(x["mastery"]))
-            ):
+            for i, review_question in enumerate(sorted(reviews, key=lambda x: int(x["mastery"]))):
                 if review_question["book"] != target:
                     continue
 
@@ -670,12 +684,8 @@ def config_creds(google_api_key=None, openai_api_key=None):
     openai_key = os.environ.get("OPENAI_API_KEY")
     google_key = os.environ.get("GOOGLE_AI_KEY")
 
-    google_annotated = (
-        f"Google (No Key)" if not google_key else f"Google ({google_key[:5]}...)"
-    )
-    openai_annotated = (
-        f"OpenAI (No Key)" if not openai_key else f"OpenAI ({openai_key[:5]}...)"
-    )
+    google_annotated = f"Google (No Key)" if not google_key else f"Google ({google_key[:5]}...)"
+    openai_annotated = f"OpenAI (No Key)" if not openai_key else f"OpenAI ({openai_key[:5]}...)"
 
     LLM_providers = ["Google", "OpenAI"]
     LLM_providers_annotated = [google_annotated, openai_annotated]
@@ -689,9 +699,7 @@ def config_creds(google_api_key=None, openai_api_key=None):
     if google_api_key or openai_api_key:
         return
 
-    choice = survey.routines.select(
-        "Set which API keys?", options=LLM_providers_annotated
-    )
+    choice = survey.routines.select("Set which API keys?", options=LLM_providers_annotated)
 
     if choice is None:
         return
@@ -785,7 +793,8 @@ def english_default(ctx: typer.Context):
         print("AI model is not configured.\n")
         config_model()
 
-    available_books = list(tomlshelve.open(_BOOKS_FILE).keys())
+    # available_books = list(tomlshelve.open(_BOOKS_FILE).keys())
+    available_books = tomlshelve.open(_SAVE_FILE)["books"]
 
     if not available_books:
         print("No books have been ingested.")

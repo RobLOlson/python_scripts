@@ -6,8 +6,11 @@ import appdirs
 
 _LOG_FILE = Path(appdirs.user_data_dir()) / "robolson" / "tick" / "LOG.txt"
 
+
 if not _LOG_FILE.exists():
-    os.makedirs(_LOG_FILE.parent, exist_ok=True)
+    _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    _LOG_FILE.touch(exist_ok=True)
+    # os.makedirs(_LOG_FILE.parent, exist_ok=True)
 
 
 class StreamToLogger(object):

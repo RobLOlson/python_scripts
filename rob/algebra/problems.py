@@ -21,8 +21,8 @@ def random_factor(
 
 # To write a new algebra problem generator you must:
 # * begin the function name with 'generate'
-# * return a 2-tuple of strings ('TeX problem', 'answer')
-# * the last line of the doc string should describe or name the problem type
+# * return a 2-tuple of strings ('TeX problem', 'TeX answer')
+# * the last line of the doc string should name the problem type
 
 
 def generate_integer_factorization(freq_weight: int = 1000) -> tuple[str, str]:

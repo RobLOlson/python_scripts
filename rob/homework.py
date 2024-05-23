@@ -1,58 +1,62 @@
-# from __future__ import annotations
-
 import datetime
 import pathlib
 import random
+import sys
+import time
 
 import appdirs
+import survey
 import toml
 import typer
 
 from .algebra.problems import *  # noqa: F403
 
-try:
-    from .english import app as english_app
-    from .english import english_default
-except ImportError:
-    from english import app as english_app
-    from english import english_default
+_DEBUG = True
 
-
-# def get_sympy():
-#     import sympy
-
-#     return sympy
-
-
-def get_survey():
-    import survey
-
-    return survey
-
+_typer_start = time.perf_counter()
 
 app = typer.Typer()
 algebra_app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
 app.add_typer(algebra_app, name="algebra")
-app.add_typer(
-    english_app,
-    name="english",
-    help="Prepare and generate English homework assignments.",
-)
-
 algebra_app.add_typer(list_app, name="list")
 
-_DEBUG = False
+if "english" in sys.argv:
+    import_english_start = time.perf_counter()
+    try:
+        from .english import app as english_app
+
+        # from .english import english_default
+    except ImportError:
+        from english import app as english_app
+
+        # from english import english_default
+
+    app.add_typer(
+        english_app,
+        name="english",
+        help="Prepare and generate English homework assignments.",
+    )
+    if _DEBUG:
+        import_english_stop = time.perf_counter()
+        print(
+            f"Finished importing english Typer app. ({import_english_stop - import_english_start:.3f}s)"
+        )
+
+_typer_stop = time.perf_counter()
+
+if _DEBUG:
+    print(f"Typer setup finished. ({_typer_stop - _typer_start:.3f} sec)")
 
 
+# @perf_timer(debug=_DEBUG)
 def prepare_disk_io():
+    start = time.perf_counter()
     global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START
     _THIS_FILE = pathlib.Path(__file__)
 
-    # LATEX_FILE = pathlib.Path("config/latex_templates.toml")
     _LATEX_FILE = _THIS_FILE.parent / "config" / "algebra" / "latex_templates.toml"
     _LATEX_FILE.parent.mkdir(exist_ok=True)
-    # _LATEX_FILE.touch()
     _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
 
     _SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
@@ -77,6 +81,9 @@ def prepare_disk_io():
     _DATES = [
         f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS
     ]
+    stop = time.perf_counter()
+    if _DEBUG:
+        print(f"File i/o boilerplate executed. ({stop - start: .3f} sec)")
 
 
 class ProblemCategory:
@@ -117,7 +124,6 @@ class Problem:
 @list_app.command("weights")
 def list_weights() -> None:
     """List the frequency weights for each problem type."""
-
     prepare_globals()
 
     print(
@@ -232,8 +238,6 @@ def configure_problem_set():
 
     prepare_globals()
 
-    survey = get_survey()
-
     form = {
         _NAME_TO_DESCRIPTION[problem_type]: survey.widgets.Count(
             value=_SAVE_DATA["weights"][problem_type]
@@ -258,8 +262,6 @@ def algebra_default(ctx: typer.Context, debug: bool = False):
 
     if ctx and ctx.invoked_subcommand:
         return
-
-    survey = get_survey()
 
     prepare_globals()
 
@@ -321,8 +323,6 @@ def default_homework(ctx: typer.Context):
     if ctx and ctx.invoked_subcommand:
         return
 
-    survey = get_survey()
-
     available_apps = ["algebra", "english"]
 
     choice = survey.routines.select("Select the homework generation app: ", options=available_apps)
@@ -334,6 +334,8 @@ def default_homework(ctx: typer.Context):
             algebra_default(ctx=None)
 
         case "english":
+            from .english import english_default
+
             english_default(ctx=None)
 
 
