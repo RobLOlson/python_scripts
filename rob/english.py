@@ -9,6 +9,7 @@ import appdirs
 import survey
 import toml
 import typer
+from google.api_core.exceptions import ResourceExhausted
 
 try:
     # from . import tomlshelve
@@ -19,7 +20,6 @@ except ImportError:
 
 _DEBUG = False
 
-english_typer_app_start = time.perf_counter()
 
 app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
@@ -27,12 +27,7 @@ config_app = typer.Typer()
 
 app.add_typer(list_app, name="list")
 app.add_typer(config_app, name="config")
-english_typer_app_stop = time.perf_counter()
 
-if _DEBUG:
-    print(
-        f"English Typer app initialized. ({english_typer_app_stop - english_typer_app_start:.3f}s)"
-    )
 
 _GPT_CLIENT = None
 _GOOGLE_LLM_MODELS: list[str] = []
@@ -45,7 +40,6 @@ def boilerplate_LLM():
     global _GPT_CLIENT, _GOOGLE_LLM_MODELS, _OPENAI_LLM_MODELS, _LLM_BOILERPLATE, _GOOGLE_LLM, _MODEL
 
     import google.generativeai as genai
-    from google.api_core.exceptions import ResourceExhausted
     from openai import OpenAI
 
     _GPT_CLIENT = OpenAI()  # API key must be in environment as "OPENAI_API_KEY"
@@ -496,6 +490,8 @@ def generate_pages(
         f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
     ]
 
+
+
     # with shelve.open(_BOOKS_FILE.name) as db:
     with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
         str(_REVIEW_FILE)
@@ -684,8 +680,8 @@ def config_creds(google_api_key=None, openai_api_key=None):
     openai_key = os.environ.get("OPENAI_API_KEY")
     google_key = os.environ.get("GOOGLE_AI_KEY")
 
-    google_annotated = f"Google (No Key)" if not google_key else f"Google ({google_key[:5]}...)"
-    openai_annotated = f"OpenAI (No Key)" if not openai_key else f"OpenAI ({openai_key[:5]}...)"
+    google_annotated = "Google (No Key)" if not google_key else f"Google ({google_key[:5]}...)"
+    openai_annotated = "OpenAI (No Key)" if not openai_key else f"OpenAI ({openai_key[:5]}...)"
 
     LLM_providers = ["Google", "OpenAI"]
     LLM_providers_annotated = [google_annotated, openai_annotated]
@@ -711,12 +707,12 @@ def config_creds(google_api_key=None, openai_api_key=None):
         case "Google":
             print(f"Running command: `setx GOOGLE_AI_KEY {key[:5]}...`")
             os.system(f"setx GOOGLE_AI_KEY {key}")
-            print(f"Success! Restart console to refresh environment variables.")
+            print("Success! Restart console to refresh environment variables.")
 
         case "OpenAI":
             print(f"Running command: `setx OPENAI_API_KEY {key[:5]}...`")
             os.system(f"setx OPENAI_API_KEY {key}")
-            print(f"Success! Restart console to refresh environment variables.")
+            print("Success! Restart console to refresh environment variables.")
 
 
 @config_app.command("prompt")
