@@ -599,7 +599,7 @@ def generate_binomial_product_expansion(freq_weight: int = 1000) -> tuple[str, s
     expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
     answer_latex = sympy.latex(sympy.expand(expression))
 
-    problem_statement = f"Expand the binomial product into a standard form polynomial."
+    problem_statement = f"Expand the binomial product into a standard form polynomial. (Standard form looks like \\(ax^2 + bx + c\\))."
 
     return (
         rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
@@ -633,7 +633,7 @@ def generate_multiply_difference_of_squares(freq_weight: int = 1000) -> tuple[st
     expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
     answer_latex = sympy.latex(sympy.expand(expression))
 
-    problem_statement = f"Expand the binomial product into a standard form polynomial."
+    problem_statement = f"Expand the binomial product into a standard form polynomial. (Standard form looks like \\(ax^2 + bx + c\\))."
 
     return (
         rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
@@ -676,7 +676,7 @@ def generate_multiply_squares_of_binomials(freq_weight: int = 1000) -> tuple[str
     expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
     answer_latex = sympy.latex(sympy.expand(expression))
 
-    problem_statement = f"Expand the binomial product into a standard form polynomial.  (Don't forget to combine like terms.)"
+    problem_statement = f"Expand the binomial product into a standard form polynomial.  (Standard form looks like \\(ax^2 + bx + c\\))."
 
     return (
         rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
