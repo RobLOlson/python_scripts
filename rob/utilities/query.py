@@ -1,14 +1,7 @@
-import sys
-from contextlib import contextmanager
-from typing import Any, Callable
+from typing import Any
 
 import readchar
 import rich
-from prompt_toolkit import prompt
-
-_PROMPT_STYLE = "[green]"
-_ERROR_STYLE = "[red]"
-_PROMPT = "> "
 
 _SAVE_CURSOR = "\033[s"
 _RESTORE_CURSOR = "\033[u"
@@ -261,7 +254,6 @@ def linearize_complex_object(object, depth:int = 0) -> tuple[list, type, int]:
             if type(object[key]) in [dict, list, set]:
                 linearized.append((key, depth, type(key)))
                 linearized.append((':', depth, None))
-                # breakpoint()
                 nested_object = linearize_complex_object(object[key], depth+1)
                 linearized.extend(nested_object)
             else:
@@ -374,13 +366,93 @@ def edit_object(
             case '\r':
                 break
 
-    breakpoint()
     return reconstitute_object(target)
 
 def reconstitute_object(linearized_object):
+    """Inverse operation of linearize_object function.  Returns original nested list/dict."""
 
-    return linearized_object
+    current_depth = -1
+    highest_indeces = []
+
+    for index, line in enumerate(linearized_object):
+        # ignore digested lines (undigested lines should still be tuples)
+        if type(line) != tuple:
+            continue
+        if not line[2] and line[0] in ['[', ']', '{', '}'] and line[1] > current_depth:
+            highest_indeces = []
+            current_depth = line[1]
+        if not line[2] and line[1] == current_depth:
+            highest_indeces.append(index)
+
+    if not highest_indeces:
+        return linearized_object[0]
+
+    if linearized_object[highest_indeces[-2]][0] == '[':
+        pre_list = linearized_object[:highest_indeces[-2]]
+        sub_list = []
+        for elem in linearized_object[highest_indeces[-2]:highest_indeces[-1]]:
+            if type(elem) == tuple:
+                if type(elem[0]) == elem[2]:
+                    sub_list.append(elem[0])
+                elif elem[2] == int:
+                    try:
+                        sub_list.append(int(elem[0]))
+                    except ValueError:
+                        sub_list.append(float(elem[0]))
+                elif elem[2] == float:
+                    sub_list.append(float(elem[0]))
+                elif elem[2] == bool:
+                    sub_list.append(bool(elem[0]))
+            else:
+                sub_list.append(elem)
+        post_list = linearized_object[highest_indeces[-1]+1:]
+
+        pre_list.append(sub_list)
+        pre_list.extend(post_list)
+        composite = pre_list
+
+    elif linearized_object[highest_indeces[-2]][0] == '{':
+        pre_list = linearized_object[:highest_indeces[-2]]
+        sub_dict = {}
+        for i in range(highest_indeces[-2]+1, highest_indeces[-1]-1, 3):
+            next_key = linearized_object[i]
+            next_val = linearized_object[i+2]
+
+            if type(next_key[0]) == next_key[2]:
+                next_key = next_key[0]
+            elif next_key[2] == int:
+                try:
+                    next_key = int(next_key[0])
+                except ValueError:
+                    next_key = float(next_key[0])
+            elif next_key[2] == float:
+                next_key = float(next_key[0])
+            elif next_key[2] == bool:
+                next_key = bool(next_key[0])
+
+            if type(next_val) != tuple:
+                pass
+            elif type(next_val[0]) == next_val[2]:
+                next_val = next_val[0]
+            elif next_val[2] == int:
+                next_val = int(next_val[0])
+            elif next_val[2] == float:
+                next_val = float(next_val[0])
+            elif next_val[2] == bool:
+                nextval = bool(next_val[0])
+
+            sub_dict.update({next_key: next_val})
+
+        post_list = linearized_object[highest_indeces[-1]+1:]
+
+        pre_list.append(sub_dict)
+        pre_list.extend(post_list)
+        composite = pre_list
+
+    return reconstitute_object(composite)
 
 print_linearized_object(linearize_complex_object({'a': [1, 2, {'x':'y', 'z':'w'}]}))
 print_linearized_object(linearize_complex_object([{'settings_1':True, 'settings_2':False}]))
-print(edit_object({'aba': [1, 2, {'xeno':'y', 'z':'w'}, reconstitute_object]}))
+# print(edit_object([reconstitute_object, 'uno', 'dos', {'aba': [1, 2, {'xeno':'y', 'z':'w'}, reconstitute_object]}]))
+print(approve_list(edit_object([False, 'dos', {1:'one', 2:'two'}, ['quatro', 'cinco', [1,2,3.5]]])))
+# print(edit_object({'a': {1:2}}))
