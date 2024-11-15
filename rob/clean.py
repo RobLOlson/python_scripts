@@ -29,10 +29,14 @@ main_app = typer.Typer()
 archive_app = typer.Typer()
 config_app = typer.Typer()
 edit_app = typer.Typer()
+# log_app = typer.Typer()
+
 
 main_app.add_typer(archive_app, name="archive", help="Clean an existing archive.")
 main_app.add_typer(config_app, name="config", help="Edit config file.")
+# main_app.add_typer(log_app, name="log", help="View and edit log file.")
 config_app.add_typer(edit_app, name="edit", help="Edit archive parameters.")
+
 
 _THIS_FILE = Path(__file__)
 
@@ -40,14 +44,12 @@ _PROMPT = f"rob.{Path(__file__).stem}> "
 _PROMPT_STYLE = "[white on blue]"
 _ERROR_STYLE = "[red on black]"
 
-_USER_CONFIG_FILE = (
-    Path(appdirs.user_config_dir()) / "robolson" / "clean" / "config" / "clean.toml"
-)
+_USER_CONFIG_FILE = Path(appdirs.user_config_dir()) / "robolson" / "clean" / "config" / "clean.toml"
 _UNDO_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "undo.db"
+_LOG_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "system_calls.log"
+_LOG_FILE.touch()
 
-_BLACKLIST_FILE = (
-    Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "ignore.db"
-)
+_BLACKLIST_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "ignore.db"
 
 if not _UNDO_FILE.exists():
     os.makedirs(_UNDO_FILE.parent, exist_ok=True)
@@ -95,9 +97,7 @@ def generate_extension_handler(file_types: dict[str, list[str]]) -> dict[str, st
 _EXTENSION_HANDLER = generate_extension_handler(_FILE_TYPES)
 
 
-def isolate_crowded_folders(
-    folders: list[Path], crowded_threshold: int = 20
-) -> list[Path]:
+def isolate_crowded_folders(folders: list[Path], crowded_threshold: int = 20) -> list[Path]:
     """Return a list of directories with many files inside.
     post: True"""
 
@@ -283,9 +283,7 @@ def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
     files = folder.glob("*.*")
     file_targets: dict[Path, Path] = {}
     for file in files:
-        last_modified = datetime.datetime.fromtimestamp(
-            os.path.getmtime(file.absolute())
-        )
+        last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file.absolute()))
 
         f_month = MONTHS[last_modified.month]
         f_year = last_modified.year
@@ -300,9 +298,7 @@ def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
     if yes_all:
         return file_targets
     else:
-        return approve_dict(
-            file_targets, f"Select files in '{folder.absolute()}' to uncrowd:"
-        )
+        return approve_dict(file_targets, f"Select files in '{folder.absolute()}' to uncrowd:")
 
 
 def associate_files(
@@ -324,7 +320,12 @@ def associate_files(
     uncrowded_pattern = re.compile(r"\w+ \d\d? \(\w+\) \d\d\d\d")
 
     for file in files:
+        # ignore registered archive folders
         if file.name in _FILE_TYPES.keys() or file.name == "misc":
+            continue
+
+        # ignore folders if no user interaction
+        if not file.suffix and yes_all:
             continue
 
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
@@ -351,8 +352,7 @@ def associate_files(
         # if target folder has sub-folders from previous uncrowding, follow the uncrowded naming protocol
         if any(uncrowded_pattern.match(folder.name) for folder in sub_folders):
             target_folder = (
-                target_folder
-                / f"{file_type_folder} {last_modified.month} ({f_month}) {f_year}"
+                target_folder / f"{file_type_folder} {last_modified.month} ({f_month}) {f_year}"
             )
 
         file_targets[file] = target_folder / file.name
@@ -433,30 +433,30 @@ def remove_empty_dirs(target: Path = Path(".")):
 
 
 @main_app.command()
+def log() -> None:
+    """Load the log file which contains a record of all executed system commands."""
+    os.startfile(_LOG_FILE)
+
+
+@main_app.command()
 def undo(
     target: Path = Argument(Path("."), help="Target folder to undo operations."),
-    yes_all: bool = Option(
-        False, help="Automatically confirm all actions.", show_default=False
-    ),
-    dry_run: bool = Option(
-        False, help="Print commands without executing.", show_default=False
-    ),
+    yes_all: bool = Option(False, help="Automatically confirm all actions.", show_default=False),
+    dry_run: bool = Option(False, help="Print commands without executing.", show_default=False),
 ) -> None:
     """Undo file manipulations in target directory."""
 
     undo_commands = {}
     with shelve.open(str(_UNDO_FILE)) as db:
         try:
-            old_commands = db[str(target.absolute())]
+            old_commands = db[str(target.absolute()).lower()]
             for source, dest in old_commands.items():
                 undo_commands[dest] = target.absolute() / source
                 # undo_commands.append((command, dest, source))
                 # _COMMANDS.append((command, dest, source))
 
         except KeyError:
-            rich.print(
-                f"[red]No recorded commands executed on ({Path(target).absolute()})."
-            )
+            rich.print(f"[red]No recorded commands executed on ({Path(target).absolute()}).")
             exit(1)
 
     preview_mvs(undo_commands, absolute=True)
@@ -467,7 +467,6 @@ def undo(
     if yes_all:
         choice = "y"
     else:
-        breakpoint()
         rich.print("[red]Are you sure? (y/n)")
         choice = input(f"{_PROMPT}")
 
@@ -477,11 +476,11 @@ def undo(
 
         except Exception as e:
             with shelve.open(str(_UNDO_FILE)) as db:
-                del db[str(target.absolute())]
+                del db[str(target.absolute()).lower()]
             print(e)
             exit(1)
         with shelve.open(str(_UNDO_FILE)) as db:
-            db[str(target.absolute())] = undo_commands
+            db[str(target.absolute()).lower()] = undo_commands
 
             # pickle.dump(_COMMANDS, _UNDO_FILE)
 
@@ -502,16 +501,18 @@ def preview_mvs(renames: dict[Path, Path], absolute: bool = False) -> Callable:
         )
 
 
-def execute_move_commands(commands: dict[Path, Path], target: Path = Path(".")):
+def execute_move_commands(commands: dict[Path, Path], target: Path = Path("."), yes_all=False):
     """Execute a sequence of file move commands.
 
     Args:
-        commands: A dictionary with source keys and destination values.
+                                                                                                                                    commands: A dictionary with source keys and destination values.
     post: True
     """
     sources = list(commands.keys())
     for source in sources:
         if not source.suffix:  # if source is a folder, rather than a file
+            if yes_all:  # ignore folders if no user interaction
+                continue
             # candidate = approve_list(
             #     target=list(_FILE_TYPES.keys()),
             #     desc=f"Move '{source.absolute()}' to which folder?\n(Or leave selection empty to skip.)",
@@ -537,19 +538,28 @@ def execute_move_commands(commands: dict[Path, Path], target: Path = Path(".")):
             )
             os.makedirs(target_folder[source].parent.absolute(), exist_ok=True)
             shutil.move(source.absolute(), target_folder[source].absolute())
-            continue
+            # today = datetime.datetime.today().isoformat(timespec="minutes")
+            today = datetime.datetime.today().ctime()
 
+            with open(_LOG_FILE, "a", encoding="utf-8") as fp:
+                fp.write(f"{today}\nmv {source.absolute()} {target_folder[source].absolute()}\n")
+            continue
         try:
+            breakpoint()
             os.makedirs(commands[source].parent.absolute(), exist_ok=True)
             shutil.move(source.absolute(), commands[source].absolute())
+            today = datetime.datetime.today().ctime()
 
-        # File of Same Name Has Already Been Moved To Folder
+            with open(_LOG_FILE, "a", encoding="utf-8") as fp:
+                fp.write(f"{today}\nmv {source.absolute()} {commands[source].absolute()}\n")
+
+        # File of Same Name Has Already Been Moved To Folderg
         except shutil.Error as e:
             print(e)
         except FileNotFoundError:
             rich.print(f"{_ERROR_STYLE}{source.absolute()} not found.")
     with shelve.open(str(_UNDO_FILE)) as db:
-        db[str(target.absolute())] = commands
+        db[str(target.absolute()).lower()] = commands
 
 
 def create_config():
@@ -611,8 +621,10 @@ def clean_files(
         # root_files = target.glob("*.*")
         root_files = target.glob("*")
 
+    # breakpoint()
+
     if exclusions:
-        root_files = [file for file in root_files if file.name not in exclusions]
+        root_files = [file for file in root_files if str(file.name) not in exclusions]
 
     target_mvs: dict[Path, Path] = associate_files(
         files=list(root_files), extension_handler=extension_handler, yes_all=yes_all
@@ -628,21 +640,17 @@ def clean_files(
 
     if approved_mvs:
         preview_mvs(approved_mvs)
-        execute_move_commands(approved_mvs, target=target)
+        execute_move_commands(approved_mvs, target=target, yes_all=yes_all)
 
 
 @archive_app.command(name="large")
 def identify_large_files(
-    target: Path = Argument(
-        Path("."), help="Target folder to locate overly large files."
-    ),
+    target: Path = Argument(Path("."), help="Target folder to locate overly large files."),
     yes_all: bool = Option(False, help="Automatically confirm all actions."),
 ) -> None:
     """Find large files in target directory and offer to centralize them."""
 
-    archive_folders = [
-        Path(target) / f"{archive_folder}" for archive_folder in _FILE_TYPES.keys()
-    ]
+    archive_folders = [Path(target) / f"{archive_folder}" for archive_folder in _FILE_TYPES.keys()]
     sub_folders = []
     all_files = []
 
@@ -690,9 +698,7 @@ def identify_large_files(
         case _:
             large = 150_000_000_000_000_000
 
-    large_files = [
-        file for file in all_files if os.stat(file.absolute()).st_size > large
-    ]
+    large_files = [file for file in all_files if os.stat(file.absolute()).st_size > large]
 
     if yes_all:
         approved_files = large_files
@@ -717,9 +723,7 @@ def identify_large_files(
 @archive_app.command(name="crowded")
 def identify_crowded_archives(
     target: Path = typer.Option(default=Path("."), help="target path"),
-    threshold: int = typer.Option(
-        default=20, help="number of files to qualify as crowded"
-    ),
+    threshold: int = typer.Option(default=20, help="number of files to qualify as crowded"),
     yes_all: bool = typer.Option(
         default=False, help="always apply all routines to all valid files"
     ),
@@ -769,9 +773,7 @@ def all(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
     """Apply all available cleaning routines."""
     clean_files(target=target, recurse=recurse, exclusions=_EXCLUSIONS, yes_all=yes_all)
     identify_large_files(target=target, yes_all=yes_all)
-    identify_crowded_archives(
-        target=target, threshold=_SETTINGS["CROWDED_FOLDER"], yes_all=yes_all
-    )
+    identify_crowded_archives(target=target, threshold=_SETTINGS["CROWDED_FOLDER"], yes_all=yes_all)
     remove_empty_dirs(target=target)
 
     return
@@ -866,9 +868,7 @@ def edit_archive(target_archive: str):
 
         case "remove":
             candidate = survey.routines.select(options=extensions)
-            remove_extension(
-                target_archive=target_archive, target_extension=extensions[candidate]
-            )
+            remove_extension(target_archive=target_archive, target_extension=extensions[candidate])
 
     extensions = {}
     extensions = _SETTINGS["FILE_TYPES"][target_archive]
