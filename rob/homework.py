@@ -13,8 +13,6 @@ from .algebra.problems import *  # noqa: F403
 
 _DEBUG = False
 
-_typer_start = time.perf_counter()
-
 app = typer.Typer()
 algebra_app = typer.Typer()
 list_app = typer.Typer(no_args_is_help=True)
@@ -22,34 +20,19 @@ app.add_typer(algebra_app, name="algebra")
 algebra_app.add_typer(list_app, name="list")
 
 if "english" in sys.argv:
-    import_english_start = time.perf_counter()
     try:
         from .english import app as english_app
 
-        # from .english import english_default
     except ImportError:
         from english import app as english_app
-
-        # from english import english_default
 
     app.add_typer(
         english_app,
         name="english",
         help="Prepare and generate English homework assignments.",
     )
-    if _DEBUG:
-        import_english_stop = time.perf_counter()
-        print(
-            f"Finished importing english Typer app. ({import_english_stop - import_english_start:.3f}s)"
-        )
-
-_typer_stop = time.perf_counter()
-
-if _DEBUG:
-    print(f"Typer setup finished. ({_typer_stop - _typer_start:.3f} sec)")
 
 
-# @perf_timer(debug=_DEBUG)
 def prepare_disk_io():
     start = time.perf_counter()
     global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START
