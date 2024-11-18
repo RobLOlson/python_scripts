@@ -145,9 +145,11 @@ Press Enter to continue."""
                 cursor_index = cursor_index % len(target)
 
             case '\r':
+                print("")
                 if maximum and maximum == 1:
                     approved_targets = [cursor_index + 1]
 
+                print("")
                 break
 
             case '\x1b':
@@ -203,14 +205,14 @@ Press Enter to continue."""
     while True:
         print((_MOVE_UP + _CLEAR_LINE) * (len(target) + 1))
         for index, item in enumerate(target):
-            if repr_func:
-                display = repr_func(item)
-            else:
-                display = f"{item} -> {target[item]}"
-
             style = "[green]" if approved_targets.count(index+1) else "[red]"
             if index == cursor_index:
                 style = "[yellow]"
+
+            if repr_func:
+                display = repr_func(item, target[item])
+            else:
+                display = f"{item} [white] -> {style}{target[item]}"
 
             print(f'[{'x' if approved_targets.count(index+1) else ' '}]', end="")
             rich.print(rf" {style}{index+1:02}.) {display}")
@@ -265,6 +267,7 @@ Press Enter to continue."""
                 cursor_index = cursor_index % len(target)
 
             case '\r':
+                print("")
                 break
 
             case '\x1b':
@@ -317,7 +320,7 @@ def edit_object(
     cursor_index = 0
 
     while True:
-        cursor_index = (cursor_index - 1) % len(target2)
+        cursor_index = (cursor_index + 1) % len(target2)
         if not target2[cursor_index][2]: # [2] is element's type ("brackets" have no type)
             continue
         if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":": #[0] is contents
@@ -491,6 +494,7 @@ def edit_object(
                 # cursor_index = cursor_index % len(target2)
 
             case '\r':
+                print("")
                 break
 
             case '\x1b':
