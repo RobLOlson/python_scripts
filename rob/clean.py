@@ -22,6 +22,8 @@ import typer
 from click import option
 from typer import Argument, Option
 
+from .utilities import query
+
 PathOrNone = Optional[Path]
 
 main_app = typer.Typer()
@@ -47,6 +49,7 @@ _ERROR_STYLE = "[red on black]"
 _USER_CONFIG_FILE = Path(appdirs.user_config_dir()) / "robolson" / "clean" / "config" / "clean.toml"
 _UNDO_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "undo.db"
 _LOG_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "system_calls.log"
+_LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 _LOG_FILE.touch()
 
 _BLACKLIST_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "ignore.db"
@@ -62,8 +65,14 @@ with open(_BASE_CONFIG_FILE, "r") as fp:
 
 if _USER_CONFIG_FILE.exists():
     with open(_USER_CONFIG_FILE, "r") as fp:
-        USER_SETTINGS = toml.load(fp)
-        _SETTINGS.update(USER_SETTINGS)
+        try:
+            USER_SETTINGS = toml.load(fp)
+            _SETTINGS.update(USER_SETTINGS)
+        except toml.decoder.TomlDecodeError:
+            rich.print(
+                "[yellow]WARNING.[/yellow] Config file corrupted (invalid TOML file).  Using default settings."
+            )
+
 
 else:
     _USER_CONFIG_FILE.parent.mkdir(parents=True)
@@ -77,6 +86,8 @@ _FILE_TYPES: dict[str, list[str]] = _SETTINGS[
     "FILE_TYPES"
 ]  # dictionary of (folder, file-types) pairs
 ARCHIVE_FOLDERS = list(_FILE_TYPES.keys())
+_EXTENSIONS = [extensions for extensions in _FILE_TYPES.values()]
+_EXTENSIONS = [item for sublist in _EXTENSIONS for item in sublist]
 _EXCLUSIONS = _SETTINGS["EXCLUSIONS"]  # list of files to totally ignore
 MONTHS = _SETTINGS["MONTHS"]  # strings to use when writing names of months
 MONTHS.insert(0, None)
@@ -111,170 +122,6 @@ def isolate_crowded_folders(folders: list[Path], crowded_threshold: int = 20) ->
             crowded.append(folder)
 
     return crowded
-
-
-def approve_list(
-    target: list, desc: str = "", repr_func=None, maximum: Optional[int] = None
-) -> list:
-    """Returns a user-approved subset of target list."""
-
-    if not target:
-        return []
-
-    approved_targets = []
-
-    approved_targets = survey.routines.basket(desc, options=target)
-    if approved_targets:
-        approved_list = [v for i, v in enumerate(target) if i in approved_targets]
-    else:
-        approved_list = []
-
-    return approved_list
-
-    # final_choice = False
-    # invalid = False
-    # while not final_choice:
-    #     rich.print(desc, end="\n\n")
-    #     for count, item in enumerate(target):
-    #         if repr_func:
-    #             display = repr_func(item)
-    #         else:
-    #             display = item
-
-    #         style = "[green]" if item in approved_targets else "[red]"
-
-    #         rich.print(f" {style}{count+1}.) {display}")
-
-    #     style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
-    #     rich.print(
-    #         f"\n{style}Toggle items by entering their associated list index, enter 'a' to toggle ALL items, or press Enter to continue."
-    #     )
-    #     choice = input(f"{_PROMPT}")
-    #     invalid = False
-    #     try:
-    #         if not choice:
-    #             final_choice = True
-
-    #         if choice in ["a", "A", "all", "ALL"]:
-    #             count = 1
-    #             while count <= len(target):
-    #                 if target[count - 1] in approved_targets:
-    #                     approved_targets.remove(target[count - 1])
-    #                 else:
-    #                     approved_targets.insert(count - 1, target[count - 1])
-    #                 if maximum and len(approved_targets) > maximum:
-    #                     approved_targets = approved_targets[
-    #                         len(approved_targets) - maximum :
-    #                     ]
-    #                 count += 1
-
-    #             continue
-
-    #         choice = int(choice)
-    #         if 1 <= choice <= len(target):
-    #             if target[choice - 1] in approved_targets:
-    #                 approved_targets.remove(target[choice - 1])
-    #             else:
-    #                 # approved_targets.insert(choice - 1, target[choice - 1])
-    #                 approved_targets.append(target[choice - 1])
-    #             if maximum and len(approved_targets) > maximum:
-    #                 approved_targets = approved_targets[
-    #                     len(approved_targets) - maximum :
-    #                 ]
-    #         else:
-    #             invalid = True
-
-    #     except (SyntaxError, ValueError):
-    #         invalid = True
-
-    # return approved_targets
-
-
-def approve_dict(
-    target: dict,
-    desc: str = "",
-    repr_func: Callable[..., str] | None = None,
-    maximum: int | None = None,
-) -> dict:
-    """Returns a user-approved subset of target dictionary."""
-
-    if not target:
-        return {}
-
-    if not repr_func:
-        source_width = max([len(str(key)) for key in target.keys()])
-        dest_width = max(len(str(target[key])) for key in target.keys())
-
-        def default_format(key):
-            return f"{str(key):<{source_width}} -> {str(target[key]):>{dest_width}}"
-
-        repr_func = default_format
-
-    list_of_keys = list(target.keys())
-
-    formatted_keys = [repr_func(key) for key in list_of_keys]
-    approved_targets = survey.routines.basket(desc, options=formatted_keys)
-    approved_keys = [key for i, key in enumerate(list_of_keys) if i in approved_targets]
-
-    approved_dict = {key: target[key] for key in approved_keys}
-
-    return approved_dict
-
-    # approved_keys = []
-    # frozen_keys = list(target.keys())
-    # final_choice = False
-    # invalid = False
-    # while not final_choice:
-    #     rich.print(desc, end="\n\n")
-    #     for count, key in enumerate(frozen_keys):
-    #         if key in approved_keys:
-    #             # rich.print(f" [green]{count+1:2}.) {key}[yellow]->[green]{target[key]}")
-    #             rich.print(f" [green]{count+1:2}.){repr_func(key)}")
-    #         else:
-    #             # rich.print(f" [red]{count+1}.) {key}[yellow]->[red]{target[key]}")
-    #             rich.print(f" [red]{count+1:2}.){repr_func(key)}")
-
-    #     style = _PROMPT_STYLE if not invalid else _ERROR_STYLE
-    #     rich.print(
-    #         f"\n{style}Toggle items by entering their associated list index, or enter 'a' to toggle ALL or press Enter to continue."
-    #     )
-    #     choice = input(f"{_PROMPT}")
-    #     invalid = False
-    #     try:
-    #         if not choice:
-    #             final_choice = True
-
-    #         if choice in ["a", "A", "all", "ALL"]:
-    #             count = 1
-    #             while count <= len(target):
-    #                 if frozen_keys[count - 1] in approved_keys:
-    #                     approved_keys.remove(frozen_keys[count - 1])
-    #                 else:
-    #                     approved_keys.insert(count - 1, frozen_keys[count - 1])
-
-    #                 count += 1
-
-    #             if maximum and len(approved_keys) > maximum:
-    #                 approved_keys = approved_keys[len(approved_keys) - maximum :]
-
-    #             continue
-
-    #         choice = int(choice)
-    #         if 1 <= choice <= len(target):
-    #             if frozen_keys[choice - 1] in approved_keys:
-    #                 approved_keys.remove(frozen_keys[choice - 1])
-    #             else:
-    #                 # approved_keys.insert(choice - 1, frozen_keys[choice - 1])
-    #                 approved_keys.append(frozen_keys[choice - 1])
-    #             if maximum and len(approved_keys) > maximum:
-    #                 approved_keys = approved_keys[len(approved_keys) - maximum :]
-    #         else:
-    #             invalid = True
-
-    #     except (SyntaxError, ValueError):
-    #         invalid = True
-
-    # return {key: target[key] for key in approved_keys}
 
 
 def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
@@ -331,18 +178,6 @@ def associate_files(
         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
         file_type_folder = extension_handler.get(file.suffix, default_folder.name)
 
-        # if file_type_folder == "misc" and not yes_all:
-        #     candidate = approve_list(
-        #         target=list(_FILE_TYPES.keys()),
-        #         desc=f"Move '{file.absolute()}' to which folder?\n(Or leave selection empty to skip.)",
-        #         maximum=1,
-        #     )
-
-        #     if not candidate:
-        #         continue
-
-        #     file_type_folder = candidate[0]
-
         f_year: str = str(last_modified.year)
         f_month: str = str(last_modified.month)
         target_folder = Path(f"{file_type_folder}") / f"{file_type_folder} {f_year}"
@@ -358,57 +193,6 @@ def associate_files(
         file_targets[file] = target_folder / file.name
 
     return file_targets
-
-
-# def handle_files(
-#     files: list[str],
-#     folder: str = "misc",
-#     month: bool = False,
-#     yes_all: bool = True,
-# ) -> None:
-#     """Organizes files by last modified date."""
-#     choice = ""
-
-#     for file in files:
-#         last_modified = datetime.datetime.fromtimestamp(os.path.getmtime(file))
-#         f_month = MONTHS[last_modified.month]
-
-#         file_size = os.stat(file).st_size
-
-#         f_year = last_modified.year
-#         if file_size > 150_000_000:
-#             target_folder = os.path.join("Large_Files", str(f_year))
-#         else:
-#             target_folder = os.path.join(folder, f"{folder} {str(f_year)}")
-
-#         if month:
-#             target_folder = os.path.join(
-#                 target_folder, f"{folder} {last_modified.month} ({f_month}) {f_year}"
-#             )
-#         os.makedirs(target_folder, exist_ok=True)
-
-#         while choice not in ["y", "yes", "n", "no", "a", "all", "d", "del"]:
-#             rich.print(
-#                 f"[yellow]mv '{file}' '{target_folder}\\{os.path.split(file)[1]}'\n[green](y)es[white] / [red](n)o[white] / [green]yes_to_(a)ll[white] / [red](d)el?"
-#             )
-#             choice = input(f"{_PROMPT}") if not yes_all else "y"
-
-#         match choice:
-#             case "y" | "yes":
-#                 _COMMANDS.append(("mv", Path(file), Path(target_folder) / Path(file)))
-
-#             case "a" | "all":
-#                 _COMMANDS.append(("mv", Path(file), Path(target_folder) / Path(file)))
-#                 yes_all = True
-
-#             case "d" | "del":
-#                 os.makedirs("delete_me", exist_ok=True)
-#                 _COMMANDS.append(("mv", Path(file), Path("delete_me") / Path(file)))
-
-
-#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
-#  </ def handle_files()>
-#  ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
 def remove_empty_dir(path: str | Path):
@@ -496,40 +280,25 @@ def preview_mvs(renames: dict[Path, Path], absolute: bool = False) -> Callable:
     """Print a list of mv targets.
     post: True"""
     for source, dest in renames.items():
-        rich.print(
-            f"mv [green]{source.absolute() if absolute else source.name} [red]{dest.absolute()}"
-        )
+        if source.suffix in _EXTENSIONS:
+            rich.print(
+                f"mv [green]{source.absolute() if absolute else source.name} [red]{dest.absolute()}"
+            )
 
 
 def execute_move_commands(commands: dict[Path, Path], target: Path = Path("."), yes_all=False):
-    """Execute a sequence of file move commands.
-
-    Args:
-                                                                                                                                    commands: A dictionary with source keys and destination values.
-    post: True
-    """
+    """Execute a sequence of file move commands."""
     sources = list(commands.keys())
     for source in sources:
-        if not source.suffix:  # if source is a folder, rather than a file
+        if source.suffix not in _EXTENSIONS:  # if source is a folder, rather than a file
             if yes_all:  # ignore folders if no user interaction
                 continue
-            # candidate = approve_list(
-            #     target=list(_FILE_TYPES.keys()),
-            #     desc=f"Move '{source.absolute()}' to which folder?\n(Or leave selection empty to skip.)",
-            #     maximum=1,
-            # )
 
-            # if not candidate:
-            #     continue
+            print(f"Move '{source.absolute()}' to which folder?")
 
-            # file_type_folder = Path(candidate[0])
+            candidate = query.select(ARCHIVE_FOLDERS)
 
-            candidate = survey.routines.select(
-                f"Move '{source.absolute()}' to which folder?",
-                options=ARCHIVE_FOLDERS,
-            )
-
-            file_type_folder = Path(ARCHIVE_FOLDERS[candidate])
+            file_type_folder = Path(candidate)
 
             target_folder = associate_files(
                 files=[source],
@@ -545,7 +314,6 @@ def execute_move_commands(commands: dict[Path, Path], target: Path = Path("."), 
                 fp.write(f"{today}\nmv {source.absolute()} {target_folder[source].absolute()}\n")
             continue
         try:
-            breakpoint()
             os.makedirs(commands[source].parent.absolute(), exist_ok=True)
             shutil.move(source.absolute(), commands[source].absolute())
             today = datetime.datetime.today().ctime()
@@ -621,8 +389,6 @@ def clean_files(
         # root_files = target.glob("*.*")
         root_files = target.glob("*")
 
-    # breakpoint()
-
     if exclusions:
         root_files = [file for file in root_files if str(file.name) not in exclusions]
 
@@ -633,10 +399,16 @@ def clean_files(
     if yes_all:
         approved_mvs = target_mvs
     else:
-        approved_mvs = approve_dict(
-            target_mvs,
-            f"Targeting '{target.absolute()}' for clean up.\n\nSelect files to archive:",
-        )
+
+        def repr_func(key, value):
+            global _EXTENSIONS
+            if key.suffix in _EXTENSIONS:
+                return f"{key} [white] -> [/white]{value}"
+            else:
+                return f"{key}"
+
+        print(f"Targeting '{target.absolute()}' for clean up.\n\nSelect files to archive:")
+        approved_mvs = query.approve_dict(target_mvs, repr_func=repr_func)
 
     if approved_mvs:
         preview_mvs(approved_mvs)
@@ -707,9 +479,11 @@ def identify_large_files(
         def show_file_size(x):
             return f"{x} ({float(os.stat(x.absolute()).st_size / 1000000):_.2f} Mb)"
 
-        approved_files = approve_list(
+        rich.print(f"{_PROMPT_STYLE}Select large files to isolate:")
+
+        approved_files = query.approve_list(
             large_files,
-            f"{_PROMPT_STYLE}Select large files to isolate:",
+            preamble=False,
             repr_func=show_file_size,
         )
     if approved_files:
@@ -745,9 +519,8 @@ def identify_crowded_archives(
     if yes_all:
         approved_folders = crowded_folders
     else:
-        approved_folders = approve_list(
-            crowded_folders, f"Choose folders to uncrowd (>{threshold} files):"
-        )
+        print(f"Choose folders to uncrowd (>{threshold} files):")
+        approved_folders = query.approve_list(crowded_folders)
     for folder in approved_folders:
         if yes_all:
             approved_mvs = uncrowd_folder(folder, yes_all=True)
@@ -812,6 +585,23 @@ def list_archives() -> None:
     print(" * " + "\n * ".join(e for e in archives))
 
 
+@config_app.command("open")
+def config_open() -> None:
+    """Open user config file with $env.editor."""
+    os.startfile(_USER_CONFIG_FILE)
+
+
+@config_app.command("restore")
+def config_restore() -> None:
+    """Restore user config file to default."""
+    choice = input(f"Restore user config file to default.  Are you sure? (Y/N)\n{_PROMPT}")
+    if choice in ["y", "Y"]:
+        with open(_USER_CONFIG_FILE, "w") as fp:
+            toml.dump(_SETTINGS, fp)
+    else:
+        exit(0)
+
+
 @config_app.command(name="interact")
 def config_interact() -> None:
     options = ["add", "remove", "edit", "exit"]
@@ -819,27 +609,36 @@ def config_interact() -> None:
     while True:
         print("Current Archives\n----------------")
         list_archives()
-        choice = survey.routines.select(options=options)
-        choice = options[choice]
+        # choice = survey.routines.select(options=options)
+        # choice = options[choice]
+
+        choice = query.select(options)
 
         match choice:
             case "add":
-                form = {
-                    "name": survey.widgets.Input(),
-                    "extension": survey.widgets.Input(),
-                }
-                data = survey.routines.form(form=form)
-                add_archive(data["name"])
+                # form = {
+                #     "name": survey.widgets.Input(),
+                #     "extension": survey.widgets.Input(),
+                # }
+                # data = survey.routines.form(form=form)
+                # add_archive(data["name"])
+                form = {"name": "folder_name", "extension": ".example"}
+                form = query.form_from_dict(form)
+                add_archive(form["name"])
+                add_extension(target_archive=form["name"], new_extension=form["extension"])
 
             case "remove":
-                selection = survey.routines.select(options=ARCHIVE_FOLDERS)
-                remove_archive(ARCHIVE_FOLDERS[selection])
+                # selection = survey.routines.select(options=ARCHIVE_FOLDERS)
+                print("\nRemove which archive?")
+                selection = query.select(ARCHIVE_FOLDERS)
+                remove_archive(selection)
 
             case "edit":
-                selection = survey.routines.select(options=ARCHIVE_FOLDERS)
-                edit_archive(ARCHIVE_FOLDERS[selection])
+                # selection = survey.routines.select(options=ARCHIVE_FOLDERS)
+                selection = query.select(ARCHIVE_FOLDERS)
+                edit_archive(selection)
 
-            case "exit":  #
+            case "exit":
                 exit(0)
 
 
@@ -848,8 +647,10 @@ def edit_default(ctx: typer.Context):
     if ctx.invoked_subcommand:
         return
 
-    selection = survey.routines.select(options=ARCHIVE_FOLDERS)
-    edit_archive(ARCHIVE_FOLDERS[selection])
+    print("\nEdit which archive?")
+    # selection = survey.routines.select(options=ARCHIVE_FOLDERS)
+    selection = query.select(ARCHIVE_FOLDERS)
+    edit_archive(selection)
 
 
 @config_app.command(name="edit")
@@ -857,18 +658,15 @@ def edit_archive(target_archive: str):
     extensions = _SETTINGS["FILE_TYPES"][target_archive]
     print(f"{target_archive} extensions:\n * " + "\n * ".join(extensions))
     options = ["add", "remove", "edit"]
-    selection = survey.routines.select(options=options)
-    selection = options[selection]
+    selection = query.select(options)
     match selection:
         case "add":
-            new_extension = survey.routines.input(
-                f"Enter new extension for {target_archive} archive.\n{_PROMPT}"
-            )
+            new_extension = input(f"Enter new extension for {target_archive} archive.\n{_PROMPT}")
             add_extension(target_archive=target_archive, new_extension=new_extension)
 
         case "remove":
-            candidate = survey.routines.select(options=extensions)
-            remove_extension(target_archive=target_archive, target_extension=extensions[candidate])
+            candidate = query.select(extensions)
+            remove_extension(target_archive=target_archive, target_extension=candidate)
 
     extensions = {}
     extensions = _SETTINGS["FILE_TYPES"][target_archive]
