@@ -15,14 +15,18 @@ from typing import Callable, Optional
 
 import appdirs
 import rich
-import rich.traceback
+
+# import rich.traceback
 import survey
 import toml
 import typer
 from click import option
 from typer import Argument, Option
 
-from .utilities import query
+try:
+    from utilities import query
+except ModuleNotFoundError:
+    from .utilities import query
 
 PathOrNone = Optional[Path]
 
@@ -39,7 +43,6 @@ main_app.add_typer(config_app, name="config", help="Edit config file.")
 # main_app.add_typer(log_app, name="log", help="View and edit log file.")
 config_app.add_typer(edit_app, name="edit", help="Edit archive parameters.")
 
-
 _THIS_FILE = Path(__file__)
 
 _PROMPT = f"rob.{Path(__file__).stem}> "
@@ -50,7 +53,7 @@ _USER_CONFIG_FILE = Path(appdirs.user_config_dir()) / "robolson" / "clean" / "co
 _UNDO_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "undo.db"
 _LOG_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "system_calls.log"
 _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-_LOG_FILE.touch()
+_LOG_FILE.touch(exist_ok=True)
 
 _BLACKLIST_FILE = Path(appdirs.user_data_dir()) / "robolson" / "clean" / "data" / "ignore.db"
 
@@ -555,7 +558,6 @@ def all(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
 @config_app.callback(invoke_without_command=True)
 def config(ctx: typer.Context):
     if not ctx.invoked_subcommand:
-        print("INTERACT")
         config_interact()
 
 
