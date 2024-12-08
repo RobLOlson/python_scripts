@@ -1,10 +1,15 @@
 DEBUG = false
 
-HANDLE_MISC = true # Unrecognized file types will be filed under 'misc'
+# Unrecognized file types will be filed under 'misc', else ignored
+HANDLE_MISC = true
 
 EXCLUSIONS = [ "desktop.ini" ]
 
-CROWDED_FOLDER = 20 # Number of files before a yearly archive is turned into a monthly archive
+# Number of files before a yearly archive is turned into a monthly archive
+CROWDED_FOLDER = 20
+
+# Default is relative to CWD; change this to an absolute Path and ALL operations will archive there
+ARCHIVE_HOME = "."
 
 MONTHS = [
   "Jan",
