@@ -1,0 +1,156 @@
+{% if "logging" in target_features %}
+
+import logging
+import pathlib
+from logging.handlers import RotatingFileHandler
+from appdirs import user_config_dir
+
+{% endif %}
+
+{% if "toml_config" in target_features %}
+
+import pathlib
+
+import rich
+import toml
+from appdirs import user_config_dir
+from rob import tomlshelve
+
+{% endif %}
+
+{% if "typer" in target_features %}
+import typer
+import os
+from rob.utilities import query
+{% endif %}
+
+{% if "typer" in target_features %}
+# TYPER BOILERPLATE
+# VVVVVVVVVVVVVVVVV
+
+main_app = typer.Typer()
+{% if "toml_config" in all_features %}
+config_app = typer.Typer()
+main_app.add_typer(config_app, name="config", help="Edit config file.")
+
+{% endif %}
+
+{% if "logging" in all_features %}
+logging_app = typer.Typer()
+main_app.add_typer(logging_app, name="log", help="Edit log file.")
+{% endif %}
+
+# ^^^^^^^^^^^^^^^^^
+# TYPER BOILERPLATE
+{% endif %}
+
+{% if "logging" in target_features %}
+# LOGGING BOILERPLATE
+# VVVVVVVVVVVVVVVVVVV
+
+log_dir = pathlib.Path(user_config_dir()) / "{{project_name}}" / "logs"
+log_dir.mkdir(parents=True, exist_ok=True)
+LOG_FILE = log_dir / "{{project_name}}.log"
+
+logger = logging.getLogger()
+
+logger.setLevel(logging.INFO)
+
+handler = RotatingFileHandler(filename=LOG_FILE.absolute(), maxBytes=100_000, backupCount=2)
+formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+# ^^^^^^^^^^^^^^^^^^^
+# LOGGING BOILERPLATE
+{% endif %}
+
+{% if "toml_config" in target_features %}
+# CONFIG BOILERPLATE
+# VVVVVVVVVVVVVVVVVV
+
+THIS_FILE = pathlib.Path(__file__)
+BASE_CONFIG_FILE = THIS_FILE.parent / "config" / "{{project_name}}.toml"
+BASE_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+BASE_CONFIG_FILE.touch(exist_ok=True)
+USER_CONFIG_FILE = (
+    pathlib.Path(user_config_dir()) / "{{project_name}}" / "config" / "{{project_name}}.toml"
+)
+USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+USER_CONFIG_FILE.touch(exist_ok=True)
+
+with open(BASE_CONFIG_FILE, "r") as fp:
+    CONFIG = toml.load(fp)
+
+if USER_CONFIG_FILE.exists():
+    with open(USER_CONFIG_FILE, "r") as fp:
+        try:
+            USER_SETTINGS = toml.load(fp)
+            CONFIG.update(USER_SETTINGS)
+        except toml.decoder.TomlDecodeError:
+            rich.print(
+                "[yellow]WARNING.[/yellow] Config file corrupted (invalid TOML file).  Using default settings."
+            )
+
+else:
+    USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    USER_CONFIG_FILE.touch(exist_ok=True)
+    with open(USER_CONFIG_FILE, "w") as fp:
+        toml.dump(CONFIG, fp)
+
+config = tomlshelve.open(USER_CONFIG_FILE)
+
+# ^^^^^^^^^^^^^^^^^^
+# CONFIG BOILERPLATE
+{% endif %}
+
+{% if "typer" in target_features and "toml_config" in all_features %}
+{% if not main %}
+from toml_config import USER_CONFIG_FILE
+{% endif %}
+@config_app.callback(invoke_without_command=True)
+def config_default(ctx: typer.Context):
+    if not ctx.invoked_subcommand:
+        os.startfile(USER_CONFIG_FILE)
+{% endif %}
+
+{% if "typer" in target_features and "logging" in all_features %}
+{% if not main %}
+from logger import LOG_FILE
+{% endif %}
+@logging_app.callback(invoke_without_command=True)
+def log_default(ctx: typer.Context):
+    if not ctx.invoked_subcommand:
+        os.startfile(LOG_FILE)
+
+@logging_app.command("clear")
+def log_clear():
+    """Delete contents of log file."""
+    print("Are you sure?")
+    if query.confirm():
+        with open(LOG_FILE, "w") as fp:
+            pass
+
+{% endif %}
+
+
+{% if main %}
+
+{% if "typer" in all_features %}
+@main_app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    if not ctx.invoked_subcommand:
+        print("root app invoked with no sub-commands")
+{% else %}
+def main():
+    pass
+{% endif %}
+
+if __name__ == "__main__":
+    {% if "typer" in all_features%}
+    main_app()
+    {% else %}
+    main()
+    {% endif %}
+{% endif %}

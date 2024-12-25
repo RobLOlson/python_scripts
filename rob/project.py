@@ -115,7 +115,7 @@ OPTION_DEFAULTS = CONFIG["defaults"]["options"]
 
 # Configuration Set-up ^^^^^^^^^^^^^^^^^^^^
 
-TEMPLATES_FOLDER = THIS_FILE.parent / "data" / "project" / "project_templates"
+TEMPLATES_FOLDER = THIS_FILE.parent / "config" / "project"
 PROMPT = "\nrob.project> "
 
 JINJA_ENV = Environment(

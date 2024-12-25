@@ -594,8 +594,13 @@ def reconstitute_object(linearized_object):
 
     return reconstitute_object(composite)
 
-def confirm():
-    choice = select(["Yes", "No"])
+def confirm(default: bool = False):
+    if default:
+        prop = ["Yes", "No"]
+    else:
+        prop = ["No", "Yes"]
+    breakpoint()
+    choice = select(prop)
     if choice == "Yes":
         return True
     else:
