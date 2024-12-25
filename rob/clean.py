@@ -17,7 +17,6 @@ import appdirs
 import rich
 
 # import rich.traceback
-import survey
 import toml
 import typer
 from click import option
@@ -30,7 +29,7 @@ except ModuleNotFoundError:
 
 PathOrNone = Optional[Path]
 
-main_app = typer.Typer()
+main_app = typer.Typer(pretty_exceptions_show_locals=True)
 
 archive_app = typer.Typer()
 config_app = typer.Typer()
@@ -78,13 +77,13 @@ if _USER_CONFIG_FILE.exists():
 
 
 else:
-    _USER_CONFIG_FILE.parent.mkdir(parents=True)
+    _USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     _USER_CONFIG_FILE.touch(exist_ok=True)
     with open(_USER_CONFIG_FILE, "w") as fp:
         toml.dump(_SETTINGS, fp)
 
 
-# _CROWDED_FOLDER = _SETTINGS["CROWDED_FOLDER"]  # number of files that is 'crowded'
+_CROWDED_FOLDER = _SETTINGS["CROWDED_FOLDER"]  # number of files that is 'crowded'
 _FILE_TYPES: dict[str, list[str]] = _SETTINGS[
     "FILE_TYPES"
 ]  # dictionary of (folder, file-types) pairs
@@ -94,6 +93,7 @@ _EXTENSIONS = [item for sublist in _EXTENSIONS for item in sublist]
 _EXCLUSIONS = _SETTINGS["EXCLUSIONS"]  # list of files to totally ignore
 MONTHS = _SETTINGS["MONTHS"]  # strings to use when writing names of months
 MONTHS.insert(0, None)
+ARCHIVE_HOME = _SETTINGS["ARCHIVE_HOME"]
 
 # _COMMANDS = []
 
@@ -111,7 +111,9 @@ def generate_extension_handler(file_types: dict[str, list[str]]) -> dict[str, st
 _EXTENSION_HANDLER = generate_extension_handler(_FILE_TYPES)
 
 
-def isolate_crowded_folders(folders: list[Path], crowded_threshold: int = 20) -> list[Path]:
+def isolate_crowded_folders(
+    folders: list[Path], crowded_threshold: int = _CROWDED_FOLDER
+) -> list[Path]:
     """Return a list of directories with many files inside.
     post: True"""
 
@@ -148,12 +150,17 @@ def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
     if yes_all:
         return file_targets
     else:
-        return approve_dict(file_targets, f"Select files in '{folder.absolute()}' to uncrowd:")
+        print(f"Select files in '{folder.absolute()}' to uncrowd:")
+        return query.approve_dict(target=file_targets)
+        # return query.approve_dict(
+        #     file_targets, f"Select files in '{folder.absolute()}' to uncrowd:"
+        # )
 
 
 def associate_files(
     files: list[Path],
-    root: Path = Path("."),
+    # root: Path = Path("."),
+    root: Path = ARCHIVE_HOME,
     extension_handler: dict[str, str] | None = None,
     default_folder: Path = Path("misc"),
     yes_all: bool = True,
@@ -163,7 +170,7 @@ def associate_files(
     if not extension_handler:
         extension_handler = {}
 
-    os.chdir(root.absolute())
+    # os.chdir(root.absolute())
 
     file_targets: dict[Path, Path] = {}
 
@@ -183,7 +190,7 @@ def associate_files(
 
         f_year: str = str(last_modified.year)
         f_month: str = str(last_modified.month)
-        target_folder = Path(f"{file_type_folder}") / f"{file_type_folder} {f_year}"
+        target_folder = root / Path(f"{file_type_folder}") / f"{file_type_folder} {f_year}"
 
         sub_folders = [folder for folder in target_folder.glob("*") if folder.is_dir()]
 
@@ -234,6 +241,7 @@ def undo(
     """Undo file manipulations in target directory."""
 
     undo_commands = {}
+
     with shelve.open(str(_UNDO_FILE)) as db:
         try:
             old_commands = db[str(target.absolute()).lower()]
@@ -292,6 +300,7 @@ def preview_mvs(renames: dict[Path, Path], absolute: bool = False) -> Callable:
 def execute_move_commands(commands: dict[Path, Path], target: Path = Path("."), yes_all=False):
     """Execute a sequence of file move commands."""
     sources = list(commands.keys())
+    one_file = target.is_file()
     for source in sources:
         if source.suffix not in _EXTENSIONS:  # if source is a folder, rather than a file
             if yes_all:  # ignore folders if no user interaction
@@ -330,7 +339,10 @@ def execute_move_commands(commands: dict[Path, Path], target: Path = Path("."), 
         except FileNotFoundError:
             rich.print(f"{_ERROR_STYLE}{source.absolute()} not found.")
     with shelve.open(str(_UNDO_FILE)) as db:
-        db[str(target.absolute()).lower()] = commands
+        if one_file:
+            db[str(target.parent.absolute()).lower()] = commands
+        else:
+            db[str(target.absolute()).lower()] = commands
 
 
 def create_config():
@@ -386,14 +398,18 @@ def clean_files(
 ) -> None:
     """Clean the files by extension in target root directory."""
     extension_handler = _EXTENSION_HANDLER
-    if recurse:
-        root_files = target.rglob("*.*")
-    else:
-        # root_files = target.glob("*.*")
-        root_files = target.glob("*")
 
-    if exclusions:
-        root_files = [file for file in root_files if str(file.name) not in exclusions]
+    if target.is_file():
+        root_files = [target]
+    else:
+        if recurse:
+            root_files = target.rglob("*.*")
+        else:
+            # root_files = target.glob("*.*")
+            root_files = target.glob("*")
+
+        if exclusions:
+            root_files = [file for file in root_files if file not in exclusions]
 
     target_mvs: dict[Path, Path] = associate_files(
         files=list(root_files), extension_handler=extension_handler, yes_all=yes_all
@@ -539,8 +555,20 @@ def identify_crowded_archives(
         execute_move_commands(uncrowded_mvs)
 
 
-@main_app.callback()
-def main(target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
+@main_app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context, target: Path = Path("."), recurse: bool = False, yes_all: bool = False
+):
+    if ctx.invoked_subcommand:
+        return
+
+    if target.is_file():
+        target_mvs: dict[Path, Path] = associate_files(
+            files=[target], extension_handler=_EXTENSION_HANDLER, yes_all=yes_all
+        )
+        execute_move_commands(target_mvs, target=target, yes_all=yes_all)
+        exit(0)
+
     all(target=target, recurse=recurse, yes_all=yes_all)
 
 
@@ -694,9 +722,9 @@ def remove_extension(target_archive: str, target_extension: str):
     print(f"Removed {target_extension} from {target_archive}.")
 
 
-@main_app.callback()
-def main():
-    """Organize files in a folder."""
+# @main_app.callback()
+# def main():
+#     """Organize files in a folder."""
 
 
 if __name__ == "__main__":
@@ -704,5 +732,15 @@ if __name__ == "__main__":
         all()
         exit(0)
 
+    # handle the case where first argument is not a registered command but IS a file/folder
+    if (
+        len(sys.argv) > 1
+        and sys.argv[1] not in ("config", "edit", "archive", "undo", "log")
+        and "-" not in "".join(sys.argv[1:])
+    ):
+        clean_files(target=Path(sys.argv[1]), yes_all=True)
+        exit(0)
+
     main_app()
+
     # main()
