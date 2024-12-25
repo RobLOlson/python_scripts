@@ -99,7 +99,11 @@ def set_loop(start_time: str = "20:00", end_time: str = "08:00"):
 
 
 @main_app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
+def main(ctx: typer.Context, once: bool = False):
+    if once:
+        dim_audio_video()
+        exit(0)
+
     if not ctx.invoked_subcommand:
         set_loop()
 
