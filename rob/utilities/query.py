@@ -274,6 +274,11 @@ Press Enter to continue."""
                 rich.print("[red]Terminated.", end="")
                 exit(1)
 
+            case '\x03':
+                rich.print("[red]Terminated.", end="")
+                exit(1)
+
+
     return {elem:target[elem] for i, elem in enumerate(target) if approved_targets.count(i+1)}
 
 
@@ -588,6 +593,13 @@ def reconstitute_object(linearized_object):
         raise Exception("Expected '[' or '{'.")
 
     return reconstitute_object(composite)
+
+def confirm():
+    choice = select(["Yes", "No"])
+    if choice == "Yes":
+        return True
+    else:
+        return False
 
 def form_from_dict(target:dict[str, str|int|float|bool]):
     return edit_object(target=target, show_brackets=False, edit_keys=False, dict_inline=True)

@@ -4,7 +4,6 @@ import pytest
 import readchar
 import rich
 
-# Import the module under test (assuming it's named query.py)
 from ..utilities.query import (
     approve_dict,
     approve_list,
