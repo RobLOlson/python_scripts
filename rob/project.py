@@ -28,11 +28,13 @@ try:
     from utilities import query
     from utilities import tomlshelve
     from utilities.tomldict import TomlDict
+    from utilities import tomlconfig
 
 except ModuleNotFoundError:
     from .utilities import query
     from .utilities import tomlshelve
     from .utilities.tomldict import TomlDict
+    from .utilities import tomlconfig
 
 DEBUG = True
 
@@ -89,6 +91,7 @@ _USER_CONFIG_FILE = (
     pathlib.Path(user_config_dir()) / "robolson" / "project" / "config" / "project.toml"
 )
 
+CONFIG = tomlconfig.TomlConfig(_BASE_CONFIG_FILE)
 # CONFIG = TomlDict.open(_BASE_CONFIG_FILE)
 
 with open(_BASE_CONFIG_FILE, "r") as fp:
@@ -213,6 +216,7 @@ def default(
             project_name=project_name,
             multiple_files=multiple_files,
             all_features=target_features,
+            main=True,
         ).split("\n")
 
     else:

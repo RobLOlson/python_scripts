@@ -107,17 +107,30 @@ config = tomlshelve.open(USER_CONFIG_FILE)
 
 {% if "typer" in target_features and "toml_config" in all_features %}
 {% if not main %}
-from toml_config import USER_CONFIG_FILE
+from .toml_config import USER_CONFIG_FILE
 {% endif %}
 @config_app.callback(invoke_without_command=True)
 def config_default(ctx: typer.Context):
     if not ctx.invoked_subcommand:
         os.startfile(USER_CONFIG_FILE)
+
+@config_app.command("reset")
+def config_rest():
+    """Reset config file to default state."""
+
+    print("Config file reset.  Are you sure?")
+    if not query.confirm():
+        exit(0)
+
+    with open(BASE_CONFIG_FILE, "r") as base_fp, open(USER_CONFIG_FILE, "w") as user_fp:
+        base_config = base_fp.readlines()
+        user_fp.writelines(base_config)
+
 {% endif %}
 
 {% if "typer" in target_features and "logging" in all_features %}
 {% if not main %}
-from logger import LOG_FILE
+from .logger import LOG_FILE
 {% endif %}
 @logging_app.callback(invoke_without_command=True)
 def log_default(ctx: typer.Context):
