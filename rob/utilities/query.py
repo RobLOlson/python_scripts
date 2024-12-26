@@ -599,7 +599,7 @@ def confirm(default: bool = False):
         prop = ["Yes", "No"]
     else:
         prop = ["No", "Yes"]
-    breakpoint()
+
     choice = select(prop)
     if choice == "Yes":
         return True

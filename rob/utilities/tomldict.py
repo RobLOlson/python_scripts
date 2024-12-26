@@ -1,4 +1,5 @@
 import os
+import pathlib
 import tempfile
 import threading
 
@@ -8,7 +9,7 @@ import toml
 class TomlDict:
     _lock = threading.Lock()
 
-    def __init__(self, filename):
+    def __init__(self, filename: str | pathlib.Path):
         self.filename = filename
         self.data = {}
         self._closed = False
