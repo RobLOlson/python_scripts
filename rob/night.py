@@ -2,9 +2,11 @@ import datetime
 import logging
 import os
 import time
+import winreg
 from ctypes import POINTER, cast
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import List
 
 import typer
 import wmi
@@ -45,6 +47,85 @@ if log_file.stat().st_size > 2 * 1024 * 1024:
         fp.writelines(half_log)
 
 
+class NightLight:
+    def __init__(self):
+        self._key_path = r"Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.data.bluelightreduction.bluelightreductionstate\windows.data.bluelightreduction.bluelightreductionstate"
+        self._registry_key = None
+        try:
+            self._registry_key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER, self._key_path, 0, winreg.KEY_ALL_ACCESS
+            )
+        except WindowsError:
+            pass
+
+    def supported(self) -> bool:
+        return self._registry_key is not None
+
+    def _get_data(self) -> bytes:
+        try:
+            data, _ = winreg.QueryValueEx(self._registry_key, "Data")
+            return data
+        except WindowsError as e:
+            raise e
+
+    def _hex_to_bytes(self, hex_str: str) -> List[int]:
+        return [int(hex_str[i : i + 2], 16) for i in range(0, len(hex_str), 2)]
+
+    def _bytes_to_hex(self, bytes_arr: List[int]) -> str:
+        return "".join([f"{b:02x}" for b in bytes_arr])
+
+    def enabled(self) -> bool:
+        if not self.supported():
+            return False
+        try:
+            data = self._get_data()
+            bytes_arr = list(data)
+            return bytes_arr[18] == 0x15  # 21 in decimal
+        except:
+            return False
+
+    def enable(self):
+        if self.supported() and not self.enabled():
+            self.toggle()
+
+    def disable(self):
+        if self.supported() and self.enabled():
+            self.toggle()
+
+    def toggle(self):
+        if not self.supported():
+            return
+
+        data = list(self._get_data())
+        enabled = self.enabled()
+
+        if enabled:
+            # Disable night light
+            new_data = [0] * 41
+            new_data[:22] = data[:22]
+            new_data[23:] = data[25:43]
+            new_data[18] = 0x13
+        else:
+            # Enable night light
+            new_data = [0] * 43
+            new_data[:22] = data[:22]
+            new_data[25:] = data[23:41]
+            new_data[18] = 0x15
+            new_data[23] = 0x10
+            new_data[24] = 0x00
+
+        # Increment the counter bytes
+        for i in range(10, 15):
+            if new_data[i] != 0xFF:
+                new_data[i] += 1
+                break
+
+        try:
+            winreg.SetValueEx(self._registry_key, "Data", 0, winreg.REG_BINARY, bytes(new_data))
+        except WindowsError as e:
+            raise e
+
+
 def dim_audio_video():
     # <REDUCE SCREEN BRIGHTNESS>
     c = wmi.WMI(namespace="wmi")
@@ -70,6 +151,7 @@ def dim_audio_video():
     volume.SetMasterVolumeLevel(currentVolumeDb - 0.7, None)
     logger.warning(f"Volume set to {currentVolumeDb - 0.7}")
     # </REDUCE SOUND VOLUME>
+    NightLight().enable()
 
 
 def set_loop(start_time: str = "20:00", end_time: str = "08:00"):
