@@ -5,6 +5,7 @@
 # justfile
 # typer (CLI)
 # logger
+# LLMs (google/openai)
 # poetry / PyPi
 # toml config/database
 # other database
@@ -12,9 +13,9 @@ import logging
 import os
 import pathlib
 import shutil
-import string
 from enum import Enum
 from logging.handlers import RotatingFileHandler
+from random import randint
 from typing import List
 
 import rich
@@ -202,7 +203,10 @@ def default(
         raise FileExistsError(f"Folder {project_folder} already exists.")
 
     if DEBUG and project_folder.exists():
-        shutil.rmtree(project_folder)
+        shutil.move(
+            project_folder,
+            project_folder / "." / "DELETE_ME" / (str(project_folder.name) + f"{randint(1, 99)}"),
+        )
 
     project_folder.mkdir(exist_ok=True, parents=True)
     main_file = project_folder / (project_name + ".py")
