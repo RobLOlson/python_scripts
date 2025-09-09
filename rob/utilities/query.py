@@ -591,7 +591,6 @@ def reconstitute_object(linearized_object):
         pre_list.extend(post_list)
         composite = pre_list
     else:
-        # breakpoint()
         raise Exception("Expected '[' or '{'.")
 
     return reconstitute_object(composite)
