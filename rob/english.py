@@ -12,11 +12,10 @@ import typer
 from google.api_core.exceptions import ResourceExhausted
 
 try:
-    # from . import tomlshelve
     from .utilities import tomlshelve
 
 except ImportError:
-    import tomlshelve
+    from utilities import tomlshelve
 
 _DEBUG = False
 

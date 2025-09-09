@@ -9,13 +9,17 @@ import survey
 import toml
 import typer
 
-from .algebra.problems import *  # noqa: F403
+try:
+    from .algebra.problems import *  # noqa: F403
+except ImportError:
+    from algebra.problems import *  # noqa: F403
 
 _DEBUG = False
 
+
 app = typer.Typer()
 algebra_app = typer.Typer()
-list_app = typer.Typer(no_args_is_help=True)
+list_app = typer.Typer()
 app.add_typer(algebra_app, name="algebra")
 algebra_app.add_typer(list_app, name="list")
 
@@ -306,7 +310,7 @@ def default_homework(ctx: typer.Context):
     if ctx and ctx.invoked_subcommand:
         return
 
-    available_apps = ["algebra", "english"]
+    available_apps = ["algebra", "english", "chemistry"]
 
     choice = survey.routines.select("Select the homework generation app: ", options=available_apps)
 

@@ -34,13 +34,13 @@ def approve_list(
         A new list containing only the approved items from the original list.
     """
 
-    if maximum != None and maximum < 1:
+    if maximum is not None and maximum < 1:
         return []
 
     if not target:
         return []
 
-    if preamble == None:
+    if preamble is None:
         if maximum == 1:
             preamble = False
         else:
@@ -60,7 +60,7 @@ def approve_list(
 
     if preamble:
         rich.print(
-        f"""\n[green]Toggle approval with number keys.
+        """\n[green]Toggle approval with number keys.
 Move cursor with up/down.
 Add/remove approval with left/right.
 Press Enter to continue."""
@@ -159,7 +159,7 @@ Press Enter to continue."""
     return [elem for i, elem in enumerate(target) if approved_targets.count(i+1)]
 
 def select(target: list[Any], preamble: bool=False, repr_func = None):
-    """Select and return a user-approved element from target list."""
+    """Select and return a single user-approved element from target list."""
 
     return approve_list(target, preamble=preamble, repr_func=repr_func, maximum=1)[0]
 
@@ -183,7 +183,7 @@ def approve_dict(
         A new dictionary containing only the approved entries.  Returns an empty
         dictionary if the input dictionary is empty.
     """
-    if maximum != None and maximum < 1:
+    if maximum is not None and maximum < 1:
         return {}
 
     if not target:
@@ -193,7 +193,7 @@ def approve_dict(
 
     cursor_index = 0
     rich.print(
-        f"""\n[green]Toggle approval with number keys.
+        """\n[green]Toggle approval with number keys.
 Move cursor with up/down.
 Add/remove approval with left/right.
 Press Enter to continue."""
@@ -230,8 +230,8 @@ Press Enter to continue."""
                     approved_targets.append(i)
 
                 if maximum and len(approved_targets) > maximum:
-                    trash = approved_targets.pop(0)
-
+                    approved_targets.pop(0)
+                
             case "d"|"l"|">"|readchar.key.RIGHT:
                 i = cursor_index+1
 
@@ -284,7 +284,7 @@ Press Enter to continue."""
 
 def linearize_complex_object(object:list|dict, depth:int = 0) -> tuple[Any, int, type]:
     linearized = []
-    if type(object) == dict:
+    if type(object) == dict:  # noqa: E721
         keys=object.keys()
         linearized.append(('{', depth-1, None))
         for key in keys:
@@ -320,34 +320,34 @@ def edit_object(
     target: list[Any]|dict[Any, Any], preamble: str = "", repr_func=None, show_brackets: bool = True, edit_keys:bool = True, dict_inline:bool=False
 ):
 
-    target2 = linearize_complex_object(target)
+    target_flat = linearize_complex_object(target)
 
     cursor_index = 0
 
     while True:
-        cursor_index = (cursor_index + 1) % len(target2)
-        if not target2[cursor_index][2]: # [2] is element's type ("brackets" have no type)
+        cursor_index = (cursor_index + 1) % len(target_flat)
+        if not target_flat[cursor_index][2]: # [2] is element's type ("brackets" have no type)
             continue
-        if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":": #[0] is contents
+        if not edit_keys and target_flat[(cursor_index + 1) % len(target_flat)][0] == ":": #[0] is contents
             continue
         break
 
     rich.print(
-        f"\n[green]Move cursor with up/down. Press right or tab to edit. Press Enter to confirm and commit."
+        "\n[green]Move cursor with up/down. Press right or tab to edit. Press Enter to confirm and commit."
     )
     rich.print(preamble)
 
-    long_contents = max(len(str(elem)) for elem in target2) > shutil.get_terminal_size().columns
+    long_contents = max(len(str(elem)) for elem in target_flat) > shutil.get_terminal_size().columns
     end = ""
 
-    print("\n" * (len(target2) + 1))
+    print("\n" * (len(target_flat) + 1))
     while True:
         if long_contents or not edit_keys:
             print("\033[2J")
         else:
-            print((_MOVE_UP + _CLEAR_LINE) * (len(target2)+1))
+            print((_MOVE_UP + _CLEAR_LINE) * (len(target_flat)+1))
         display_string = ""
-        for index, item in enumerate(target2):
+        for index, item in enumerate(target_flat):
             if not show_brackets and not item[2] and str(item[0]) in "]}[{":
                 continue
             if repr_func:
@@ -357,17 +357,17 @@ def edit_object(
 
             if dict_inline:
                 # index ON ':'
-                if item[0]==':' and str(target2[(index+1) % len(target2)][0]) not in '{}[]':
+                if item[0]==':' and str(target_flat[(index+1) % len(target_flat)][0]) not in '{}[]':
                     indent = ""
                     end = " "
 
                 # index AFTER ':'
-                elif str(target2[(index-1) % len(target2)][0]) in ':':
+                elif str(target_flat[(index-1) % len(target_flat)][0]) in ':':
                     indent = ""
                     end = "\n"
 
                 # index BEFORE ':'
-                elif target2[(index+1) % len(target2)][0] == ':' or str(target2[(index-1) % len(target2)][0]) == '{':
+                elif target_flat[(index+1) % len(target_flat)][0] == ':' or str(target_flat[(index-1) % len(target_flat)][0]) == '{':
                     indent = "  "*int(item[1]+1)
                     # indent = ""
                     end = ""
@@ -393,16 +393,16 @@ def edit_object(
         choice = readchar.readkey()
         match choice:
             case "\t"|"d"|"l"|">"|readchar.key.RIGHT:
-                if not target2[cursor_index][2]:
+                if not target_flat[cursor_index][2]:
                     continue
 
                 modified_text = ""
                 if long_contents or not edit_keys:
                     print("\033[2J")
                 else:
-                    print((_MOVE_UP + _CLEAR_LINE) * (len(target2)+1))
+                    print((_MOVE_UP + _CLEAR_LINE) * (len(target_flat)+1))
                 display_string = ""
-                for index, item in enumerate(target2):
+                for index, item in enumerate(target_flat):
                     if not show_brackets and not item[2] and str(item[0]) in "]}[{":
                         continue
                     if repr_func:
@@ -412,17 +412,17 @@ def edit_object(
 
                     if dict_inline:
                         # index ON ':'
-                        if item[0]==':' and str(target2[(index+1) % len(target2)][0]) not in '{}[]':
+                        if item[0]==':' and str(target_flat[(index+1) % len(target_flat)][0]) not in '{}[]':
                             indent = ""
                             end = " "
 
                         # index AFTER ':'
-                        elif str(target2[(index-1) % len(target2)][0]) in ':':
+                        elif str(target_flat[(index-1) % len(target_flat)][0]) in ':':
                             indent = ""
                             end = "\n"
 
                         # index BEFORE ':'
-                        elif target2[(index+1) % len(target2)][0] == ':' or str(target2[(index-1) % len(target2)][0]) == '{':
+                        elif target_flat[(index+1) % len(target_flat)][0] == ':' or str(target_flat[(index-1) % len(target_flat)][0]) == '{':
                             indent = "  "*int(item[1]+1)
                             # indent = ""
                             end = ""
@@ -447,15 +447,15 @@ def edit_object(
 
                 rich.print(display_string, end="")
                 display_height=display_string.count("\n")
-                # Move cursor to target2 line
+                # Move cursor to target_flat line
                 print(_MOVE_UP*(abs(edit_line - display_height)), end="")
 
-                modified_text = str(target2[cursor_index][0])
+                modified_text = str(target_flat[cursor_index][0])
 
-                # Clear target2 line and rewrite
-                # print(_CLEAR_RIGHT+ "  "*int(target2[cursor_index][1]+1)+modified_text, end="")
+                # Clear target_flat line and rewrite
+                # print(_CLEAR_RIGHT+ "  "*int(target_flat[cursor_index][1]+1)+modified_text, end="")
 
-                # Move cursor to start of target2 data
+                # Move cursor to start of target_flat data
                 print(_MOVE_LEFT*len(modified_text), end="")
 
                 if dict_inline:
@@ -463,40 +463,40 @@ def edit_object(
                     replace = input()
 
                 else:
-                    replace = input("  "*int(target2[cursor_index][1]+1))
+                    replace = input("  "*int(target_flat[cursor_index][1]+1))
 
                 if replace:
-                    target2[cursor_index] = (replace, target2[cursor_index][1], target2[cursor_index][2])
+                    target_flat[cursor_index] = (replace, target_flat[cursor_index][1], target_flat[cursor_index][2])
 
-                print(_MOVE_DOWN*(len(target2)-cursor_index))
+                print(_MOVE_DOWN*(len(target_flat)-cursor_index))
 
             case "s"|"j"|readchar.key.DOWN:
                 while True:
-                    cursor_index = (cursor_index + 1) % len(target2)
-                    if not target2[cursor_index][2]:
+                    cursor_index = (cursor_index + 1) % len(target_flat)
+                    if not target_flat[cursor_index][2]:
                         continue
-                    if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":
+                    if not edit_keys and target_flat[(cursor_index + 1) % len(target_flat)][0] == ":":
                         continue
                     break
-                # while not target2[cursor_index][2] and True if edit_keys else target2[(cursor_index + 2) % len(target2)][0] != ':':
-                #     cursor_index = (cursor_index + 1) % len(target2)
+                # while not target_flat[cursor_index][2] and True if edit_keys else target_flat[(cursor_index + 2) % len(target_flat)][0] != ':':
+                #     cursor_index = (cursor_index + 1) % len(target_flat)
 
-                # cursor_index = cursor_index % len(target2)
+                # cursor_index = cursor_index % len(target_flat)
 
             case "w"|"k"|readchar.key.UP:
                 while True:
-                    cursor_index = (cursor_index - 1) % len(target2)
-                    if not target2[cursor_index][2]:
+                    cursor_index = (cursor_index - 1) % len(target_flat)
+                    if not target_flat[cursor_index][2]:
                         continue
-                    if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":
+                    if not edit_keys and target_flat[(cursor_index + 1) % len(target_flat)][0] == ":":
                         continue
                     break
 
-                # cursor_index = (cursor_index - 1) % len(target2)
-                # while not target2[cursor_index][2]:
-                #     cursor_index = (cursor_index - 1) % len(target2)
+                # cursor_index = (cursor_index - 1) % len(target_flat)
+                # while not target_flat[cursor_index][2]:
+                #     cursor_index = (cursor_index - 1) % len(target_flat)
 
-                # cursor_index = cursor_index % len(target2)
+                # cursor_index = cursor_index % len(target_flat)
 
             case '\r':
                 print("")
@@ -506,7 +506,7 @@ def edit_object(
                 rich.print("[red]Terminated.", end="")
                 exit(1)
 
-    return reconstitute_object(target2)
+    return reconstitute_object(target_flat)
 
 def reconstitute_object(linearized_object):
     """Inverse operation of linearize_object function.  Returns original nested list/dict."""
@@ -516,7 +516,8 @@ def reconstitute_object(linearized_object):
 
     for index, line in enumerate(linearized_object):
         # ignore digested lines (undigested lines should still be tuples)
-        if type(line) != tuple:
+        # if type(line) != tuple:
+        if not isinstance(line, tuple):
             continue
         if not line[2] and line[0] in ['[', ']', '{', '}'] and line[1] > current_depth:
             highest_indeces = []
@@ -531,17 +532,18 @@ def reconstitute_object(linearized_object):
         pre_list = linearized_object[:highest_indeces[-2]]
         sub_list = []
         for elem in linearized_object[highest_indeces[-2]:highest_indeces[-1]]:
-            if type(elem) == tuple:
-                if type(elem[0]) == elem[2]:
+            if isinstance(elem, tuple):
+                if type(elem[0]) == elem[2]:  # noqa: E721
                     sub_list.append(elem[0])
-                elif elem[2] == int:
+                # elif elem[2] == int:
+                elif isinstance(elem[2], int):
                     try:
                         sub_list.append(int(elem[0]))
                     except ValueError:
                         sub_list.append(float(elem[0]))
-                elif elem[2] == float:
+                elif isinstance(elem[2], float):
                     sub_list.append(float(elem[0]))
-                elif elem[2] == bool:
+                elif isinstance(elem[2], bool):
                     sub_list.append(bool(elem[0]))
             else:
                 sub_list.append(elem)
@@ -558,28 +560,28 @@ def reconstitute_object(linearized_object):
             next_key = linearized_object[i]
             next_val = linearized_object[i+2]
 
-            if type(next_key[0]) == next_key[2]:
+            if type(next_key[0]) == next_key[2]:  # noqa: E721
                 next_key = next_key[0]
-            elif next_key[2] == int:
+            elif isinstance(next_key[2], int):
                 try:
                     next_key = int(next_key[0])
                 except ValueError:
                     next_key = float(next_key[0])
-            elif next_key[2] == float:
+            elif isinstance(next_key[2], float):
                 next_key = float(next_key[0])
-            elif next_key[2] == bool:
+            elif isinstance(next_key[2], bool):
                 next_key = bool(next_key[0])
 
-            if type(next_val) != tuple:
+            if not isinstance(next_val, tuple):
                 pass
-            elif type(next_val[0]) == next_val[2]:
+            elif type(next_val[0]) == next_val[2]:  # noqa: E721
                 next_val = next_val[0]
-            elif next_val[2] == int:
+            elif isinstance(next_val[2], int):
                 next_val = int(next_val[0])
-            elif next_val[2] == float:
+            elif isinstance(next_val[2], float):
                 next_val = float(next_val[0])
-            elif next_val[2] == bool:
-                nextval = bool(next_val[0])
+            elif isinstance(next_val[2], bool):
+                next_val = bool(next_val[0])
 
             sub_dict.update({next_key: next_val})
 

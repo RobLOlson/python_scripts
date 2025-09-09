@@ -139,7 +139,7 @@ def dim_audio_video():
     methods.WmiSetBrightness(brightness, 0)
     logger.warning(f"Brightness set to {brightness}")
     # </REDUCE SCREEN BRIGHTNESS>
-
+    
     # <REDUCE SOUND VOLUME>
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
@@ -149,9 +149,11 @@ def dim_audio_video():
     if currentVolumeDb < -60:
         currentVolumeDb = -60
     volume.SetMasterVolumeLevel(currentVolumeDb - 0.7, None)
+
     logger.warning(f"Volume set to {currentVolumeDb - 0.7}")
     # </REDUCE SOUND VOLUME>
     NightLight().enable()
+    
 
 
 def set_loop(start_time: str = "20:00", end_time: str = "08:00"):
@@ -178,6 +180,7 @@ def set_loop(start_time: str = "20:00", end_time: str = "08:00"):
             if seconds_until_night / 3600 > 16:
                 logging.info(f"{seconds_until_night}")
                 break
+
 
 
 @main_app.callback(invoke_without_command=True)

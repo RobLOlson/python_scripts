@@ -9,6 +9,7 @@
 # poetry / PyPi
 # toml config/database
 # other database
+
 import logging
 import os
 import pathlib
@@ -27,13 +28,15 @@ from typing_extensions import Annotated
 
 try:
     from utilities import query
-    from utilities import tomlshelve
+
+    # from utilities import tomlshelve
     from utilities.tomldict import TomlDict
     from utilities import tomlconfig
 
 except ModuleNotFoundError:
     from .utilities import query
-    from .utilities import tomlshelve
+
+    # from .utilities import tomlshelve
     from .utilities.tomldict import TomlDict
     from .utilities import tomlconfig
 
@@ -41,6 +44,8 @@ DEBUG = True
 
 
 class Feature(str, Enum):
+    """Features for the project."""
+
     LOGGING = "logging"
     TYPER = "typer"
     GIT = "git"
@@ -51,7 +56,23 @@ class Feature(str, Enum):
 
 
 class Option(str, Enum):
+    """Options for the project."""
+
     MULTIPLE_FILES = "multiple_files"
+
+
+LOCAL_FEATURES: set[Feature] | None = None
+LOCAL_OPTIONS: set[Feature] | None = None
+
+if pathlib.Path("project.toml").exists():
+    features = tomlconfig.TomlDict("project.toml").get("Features")
+    if features:
+        LOCAL_FEATURES: set[Feature] | None = {key for key, val in features.items() if val}
+        LOCAL_FEATURES = {feature for feature in Feature if feature in LOCAL_FEATURES}
+    options = tomlconfig.TomlDict("project.toml").get("Options")
+    if options:
+        LOCAL_OPTIONS: set[Option] | None = {key for key, val in options.items() if val}
+        LOCAL_OPTIONS = {option for option in Option if option in LOCAL_OPTIONS}
 
 
 # Logging Set-up vvvvvvvvvvvvvvvvvvvv
@@ -150,13 +171,14 @@ def default(
     if directory:
         os.chdir(pathlib.Path(directory).absolute())
 
-    code_yes = []
     feature_unknown = []
     added_options = []
     option_unknown = []
-    option_list = list()
 
-    target_features: list[Feature] = [feature for feature in add_feature]
+    target_features: set[Feature] = {feature for feature in add_feature}
+
+    if LOCAL_FEATURES:
+        target_features = LOCAL_FEATURES.union(target_features)
     excluded_features: list[Feature] = [feature for feature in remove_feature]
 
     for feature in list(Feature):
@@ -165,8 +187,8 @@ def default(
         if interact and feature not in target_features:
             feature_unknown.append(feature)
         else:
-            if FEATURE_DEFAULTS[feature]:
-                target_features.append(feature)
+            if FEATURE_DEFAULTS.get(feature):
+                target_features.add(feature)
 
     for option, value in OPTION_DEFAULTS.items():
         if not interact and value:
@@ -196,7 +218,7 @@ def default(
         approved_features = query.approve_list(
             feature_unknown, preamble=False, repr_func=lambda x: x.value
         )
-        target_features.extend(approved_features)
+        target_features.add(set(approved_features))
 
     project_folder = pathlib.Path(project_name)
     if project_folder.exists() and project_folder.glob("*") and not DEBUG:

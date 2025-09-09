@@ -1,10 +1,11 @@
 import pathlib
 
 import appdirs
-import rich
-import toml
 
 from .tomldict import TomlDict
+
+# import rich
+# import toml
 
 
 class TomlConfig:
