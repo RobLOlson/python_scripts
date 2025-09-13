@@ -2,6 +2,7 @@ import math
 import random
 import re
 from decimal import Decimal
+from fractions import Fraction
 
 _CONSTANT_COEF_DOT_PATTERN = re.compile(r"(\d+\s*)\\cdot(\s[a-zA-Z])")
 _VARIABLES = ["x", "y", "z"]
@@ -24,6 +25,86 @@ def random_factor(
 # * return a 2-tuple of strings ('TeX problem', 'TeX answer')
 # * the last line of the doc string should name the problem type
 
+def generate_fraction_addition(freq_weight: int = 1000) -> tuple[str, str]:
+    """Generate fraction addition problems.
+    Problem Description:
+    Adding Fractions"""
+
+    difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    def lcm(a, b, c=None):
+        """Calculate the least common multiple of three numbers."""
+        if c is None:
+            return abs(a * b) // math.gcd(a, b)
+        if c is not None:
+            return abs(a * b * c) // math.gcd(a, b, c)
+        return abs(a * b) // math.gcd(a, b)
+
+    def simplify_fraction(numerator, denominator):
+        """Simplify a fraction to its lowest terms."""
+        common_divisor = math.gcd(abs(numerator), abs(denominator))
+        return numerator // common_divisor, denominator // common_divisor
+
+    # Generate denominators based on difficulty
+    if difficulty <= 1:
+        # Easy: denominators 2-5
+        denom1 = random.choice([2, 3, 4, 5])
+        denom2 = random.choice([2, 3, 4, 5])
+    elif difficulty == 2:
+        # Medium: denominators 2-8
+        denom1 = random.choice([2, 3, 4, 5, 6, 7, 8])
+        denom2 = random.choice([2, 3, 4, 5, 6, 7, 8])
+    else:
+        # Hard: denominators 2-12
+        denom1 = random.choice([2, 3, 4, 5, 6])
+        denom2 = random.choice([2, 3, 4, 5, 6])
+        denom3 = random.choice([2, 3, 4, 5, 6])
+
+    # Generate numerators
+    if difficulty <= 1:
+        # Easy: numerators 1-5
+        num1 = random.randint(1, 5)
+        num2 = random.randint(1, 5)
+    elif difficulty == 2:
+        # Medium: numerators 1-8
+        num1 = random.randint(1, 8)
+        num2 = random.randint(1, 8)
+    else:
+        # Hard: numerators 1-12
+        num1 = random.randint(1, 6)
+        num2 = random.randint(1, 6)
+        num3 = random.randint(1, 6)
+
+    # Ensure fractions are proper (numerator < denominator) for easier problems
+    if difficulty <= 1:
+        num1 = min(num1, denom1 - 1)
+        num2 = min(num2, denom2 - 1)
+
+    frac1 = Fraction(num1, denom1)
+    frac2 = Fraction(num2, denom2)
+
+    result = frac1 + frac2
+    
+    if difficulty > 2:
+        frac3 = Fraction(num3, denom3)
+        result += frac3
+
+    # Create the problem
+    if difficulty > 2:
+        problem = f"\\frac{{{num1}}}{{{denom1}}} + \\frac{{{num2}}}{{{denom2}}} + \\frac{{{num3}}}{{{denom3}}}"
+    else:
+        problem = f"\\frac{{{num1}}}{{{denom1}}} + \\frac{{{num2}}}{{{denom2}}}"
+
+    # Format the answer
+    answer = f"\\dfrac{{{result.numerator}}}{{{result.denominator}}}"
+
+    problem_statement = "Add the following fractions and express your answer as a simplified fraction."
+
+    return (
+        rf"{problem_statement} \\ \\ \({problem}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+    
 
 def generate_integer_factorization(freq_weight: int = 1000) -> tuple[str, str]:
     """Generate integer factorization.
@@ -599,7 +680,7 @@ def generate_binomial_product_expansion(freq_weight: int = 1000) -> tuple[str, s
     expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
     answer_latex = sympy.latex(sympy.expand(expression))
 
-    problem_statement = f"Expand the binomial product into a standard form polynomial. (Standard form looks like \\(ax^2 + bx + c\\))."
+    problem_statement = "Expand the binomial product into a standard form polynomial. (Standard form looks like \\(ax^2 + bx + c\\))."
 
     return (
         rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
@@ -633,7 +714,7 @@ def generate_multiply_difference_of_squares(freq_weight: int = 1000) -> tuple[st
     expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
     answer_latex = sympy.latex(sympy.expand(expression))
 
-    problem_statement = f"Expand the binomial product into a standard form polynomial. (Standard form looks like \\(ax^2 + bx + c\\))."
+    problem_statement = "Expand the binomial product into a standard form polynomial. (Standard form looks like \\(ax^2 + bx + c\\))."
 
     return (
         rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
@@ -676,9 +757,11 @@ def generate_multiply_squares_of_binomials(freq_weight: int = 1000) -> tuple[str
     expression_latex = sympy.latex(sympy.sympify(expression, evaluate=False))
     answer_latex = sympy.latex(sympy.expand(expression))
 
-    problem_statement = f"Expand the binomial product into a standard form polynomial.  (Standard form looks like \\(ax^2 + bx + c\\))."
+    problem_statement = "Expand the binomial product into a standard form polynomial.  (Standard form looks like \\(ax^2 + bx + c\\))."
 
     return (
         rf"{problem_statement} \\ \\ \({expression_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({answer_latex}\)",
     )
+
+
