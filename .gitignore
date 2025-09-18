@@ -12,3 +12,4 @@ db
 .hypothesis
 .TMP
 *.streamlit
+.vscode
