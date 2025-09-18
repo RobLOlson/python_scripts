@@ -59,10 +59,10 @@ class TomlDict:
 
     def _sync(self):  # Separate writing logic
         with tempfile.NamedTemporaryFile(
-            mode="w", delete=False, dir=os.path.dirname(self.filename)
+            mode="w", delete=True, dir=os.path.dirname(self.filename)
         ) as tf:
             toml.dump(self.data, tf)
-        os.replace(tf.name, self.filename)
+            os.replace(tf.name, self.filename)
 
     @classmethod
     def open(cls, filename):
