@@ -20,8 +20,10 @@ _DEBUG = False
 app = typer.Typer()
 algebra_app = typer.Typer()
 list_app = typer.Typer()
+config_app = typer.Typer()
 app.add_typer(algebra_app, name="algebra")
 algebra_app.add_typer(list_app, name="list")
+app.add_typer(config_app, name="config")
 
 if "english" in sys.argv:
     try:
@@ -38,6 +40,8 @@ if "english" in sys.argv:
 
 
 def prepare_disk_io():
+    """Prepare disk I/O for algebra homework."""
+
     start = time.perf_counter()
     global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START
     _THIS_FILE = pathlib.Path(__file__)
@@ -225,12 +229,19 @@ def configure_problem_set():
 
     prepare_globals()
 
+    missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(_SAVE_DATA["weights"].keys())
+
+    for problem_type in missing_problems:
+        _SAVE_DATA["weights"][problem_type] = 1000
+        
+            
     form = {
         _NAME_TO_DESCRIPTION[problem_type]: survey.widgets.Count(
             value=_SAVE_DATA["weights"][problem_type]
         )
         for problem_type in _PROBLEM_GENERATORS
     }
+
 
     data = survey.routines.form("Frequency Weights (higher -> more frequent): ", form=form)
 
@@ -241,6 +252,108 @@ def configure_problem_set():
     _SAVE_DATA["weights"] = data
     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
+
+
+@config_app.command("show")
+def show_config(module: str = typer.Argument(None, help="Module to show config for (algebra, english, etc.)")):
+    """Show configuration for a specific module or all modules."""
+    
+    prepare_disk_io()
+    
+    if module:
+        if module == "algebra":
+            print("=== Algebra Configuration ===")
+            print(f"Config file: {_SAVE_FILE}")
+            print(f"LaTeX templates: {_LATEX_FILE}")
+            print("\nProblem weights:")
+            for problem, weight in _SAVE_DATA["weights"].items():
+                print(f"  {problem}: {weight}")
+        elif module == "english":
+            english_config_file = pathlib.Path(__file__).parent / "config" / "english" / "config.toml"
+            if english_config_file.exists():
+                print("=== English Configuration ===")
+                print(f"Config file: {english_config_file}")
+                english_data = toml.loads(open(english_config_file.absolute(), "r").read())
+                for section, values in english_data.items():
+                    print(f"\n[{section}]")
+                    for key, value in values.items():
+                        print(f"  {key} = {value}")
+            else:
+                print(f"English config file not found: {english_config_file}")
+        else:
+            print(f"Unknown module: {module}")
+            print("Available modules: algebra, english")
+    else:
+        print("=== All Configuration Files ===")
+        print(f"Algebra config: {_SAVE_FILE}")
+        print(f"Algebra LaTeX templates: {_LATEX_FILE}")
+        
+        english_config_file = pathlib.Path(__file__).parent / "config" / "english" / "config.toml"
+        print(f"English config: {english_config_file}")
+        
+        project_config_file = pathlib.Path(__file__).parent / "config" / "project.toml"
+        print(f"Project config: {project_config_file}")
+
+
+@config_app.command("edit")
+def edit_config(module: str = typer.Argument(..., help="Module to edit config for (algebra, english, etc.)")):
+    """Edit configuration for a specific module."""
+    
+    prepare_disk_io()
+    
+    if module == "algebra":
+        print("Opening algebra configuration...")
+        print("Use 'algebra config' to configure problem weights interactively")
+        print(f"Or edit the config file directly: {_SAVE_FILE}")
+        print(f"Or edit LaTeX templates: {_LATEX_FILE}")
+    elif module == "english":
+        english_config_file = pathlib.Path(__file__).parent / "config" / "english" / "config.toml"
+        if english_config_file.exists():
+            print(f"Opening English configuration: {english_config_file}")
+            print("Edit this file to modify English homework settings")
+        else:
+            print(f"English config file not found: {english_config_file}")
+    else:
+        print(f"Unknown module: {module}")
+        print("Available modules: algebra, english")
+
+
+@config_app.command("algebra")
+def edit_algebra_config():
+    """Edit algebra configuration."""
+    
+    prepare_disk_io()
+    
+    configure_problem_set()
+
+@config_app.command("english")
+def edit_english_config():
+    """Edit algebra configuration."""
+    
+    prepare_disk_io()
+            
+    from .english import config_english  # noqa: F401
+    config_english()
+
+@config_app.callback(invoke_without_command=True)
+def config_default(ctx: typer.Context):
+    """Manage configuration for different modules."""
+    
+    if ctx and ctx.invoked_subcommand:
+        return
+    
+    available_apps = ["algebra", "english", "chemistry"]
+
+    choice = survey.routines.select("Which config? ", options=available_apps)
+
+    choice = available_apps[choice]
+
+    match choice:
+        case "algebra":
+            edit_algebra_config()
+
+        case "english":
+            edit_english_config()
 
 
 @algebra_app.callback(invoke_without_command=True)
