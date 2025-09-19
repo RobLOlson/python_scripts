@@ -9,6 +9,8 @@ import survey
 import toml
 import typer
 
+from rob.utilities import query
+
 try:
     from .algebra.problems import *  # noqa: F403
 except ImportError:
@@ -236,14 +238,12 @@ def configure_problem_set():
         
             
     form = {
-        _NAME_TO_DESCRIPTION[problem_type]: survey.widgets.Count(
-            value=_SAVE_DATA["weights"][problem_type]
-        )
+        _NAME_TO_DESCRIPTION[problem_type]: int(_SAVE_DATA["weights"][problem_type])
         for problem_type in _PROBLEM_GENERATORS
     }
 
 
-    data = survey.routines.form("Frequency Weights (higher -> more frequent): ", form=form)
+    data = query.form_from_dict(form)
 
     if not data:
         return
@@ -344,9 +344,8 @@ def config_default(ctx: typer.Context):
     
     available_apps = ["algebra", "english", "chemistry"]
 
-    choice = survey.routines.select("Which config? ", options=available_apps)
-
-    choice = available_apps[choice]
+    print("Which config?")
+    choice = query.select(available_apps)
 
     match choice:
         case "algebra":
@@ -365,12 +364,11 @@ def algebra_default(ctx: typer.Context, debug: bool = False):
 
     prepare_globals()
 
-    problem_indeces = survey.routines.basket(
-        "Select problem types to include.  (Numbers indicate relative frequency rate.)",
-        options=[problem.long_description for problem in _ALL_PROBLEMS],
+    selected_problems = query.approve_list(
+        _ALL_PROBLEMS, repr_func=lambda p: p.long_description
     )
 
-    selected_problems = [_ALL_PROBLEMS[i] for i in problem_indeces]  # type: ignore
+
 
     start_date = survey.routines.datetime(
         "Select assignment start date: ",
@@ -425,9 +423,8 @@ def default_homework(ctx: typer.Context):
 
     available_apps = ["algebra", "english", "chemistry"]
 
-    choice = survey.routines.select("Select the homework generation app: ", options=available_apps)
-
-    choice = available_apps[choice]
+    print("Which subject?")
+    choice = query.select(available_apps)
 
     match choice:
         case "algebra":
