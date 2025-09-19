@@ -25,12 +25,13 @@ def random_factor(
 # * return a 2-tuple of strings ('TeX problem', 'TeX answer')
 # * the last line of the doc string should name the problem type
 
-def generate_fraction_addition(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_fraction_addition(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate fraction addition problems.
     Problem Description:
     Adding Fractions"""
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     def lcm(a, b, c=None):
         """Calculate the least common multiple of three numbers."""
@@ -106,12 +107,13 @@ def generate_fraction_addition(freq_weight: int = 1000) -> tuple[str, str]:
     )
     
 
-def generate_integer_factorization(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_integer_factorization(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate integer factorization.
     Problem Description:
     Factorize Integers"""
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     primes = [2, 3, 5, 7]
     sole_factor = random.choice(primes)
@@ -134,12 +136,13 @@ def generate_integer_factorization(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_radical_simplification(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_radical_simplification(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate radical simplification.
     Problem Description:
     Simplify Radicals"""
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     primes = [2, 3, 5, 7]
     sole_factor = random.choice(primes)
@@ -162,14 +165,15 @@ def generate_radical_simplification(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_simple_x_expression(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate an expression in one variable where coefficients and exponents are all integers.
     Problem Description:
     Simplifying Expressions"""
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
     problem = "Simplify the following expression."
 
@@ -192,14 +196,15 @@ def generate_simple_x_expression(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_function_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_function_evaluation(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate a function in one variable where coefficients and exponents are all integers.
     Problem Description:
     Evaluating Functions"""
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
     if difficulty > 1:
         constant = random_decimal("0.05") + random.randint(0, 4)
@@ -227,14 +232,15 @@ def generate_function_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_simple_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_simple_x_equation(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate a single variable equation.
     Problem Description:
     Solving Equations with One Variable"""
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
     if difficulty > 1:
         coef = random_decimal("0.05") + random.randint(-4, 4)
@@ -274,14 +280,15 @@ def random_decimal(n="0.05"):
     return Decimal(target * round(random.randint(1, 100) / target)) / Decimal(100)
 
 
-def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_decimal_x_equation(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate an equation with decimal coefficients.
     Problem Description:
     Solving Equations with Decimal Coefficients"""
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
     var = random.choice(sympy.symbols("a b c x y z m n"))
     if difficulty > 1:
         denom = random.randint(2, 9)
@@ -312,7 +319,7 @@ def generate_decimal_x_equation(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_variable_isolation(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_variable_isolation(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate a linear equation with 2 variables.
     Problem Description:
     Isolating Variables in a Linear Equation"""
@@ -369,7 +376,7 @@ def generate_variable_isolation(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_system_of_equations(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_system_of_equations(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate a system of equations.
     Problem Description:
     Solving a System of Equations"""
@@ -417,12 +424,13 @@ def generate_system_of_equations(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_arithmetic_sequence(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_arithmetic_sequence(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate an arithmetic sequence.
     Problem Description:
     Arithmetic Sequences"""
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     step = random.choice([-4, -3, -2, 2, 3, 4, 5])
 
@@ -443,12 +451,13 @@ def generate_arithmetic_sequence(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_arithmetic_sequence_formula(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_arithmetic_sequence_formula(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate an arithmetic sequence formula.
     Problem Description:
     Arithmetic Sequence Formulas"""
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     step = random.choice([-4, -3, -2, 2, 3, 4, 5])
 
@@ -471,14 +480,15 @@ def generate_arithmetic_sequence_formula(freq_weight: int = 1000) -> tuple[str, 
     )
 
 
-def generate_geometric_sequence(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_geometric_sequence(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate an geometric sequence.
     Problem Description:
     Geometric Sequences"""
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     step = random.choice([2, 3, 4, 5])
     init = random.choice([-10, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 10])
@@ -509,14 +519,15 @@ def generate_geometric_sequence(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_geometric_sequence_evaluation(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_geometric_sequence_evaluation(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate geometric sequence formula evaluation.
     Problem Description:
     Evaluate Geometric Sequence Formula"""
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     step = random.choice([2, 3, 4, 5])
     init = random.choice([-10, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 10])
@@ -548,7 +559,7 @@ def generate_geometric_sequence_evaluation(freq_weight: int = 1000) -> tuple[str
     )
 
 
-def generate_power_expression(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_power_expression(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate power evaluation.
     Problem Description:
     Evaluate Power Expression"""
@@ -575,7 +586,7 @@ def generate_power_expression(freq_weight: int = 1000) -> tuple[str, str]:
     )
 
 
-def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_radical_simplification_with_vars(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate variable radical simplification.
     Problem Description:
     Simplify Radicals With Variables"""
@@ -584,7 +595,8 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     primes = [2, 3, 5, 7]
     sole_factor = random.choice(primes)
@@ -640,7 +652,7 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000) -> tuple[
     )
 
 
-def generate_binomial_product_expansion(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_binomial_product_expansion(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate binomial product expansion.
     Problem Description:
     Binomial Product Expansion"""
@@ -649,7 +661,8 @@ def generate_binomial_product_expansion(freq_weight: int = 1000) -> tuple[str, s
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     glyph = random.choice(_VARIABLES)
     constant_1 = random.choice(["-6", "-5", "-4", "-3", "-2", "-1", "1", "2", "3", "4", "5", "6"])
@@ -688,7 +701,7 @@ def generate_binomial_product_expansion(freq_weight: int = 1000) -> tuple[str, s
     )
 
 
-def generate_multiply_difference_of_squares(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_multiply_difference_of_squares(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate multiply difference of squares binomial.
     Problem Description:
     Multiply Difference of Squares Binomial"""
@@ -697,7 +710,8 @@ def generate_multiply_difference_of_squares(freq_weight: int = 1000) -> tuple[st
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     glyph = random.choice(_VARIABLES)
     constant = random.choice(["1", "2", "3", "4", "5", "6", "7", "8", "9"])
@@ -722,7 +736,7 @@ def generate_multiply_difference_of_squares(freq_weight: int = 1000) -> tuple[st
     )
 
 
-def generate_multiply_squares_of_binomials(freq_weight: int = 1000) -> tuple[str, str]:
+def generate_multiply_squares_of_binomials(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate multiply squares of binomials.
     Problem Description:
     Multiply Squares of Binomials"""
@@ -731,7 +745,8 @@ def generate_multiply_squares_of_binomials(freq_weight: int = 1000) -> tuple[str
 
     sympy = get_sympy()
 
-    difficulty = int(3 - math.log(freq_weight + 1, 10))
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
 
     glyph = random.choice(_VARIABLES)
     constant = random.choice(["1", "2", "3", "4", "5", "6", "7", "8", "9"])
