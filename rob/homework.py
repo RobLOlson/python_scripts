@@ -1,4 +1,5 @@
 import datetime
+import os
 import pathlib
 import random
 import sys
@@ -26,6 +27,8 @@ config_app = typer.Typer()
 app.add_typer(algebra_app, name="algebra")
 algebra_app.add_typer(list_app, name="list")
 app.add_typer(config_app, name="config")
+open_app = typer.Typer()
+app.add_typer(open_app, name="open")
 
 if "english" in sys.argv:
     try:
@@ -253,47 +256,38 @@ def configure_problem_set():
     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
 
+@config_app.command("open")
+def open_config(module: str = typer.Argument(None, help="Module to open config for (algebra, english)")):  # type: ignore Typer
+    """Open the configuration for a specific module in the default editor."""
 
-@config_app.command("show")
-def show_config(module: str = typer.Argument(None, help="Module to show config for (algebra, english, etc.)")):
-    """Show configuration for a specific module or all modules."""
-    
-    prepare_disk_io()
-    
-    if module:
-        if module == "algebra":
-            print("=== Algebra Configuration ===")
-            print(f"Config file: {_SAVE_FILE}")
-            print(f"LaTeX templates: {_LATEX_FILE}")
-            print("\nProblem weights:")
-            for problem, weight in _SAVE_DATA["weights"].items():
-                print(f"  {problem}: {weight}")
-        elif module == "english":
-            english_config_file = pathlib.Path(__file__).parent / "config" / "english" / "config.toml"
-            if english_config_file.exists():
-                print("=== English Configuration ===")
-                print(f"Config file: {english_config_file}")
-                english_data = toml.loads(open(english_config_file.absolute(), "r").read())
-                for section, values in english_data.items():
-                    print(f"\n[{section}]")
-                    for key, value in values.items():
-                        print(f"  {key} = {value}")
-            else:
-                print(f"English config file not found: {english_config_file}")
-        else:
+    if not module:
+        choices = ["algebra", "english"]
+        choice = query.select(choices)
+        if choice is None:
+            return
+        module = choice
+
+    match module.lower():
+        case "algebra":
+            prepare_disk_io()
+            try:
+                os.startfile(_SAVE_FILE.absolute())  # type: ignore[attr-defined]
+            except Exception as e:  # pragma: no cover
+                print(f"Failed to open algebra config: {e}")
+
+        case "english":
+            try:
+                try:
+                    from .english import config_file as open_english_config
+                except ImportError:
+                    from english import config_file as open_english_config
+                open_english_config()
+            except Exception as e:  # pragma: no cover
+                print(f"Failed to open english config: {e}")
+
+        case _:
             print(f"Unknown module: {module}")
             print("Available modules: algebra, english")
-    else:
-        print("=== All Configuration Files ===")
-        print(f"Algebra config: {_SAVE_FILE}")
-        print(f"Algebra LaTeX templates: {_LATEX_FILE}")
-        
-        english_config_file = pathlib.Path(__file__).parent / "config" / "english" / "config.toml"
-        print(f"English config: {english_config_file}")
-        
-        project_config_file = pathlib.Path(__file__).parent / "config" / "project.toml"
-        print(f"Project config: {project_config_file}")
-
 
 @config_app.command("edit")
 def edit_config(module: str = typer.Argument(..., help="Module to edit config for (algebra, english, etc.)")):
