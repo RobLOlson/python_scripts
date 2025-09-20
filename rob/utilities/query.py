@@ -34,13 +34,13 @@ def approve_list(
         A new list containing only the approved items from the original list.
     """
 
-    if maximum != None and maximum < 1:
+    if maximum is not None and maximum < 1:
         return []
 
     if not target:
         return []
 
-    if preamble == None:
+    if preamble is None:
         if maximum == 1:
             preamble = False
         else:
@@ -60,7 +60,7 @@ def approve_list(
 
     if preamble:
         rich.print(
-        f"""\n[green]Toggle approval with number keys.
+        """\n[green]Toggle approval with number keys.
 Move cursor with up/down.
 Add/remove approval with left/right.
 Press Enter to continue."""
@@ -183,7 +183,7 @@ def approve_dict(
         A new dictionary containing only the approved entries.  Returns an empty
         dictionary if the input dictionary is empty.
     """
-    if maximum != None and maximum < 1:
+    if maximum is not None and maximum < 1:
         return {}
 
     if not target:
@@ -193,7 +193,7 @@ def approve_dict(
 
     cursor_index = 0
     rich.print(
-        f"""\n[green]Toggle approval with number keys.
+        """\n[green]Toggle approval with number keys.
 Move cursor with up/down.
 Add/remove approval with left/right.
 Press Enter to continue."""
@@ -230,7 +230,7 @@ Press Enter to continue."""
                     approved_targets.append(i)
 
                 if maximum and len(approved_targets) > maximum:
-                    trash = approved_targets.pop(0)
+                    approved_targets.pop(0)
 
             case "d"|"l"|">"|readchar.key.RIGHT:
                 i = cursor_index+1
@@ -284,7 +284,7 @@ Press Enter to continue."""
 
 def linearize_complex_object(object:list|dict, depth:int = 0) -> tuple[Any, int, type]:
     linearized = []
-    if type(object) == dict:
+    if type(object) == dict:  # noqa: E721
         keys=object.keys()
         linearized.append(('{', depth-1, None))
         for key in keys:
@@ -333,7 +333,7 @@ def edit_object(
         break
 
     rich.print(
-        f"\n[green]Move cursor with up/down. Press right or tab to edit. Press Enter to confirm and commit."
+        "\n[green]Move cursor with up/down. Press right or tab to edit. Press Enter to confirm and commit."
     )
     rich.print(preamble)
 
@@ -392,7 +392,7 @@ def edit_object(
 
         choice = readchar.readkey()
         match choice:
-            case "\t"|"d"|"l"|">"|readchar.key.RIGHT:
+            case "\t"|"d"|"l"|">"|readchar.key.RIGHT|'\r':
                 if not target2[cursor_index][2]:
                     continue
 
@@ -498,7 +498,7 @@ def edit_object(
 
                 # cursor_index = cursor_index % len(target2)
 
-            case '\r':
+            case readchar.key.CTRL_J|'\r':
                 print("")
                 break
 
@@ -516,7 +516,7 @@ def reconstitute_object(linearized_object):
 
     for index, line in enumerate(linearized_object):
         # ignore digested lines (undigested lines should still be tuples)
-        if type(line) != tuple:
+        if type(line) != tuple:  # noqa: E721
             continue
         if not line[2] and line[0] in ['[', ']', '{', '}'] and line[1] > current_depth:
             highest_indeces = []
@@ -531,17 +531,17 @@ def reconstitute_object(linearized_object):
         pre_list = linearized_object[:highest_indeces[-2]]
         sub_list = []
         for elem in linearized_object[highest_indeces[-2]:highest_indeces[-1]]:
-            if type(elem) == tuple:
-                if type(elem[0]) == elem[2]:
+            if type(elem) == tuple:  # noqa: E721
+                if type(elem[0]) == elem[2]:  # noqa: E721
                     sub_list.append(elem[0])
-                elif elem[2] == int:
+                elif elem[2] == int:  # noqa: E721
                     try:
                         sub_list.append(int(elem[0]))
                     except ValueError:
                         sub_list.append(float(elem[0]))
-                elif elem[2] == float:
+                elif elem[2] == float:  # noqa: E721
                     sub_list.append(float(elem[0]))
-                elif elem[2] == bool:
+                elif elem[2] == bool:  # noqa: E721
                     sub_list.append(bool(elem[0]))
             else:
                 sub_list.append(elem)
@@ -558,28 +558,28 @@ def reconstitute_object(linearized_object):
             next_key = linearized_object[i]
             next_val = linearized_object[i+2]
 
-            if type(next_key[0]) == next_key[2]:
+            if type(next_key[0]) == next_key[2]:  # noqa: E721
                 next_key = next_key[0]
-            elif next_key[2] == int:
+            elif next_key[2] == int:  # noqa: E721
                 try:
                     next_key = int(next_key[0])
                 except ValueError:
                     next_key = float(next_key[0])
-            elif next_key[2] == float:
+            elif next_key[2] == float:  # noqa: E721
                 next_key = float(next_key[0])
-            elif next_key[2] == bool:
+            elif next_key[2] == bool:  # noqa: E721
                 next_key = bool(next_key[0])
 
-            if type(next_val) != tuple:
+            if type(next_val) != tuple:  # noqa: E721
                 pass
-            elif type(next_val[0]) == next_val[2]:
+            elif type(next_val[0]) == next_val[2]:  # noqa: E721
                 next_val = next_val[0]
-            elif next_val[2] == int:
+            elif next_val[2] == int:  # noqa: E721
                 next_val = int(next_val[0])
-            elif next_val[2] == float:
+            elif next_val[2] == float:  # noqa: E721
                 next_val = float(next_val[0])
-            elif next_val[2] == bool:
-                nextval = bool(next_val[0])
+            elif next_val[2] == bool:  # noqa: E721
+                next_val = bool(next_val[0])
 
             sub_dict.update({next_key: next_val})
 
