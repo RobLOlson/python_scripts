@@ -6,7 +6,11 @@ import time
 from pathlib import Path
 
 import appdirs
-import survey
+
+try:
+    from .utilities import query
+except ImportError:
+    from utilities import query
 import toml
 import typer
 from google.api_core.exceptions import ResourceExhausted
@@ -302,11 +306,9 @@ def remove_book(target: str = None):
     with tomlshelve.open(str(_BOOKS_FILE)) as book_db:
         books = list(book_db.keys())
 
-        targets = survey.routines.basket("Remove which book(s)?", options=books)
+        targets = query.approve_list(books)
         if not targets:
             return
-
-        targets = [books[i] for i in targets]
 
         purge_list = ", ".join(target for target in targets)
 
@@ -331,18 +333,10 @@ def set_progress(target: str = None, progress: int = None):  # type: ignore
             return
 
         with tomlshelve.open(_SAVE_FILE) as db:
-            # with tomlshelve.open(_BOOKS_FILE) as db:
-            # form = {
-            #     k: survey.widgets.Count(value=progress_db[k] if k in progress_db.keys() else 0)
-            #     for k in db.keys()
-            # }
-            form = {
-                k: survey.widgets.Count(value=progress_db[k] if k in progress_db.keys() else 0)
-                for k in db["books"]
-            }
+            form = {k: int(progress_db[k] if k in progress_db.keys() else 0) for k in db["books"]}
         if form:
-            data = survey.routines.form("Set Progress:", form=form)
-            progress_db.update(data)
+            data = query.form_from_dict(form)
+            progress_db.update({k: int(v) for k, v in data.items()})
         else:
             print("No books have been ingested yet.  Aborting.")
             exit(1)
@@ -464,14 +458,12 @@ def generate_pages(
         # candidates = list(db.keys())
         with tomlshelve.open(_SAVE_FILE) as db:
             candidates = db["books"]
-            index = survey.routines.select(
-                "Select book to generate questions: ", options=candidates
-            )
-            if index is None:
+            selected = query.select(candidates)
+            if selected is None:
                 print("No books ingested.  Aborting.")
                 exit(1)
 
-            target = candidates[index]
+            target = selected
 
     target = Path(target).name
 
@@ -639,10 +631,10 @@ def list_reviews(book=None):
         if not book:
             available_books = [str(e) for e in review_db["reviews"].keys()]
 
-            choice = survey.routines.select("Select a book: ", options=available_books)
+            choice = query.select(available_books)
             if choice is None:
                 return
-            book = available_books[choice]
+            book = choice
 
         reviews = review_db["reviews"][book]
         print(f"{len(reviews)} review(s).")
@@ -694,13 +686,14 @@ def config_creds(google_api_key=None, openai_api_key=None):
     if google_api_key or openai_api_key:
         return
 
-    choice = survey.routines.select("Set which API keys?", options=LLM_providers_annotated)
+    choice_display = query.select(LLM_providers_annotated)
 
-    if choice is None:
+    if choice_display is None:
         return
 
-    key = input(f"Enter your {LLM_providers[choice]} API key: ")
-    choice = LLM_providers[choice]
+    choice_index = LLM_providers_annotated.index(choice_display)
+    key = input(f"Enter your {LLM_providers[choice_index]} API key: ")
+    choice = LLM_providers[choice_index]
 
     match choice:
         case "Google":
@@ -729,9 +722,9 @@ def config_prompt():
         ]
     }"""
 
-    form = {"prompt": survey.widgets.Input(value=_CONFIG["LLM"]["instruction"])}
+    form = {"prompt": _CONFIG["LLM"]["instruction"]}
 
-    choice = survey.routines.form("", form=form)
+    choice = query.form_from_dict(form)
 
     if not choice:
         return
@@ -753,16 +746,15 @@ def config_model(target=None):
     )
 
     if target in models:
-        choice = models.index(target)
+        choice = target
 
     else:
-        # choice = survey.routines.form("Frequency Weights (higher -> more frequent): ", form=form)
-        choice = survey.routines.select("Use which model?", options=models)
+        choice = query.select(models)
 
     if not choice:
         return
 
-    _CONFIG["LLM"]["model"] = models[choice]
+    _CONFIG["LLM"]["model"] = choice
 
     toml.dump(o=_CONFIG, f=open(_CONFIG_FILE.absolute(), "w"))
 
@@ -778,6 +770,10 @@ def config(ctx: typer.Context):
     config_model()
     config_prompt()
 
+
+def config_english():
+    """Configuration function for English module."""
+    config(ctx=None)
 
 @app.callback(invoke_without_command=True)
 def english_default(ctx: typer.Context):
@@ -795,22 +791,21 @@ def english_default(ctx: typer.Context):
         print("No books have been ingested.")
         exit(1)
 
-    book_choice = survey.routines.select("Select a book: ", options=save_db["books"])
-    book_choice = save_db["books"][book_choice]
+    book_choice = query.select(save_db["books"])
 
-    start_date = survey.routines.datetime(
-        "Select assignment start date: ",
-        attrs=("month", "day", "year"),
-    )
+    start_date_input = input("Select assignment start date (YYYY-MM-DD) [today]: ")
+    try:
+        start_date = datetime.datetime.fromisoformat(start_date_input) if start_date_input else None
+    except ValueError:
+        start_date = None
 
     if not start_date:
         start_date = datetime.datetime.today()
 
-    assignment_count = survey.routines.numeric(
-        "How many reading assignments to generate? ", decimal=False, value=5
-    )
+    assignment_count_input = input("How many reading assignments to generate? [5]: ")
+    assignment_count = int(assignment_count_input) if assignment_count_input.strip() else 5
 
-    debug_status = survey.routines.inquire("Debug? ", default=True)
+    debug_status = query.confirm(default=True)
 
     generate_pages(
         target=book_choice,

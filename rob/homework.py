@@ -10,7 +10,7 @@ import survey
 import toml
 import typer
 
-from rob.utilities import query
+from .utilities import query
 
 try:
     from .algebra.problems import *  # noqa: F403
@@ -290,23 +290,22 @@ def open_config(module: str = typer.Argument(None, help="Module to open config f
             print("Available modules: algebra, english")
 
 @config_app.command("edit")
-def edit_config(module: str = typer.Argument(..., help="Module to edit config for (algebra, english, etc.)")):
+def edit_config(module: str = typer.Argument(None, help="Module to edit config for (algebra, english, etc.)")):
     """Edit configuration for a specific module."""
-    
+
     prepare_disk_io()
     
+    if not module:
+        choices = ["algebra", "english"]
+        choice = query.select(choices)
+        if choice is None:
+            return
+        module = choice
+    
     if module == "algebra":
-        print("Opening algebra configuration...")
-        print("Use 'algebra config' to configure problem weights interactively")
-        print(f"Or edit the config file directly: {_SAVE_FILE}")
-        print(f"Or edit LaTeX templates: {_LATEX_FILE}")
+        edit_algebra_config()
     elif module == "english":
-        english_config_file = pathlib.Path(__file__).parent / "config" / "english" / "config.toml"
-        if english_config_file.exists():
-            print(f"Opening English configuration: {english_config_file}")
-            print("Edit this file to modify English homework settings")
-        else:
-            print(f"English config file not found: {english_config_file}")
+        edit_english_config()
     else:
         print(f"Unknown module: {module}")
         print("Available modules: algebra, english")

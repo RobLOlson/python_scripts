@@ -25,6 +25,40 @@ def random_factor(
 # * return a 2-tuple of strings ('TeX problem', 'TeX answer')
 # * the last line of the doc string should name the problem type
 
+def generate_numerical_expression_to_ones(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+    """Generate numerical expression to ones problems.
+    Problem Description:
+    Using Ones in Numerical Expressions"""
+    
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+    
+                
+    base_1: int = random.randint(1, 4)
+    base_2: int = random.randint(1, 4)
+    power_1: int = random.randint(1, 3) if difficulty > 2 else 1
+    power_2: int = random.randint(1, 3) if difficulty > 2 else 1
+    operation: str = random.choice(["+", "-", r"\cdot", r"\over"] if difficulty > 2 else ["+", "-"])
+
+    expression = f"{{{base_1}{'^' + str(power_1) if power_1 > 1 else ''} {operation} {base_2}{'^' + str(power_2) if power_2 > 1 else ''} }}"
+    answer = f"{{ (1 {'+1' * (base_1-1)}) ^ {{(1{'+1' * (power_1-1)})}} {operation} (1{'+1' * (base_2-1)}) ^ {{(1{'+1' * (power_2-1)})}} }}"
+    
+    problem_statement = rf"Replace all numbers with ones without changing the value. Fewer ones are better. \\For example, \({expression}={answer}\)."
+
+    base_1: int = random.randint(1, 4)
+    base_2: int = random.randint(1, 4)
+    power_1: int = random.randint(1, 3)
+    power_2: int = random.randint(1, 3)
+    operation: str = random.choice(["+", "-", r"\cdot", r"\over"])
+
+    expression = f"{{{base_1}{'^' + str(power_1) if power_1 > 1 else ''} {operation} {base_2}{'^' + str(power_2) if power_2 > 1 else ''} }}"
+    answer = rf"{{ (1 {'+1' * (base_1-1)}) ^ {{(1{'+1' * (power_1-1)})}} {operation} (1{'+1' * (base_2-1)}) ^ {{(1{'+1' * (power_2-1)})}} }}"
+    
+    return (
+        rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
 def generate_fraction_addition(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate fraction addition problems.
     Problem Description:
