@@ -4,6 +4,7 @@ import pathlib
 import random
 import sys
 import time
+from typing import Optional
 
 import appdirs
 import survey
@@ -27,8 +28,6 @@ config_app = typer.Typer()
 app.add_typer(algebra_app, name="algebra")
 algebra_app.add_typer(list_app, name="list")
 app.add_typer(config_app, name="config")
-open_app = typer.Typer()
-app.add_typer(open_app, name="open")
 
 if "english" in sys.argv:
     try:
@@ -118,7 +117,11 @@ class Problem:
 
 
 @list_app.command("weights")
-def list_weights() -> None:
+def list_weights(
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+) -> None:
     """List the frequency weights for each problem type."""
     prepare_globals()
 
@@ -138,6 +141,9 @@ def render_latex(
     debug: bool = False,
     threshold: int = 0,
     problem_set=None,  # type: ignore Typer
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
 ) -> None:
     """Return a string coding for {assignment_count} pages of LaTeX algebra problems."""
 
@@ -211,7 +217,12 @@ def render_latex(
 
 
 @algebra_app.command("reset")
-def reset_weights(debug: bool = True):
+def reset_weights(
+    debug: bool = True,
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """Reset problem frequency rates to default."""
 
     prepare_disk_io()
@@ -229,7 +240,11 @@ def reset_weights(debug: bool = True):
 
 
 @algebra_app.command("config")
-def configure_problem_set():
+def configure_problem_set(
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """Configures the frequency rates of problems."""
 
     prepare_globals()
@@ -257,7 +272,9 @@ def configure_problem_set():
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
 
 @config_app.command("open")
-def open_config(module: str = typer.Argument(None, help="Module to open config for (algebra, english)")):  # type: ignore Typer
+def open_config(
+    module: str = typer.Argument(None, help="Module to open config for (algebra, english)"),  # type: ignore Typer
+):
     """Open the configuration for a specific module in the default editor."""
 
     if not module:
@@ -290,7 +307,12 @@ def open_config(module: str = typer.Argument(None, help="Module to open config f
             print("Available modules: algebra, english")
 
 @config_app.command("edit")
-def edit_config(module: str = typer.Argument(None, help="Module to edit config for (algebra, english, etc.)")):
+def edit_config(
+    module: str = typer.Argument(None, help="Module to edit config for (algebra, english, etc.)"),
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """Edit configuration for a specific module."""
 
     prepare_disk_io()
@@ -312,7 +334,11 @@ def edit_config(module: str = typer.Argument(None, help="Module to edit config f
 
 
 @config_app.command("algebra")
-def edit_algebra_config():
+def edit_algebra_config(
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """Edit algebra configuration."""
     
     prepare_disk_io()
@@ -320,7 +346,11 @@ def edit_algebra_config():
     configure_problem_set()
 
 @config_app.command("english")
-def edit_english_config():
+def edit_english_config(
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """Edit algebra configuration."""
     
     prepare_disk_io()
@@ -329,7 +359,12 @@ def edit_english_config():
     config_english()
 
 @config_app.callback(invoke_without_command=True)
-def config_default(ctx: typer.Context):
+def config_default(
+    ctx: typer.Context,
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """Manage configuration for different modules."""
     
     if ctx and ctx.invoked_subcommand:
@@ -349,7 +384,13 @@ def config_default(ctx: typer.Context):
 
 
 @algebra_app.callback(invoke_without_command=True)
-def algebra_default(ctx: typer.Context, debug: bool = False):
+def algebra_default(
+    ctx: typer.Context,
+    debug: bool = False,
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """Manage and generate algebra homework assignments."""
 
     if ctx and ctx.invoked_subcommand:
@@ -400,7 +441,12 @@ def algebra_default(ctx: typer.Context, debug: bool = False):
 
 
 @list_app.callback(invoke_without_command=True)
-def list_default(ctx: typer.Context):
+def list_default(
+    ctx: typer.Context,
+    user: Optional[str] = typer.Option(
+        None, "--user", "-u", help="User profile name to use for this session"
+    ),
+):
     """List problem types, frequency weights, etc."""
     if ctx.invoked_subcommand:
         return
@@ -410,7 +456,15 @@ def list_default(ctx: typer.Context):
 
 
 @app.callback(invoke_without_command=True)
-def default_homework(ctx: typer.Context):
+def default_homework(
+    ctx: typer.Context,
+    user: Optional[str] = typer.Option(
+        None,
+        "--user",
+        "-u",
+        help="User profile name to use for this session",
+    ),
+):
     if ctx and ctx.invoked_subcommand:
         return
 
