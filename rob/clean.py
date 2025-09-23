@@ -19,7 +19,6 @@ import rich
 # import rich.traceback
 import toml
 import typer
-from click import option
 from typer import Argument, Option
 
 try:
@@ -545,7 +544,7 @@ def identify_crowded_archives(
             approved_mvs = uncrowd_folder(folder, yes_all=True)
         else:
             suggested_mvs = uncrowd_folder(folder)
-            approved_mvs = approve_dict(
+            approved_mvs = query.approve_dict(
                 suggested_mvs, "Are you sure you approve all these file movements?"
             )
 
@@ -639,32 +638,22 @@ def config_interact() -> None:
     while True:
         print("Current Archives\n----------------")
         list_archives()
-        # choice = survey.routines.select(options=options)
-        # choice = options[choice]
 
         choice = query.select(options)
 
         match choice:
             case "add":
-                # form = {
-                #     "name": survey.widgets.Input(),
-                #     "extension": survey.widgets.Input(),
-                # }
-                # data = survey.routines.form(form=form)
-                # add_archive(data["name"])
                 form = {"name": "folder_name", "extension": ".example"}
                 form = query.form_from_dict(form)
                 add_archive(form["name"])
                 add_extension(target_archive=form["name"], new_extension=form["extension"])
 
             case "remove":
-                # selection = survey.routines.select(options=ARCHIVE_FOLDERS)
                 print("\nRemove which archive?")
                 selection = query.select(ARCHIVE_FOLDERS)
                 remove_archive(selection)
 
             case "edit":
-                # selection = survey.routines.select(options=ARCHIVE_FOLDERS)
                 selection = query.select(ARCHIVE_FOLDERS)
                 edit_archive(selection)
 
@@ -678,8 +667,7 @@ def edit_default(ctx: typer.Context):
         return
 
     print("\nEdit which archive?")
-    # selection = survey.routines.select(options=ARCHIVE_FOLDERS)
-    selection = query.select(ARCHIVE_FOLDERS)
+    selection = query.select(target=ARCHIVE_FOLDERS)
     edit_archive(selection)
 
 
