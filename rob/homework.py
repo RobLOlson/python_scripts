@@ -47,7 +47,7 @@ def prepare_disk_io():
     """Prepare disk I/O for algebra homework."""
 
     start = time.perf_counter()
-    global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START, _FALLBACK_CONFIG
+    global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START, _FALLBACK_CONFIG, _DATES
     _THIS_FILE = pathlib.Path(__file__)
 
     _FALLBACK_CONFIG = toml.loads(open(_THIS_FILE.parent / "config" / "algebra" / "config.toml", "r").read())
@@ -63,18 +63,15 @@ def prepare_disk_io():
         # NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
         # _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
         _SAVE_DATA = _FALLBACK_CONFIG.copy()
-        _SAVE_FILE.parent.mkdir(exist_ok=True)
+        _SAVE_FILE.parent.mkdir(parents=True, exist_ok=True)
         # _SAVE_FILE.touch()
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
     else:
         _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
     
-    # _WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
     _WEEKDAYS = _SAVE_DATA.get("constants", {}).get("weekdays", _FALLBACK_CONFIG["constants"]["weekdays"])
-    # _MONTHS = _SAVE_DATA["constants"]["months"]
     _MONTHS = _SAVE_DATA.get("constants", {}).get("months", _FALLBACK_CONFIG["constants"]["months"])
-    # _VARIABLES = _SAVE_DATA["constants"]["variables"]
     _VARIABLES = _SAVE_DATA.get("constants", {}).get("variables", _FALLBACK_CONFIG["constants"]["variables"])
 
     _START = datetime.datetime.today()
@@ -129,7 +126,7 @@ def list_weights(
     ),
 ) -> None:
     """List the frequency weights for each problem type."""
-    prepare_globals()
+    prepare_globals(user=user)
 
     print(
         "--------------------------------\nProblems start with 1000 weight.  \nWeight decreases exponentially with use.  \nProblems with smaller weight are less likely to appear in problem sets.  \nSome problem types will increase with difficulty as their weight decreases.  \n--------------------------------"
@@ -137,7 +134,7 @@ def list_weights(
 
     for problem in _PROBLEM_GENERATORS:
         statement = globals()[problem].__doc__.split("\n")[-1]
-        print(f"{statement}: {_SAVE_DATA['weights'][_USERNAME].get(problem, "????")}")
+        print(f"{statement}: {_SAVE_DATA['weights'][_USERNAME].get(problem, '????')}")
 
 
 @algebra_app.command("render")
@@ -151,9 +148,10 @@ def render_latex(
         None, "--user", "-u", help="User profile name to use for this session"
     ),
 ) -> None:
-    """Return a string coding for {assignment_count} pages of LaTeX algebra problems."""
+    """Return a string c
+    oding for {assignment_count} pages of LaTeX algebra problems."""
 
-    prepare_globals()
+    prepare_globals(user=user)
 
     if not problem_set or len(problem_set) == len(_ALL_PROBLEMS):
         problem_set: list[ProblemCategory] = _ALL_PROBLEMS
@@ -170,12 +168,17 @@ def render_latex(
     solutions = []
 
     doc_header = _LATEX_TEMPLATES["doc_header"]
+    
+    
 
     for i in range(assignment_count):
         solution_set = rf"{_DATES[i]}\\"
         page_header = _LATEX_TEMPLATES["page_header"]
         parts = page_header.split("INSERT_DATE_HERE")
         page_header = _DATES[i].join(parts)
+        # Inject username
+        parts = page_header.split("INSERT_STUDENT_HERE")
+        page_header = _USERNAME.join(parts)
 
         problem_statement = ""
 
@@ -230,7 +233,7 @@ def reset_weights(
 ):
     """Reset problem frequency rates to default."""
 
-    prepare_disk_io()
+    prepare_globals(user=user)
 
     # weights: dict[str, int] = _SAVE_DATA["weights"]
     for key in _SAVE_DATA["weights"][_USERNAME].keys():
@@ -252,7 +255,7 @@ def configure_problem_set(
 ):
     """Configures the frequency rates of problems."""
 
-    prepare_globals()
+    prepare_globals(user=user)
 
     missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(_SAVE_DATA["weights"][_USERNAME].keys())
 
@@ -318,7 +321,7 @@ def edit_config(
 ):
     """Edit configuration for a specific module."""
 
-    prepare_globals()
+    prepare_globals(user=user)
     
     if not module:
         choices = ["algebra", "english"]
@@ -328,9 +331,9 @@ def edit_config(
         module = choice
     
     if module == "algebra":
-        edit_algebra_config()
+        edit_algebra_config(user=user)
     elif module == "english":
-        edit_english_config()
+        edit_english_config(user=user)
     else:
         print(f"Unknown module: {module}")
         print("Available modules: algebra, english")
@@ -344,9 +347,9 @@ def edit_algebra_config(
 ):
     """Edit algebra configuration."""
     
-    prepare_disk_io()
+    prepare_globals(user=user)
     
-    configure_problem_set()
+    configure_problem_set(user=user)
 
 @config_app.command("english")
 def edit_english_config(
@@ -380,7 +383,7 @@ def config_default(
 
     match choice:
         case "algebra":
-            edit_algebra_config()
+            edit_algebra_config(user=user)
 
         case "english":
             edit_english_config()
@@ -399,7 +402,7 @@ def algebra_default(
     if ctx and ctx.invoked_subcommand:
         return
 
-    prepare_globals()
+    prepare_globals(user=user)
 
     selected_problems = query.approve_list(
         _ALL_PROBLEMS, repr_func=lambda p: p.long_description
@@ -440,6 +443,7 @@ def algebra_default(
         problem_count=problem_count,
         debug=debug,
         problem_set=selected_problems,
+        user=user,
     )
 
 
@@ -474,7 +478,6 @@ def default_homework(
         help="User profile name to use for this session",
     ),
 ):
-    breakpoint()
     
     if ctx and ctx.invoked_subcommand:
         return
@@ -486,7 +489,7 @@ def default_homework(
 
     match choice:
         case "algebra":
-            algebra_default(ctx=None)
+            algebra_default(ctx=None, user=user)
 
         case "english":
             from .english import english_default
@@ -507,27 +510,30 @@ _USERNAME: str = None
 _SAVE_DATA = {}
 
 
-def prepare_globals():
+def prepare_globals(user: Optional[str] = None):
     global _PROBLEM_GENERATORS, _ALL_PROBLEMS, _NAME_TO_DESCRIPTION, _DESCRIPTION_TO_NAME, _USERNAME
 
     prepare_disk_io()
     
     # _USERNAME should be set to the `--user` option if it exists
     cli_user = None
-    try:
-        for i, token in enumerate(sys.argv):
-            if token == "--user" or token == "-u":
-                if i + 1 < len(sys.argv):
-                    cli_user = sys.argv[i + 1]
-                break
-            if token.startswith("--user="):
-                cli_user = token.split("=", 1)[1]
-                break
-            if token.startswith("-u") and len(token) > 2:
-                cli_user = token[2:]
-                break
-    except Exception:
-        cli_user = None
+    if user is not None:
+        cli_user = user
+    else:
+        try:
+            for i, token in enumerate(sys.argv):
+                if token == "--user" or token == "-u":
+                    if i + 1 < len(sys.argv):
+                        cli_user = sys.argv[i + 1]
+                    break
+                if token.startswith("--user="):
+                    cli_user = token.split("=", 1)[1]
+                    break
+                if token.startswith("-u") and len(token) > 2:
+                    cli_user = token[2:]
+                    break
+        except Exception:
+            cli_user = None
 
     try:
         default_user = _SAVE_DATA["default_user"]
@@ -582,7 +588,6 @@ def prepare_globals():
     #     _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
     #     _SAVE_DATA["constants"]["months"] = _MONTHS
     #     _SAVE_DATA["constants"]["variables"] = _VARIABLES
-
     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 

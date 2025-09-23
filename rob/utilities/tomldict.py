@@ -58,11 +58,23 @@ class TomlDict:
             raise ValueError("I/O operation on closed file.")
 
     def _sync(self):  # Separate writing logic
-        with tempfile.NamedTemporaryFile(
-            mode="w", delete=True, dir=os.path.dirname(self.filename)
-        ) as tf:
-            toml.dump(self.data, tf)
-            os.replace(tf.name, self.filename)
+        temp_file = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", delete=False, dir=os.path.dirname(self.filename)
+            ) as tf:
+                toml.dump(self.data, tf)
+                temp_file = tf.name
+            os.replace(temp_file, self.filename)
+            temp_file = None  # Success, no cleanup needed
+        except Exception:
+            # Clean up temp file if something went wrong
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                except OSError:
+                    pass  # Ignore cleanup errors
+            raise
 
     @classmethod
     def open(cls, filename):

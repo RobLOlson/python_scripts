@@ -1,110 +1,214 @@
 import importlib
-import os
 import sys
-from pathlib import Path
 from types import ModuleType
 
 import toml
-from typer.testing import CliRunner
-
-runner = CliRunner()
 
 
-def _install_survey_stub(monkeypatch):
-    survey_stub = ModuleType("survey")
+def test_homework_module_exposes_app(monkeypatch):
+	survey_stub = ModuleType("survey")
+	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-    class _Routines:
-        @staticmethod
-        def datetime(prompt: str, attrs=("month", "day", "year")):
-            return None
-
-        @staticmethod
-        def numeric(prompt: str, decimal=False, value=None):
-            return value
-
-    survey_stub.routines = _Routines()
-    monkeypatch.setitem(sys.modules, "survey", survey_stub)
+	mod = importlib.import_module("robo.rob.homework")
+	assert hasattr(mod, "app")
 
 
-def _load_homework(monkeypatch):
-    _install_survey_stub(monkeypatch)
-    return importlib.import_module("robo.rob.homework")
+def test_help_shows_user_option(monkeypatch):
+	# stub survey to avoid interactive import side-effects
+	survey_stub = ModuleType("survey")
+	monkeypatch.setitem(sys.modules, "survey", survey_stub)
+
+	mod = importlib.import_module("robo.rob.homework")
+
+	from typer.testing import CliRunner
+
+	runner = CliRunner()
+
+	# Avoid Windows console access under pytest capture
+	try:
+		import click._winconsole as _wc  # type: ignore
+		monkeypatch.setattr(_wc, "get_windows_console_stream", lambda *a, **k: None)
+	except Exception:
+		pass
+
+	result = runner.invoke(mod.app, ["--help"])
+	assert result.exit_code == 0
+	assert "--user" in result.output
 
 
-def _save_file_path(tmp_dir: Path) -> Path:
-    # Mirrors homework.py: appdirs.user_data_dir()/"robolson"/"algebra"/"config.toml"
-    return tmp_dir / "robolson" / "algebra" / "config.toml"
+def test_algebra_list_weights_smoke(monkeypatch):
+	# stub survey to avoid interactive import side-effects
+	survey_stub = ModuleType("survey")
+	monkeypatch.setitem(sys.modules, "survey", survey_stub)
+
+	mod = importlib.import_module("robo.rob.homework")
+
+	import os
+	from pathlib import Path
+
+	from typer.testing import CliRunner
+
+	runner = CliRunner()
+
+	# Avoid Windows console access under pytest capture
+	try:
+		import click._winconsole as _wc  # type: ignore
+		monkeypatch.setattr(_wc, "get_windows_console_stream", lambda *a, **k: None)
+	except Exception:
+		pass
+
+	with runner.isolated_filesystem():
+		tmp_dir = Path(os.getcwd()) / "_appdata"
+		tmp_dir.mkdir(parents=True, exist_ok=True)
+
+		# Patch the exact attribute as imported in homework.py
+		monkeypatch.setattr("appdirs.user_data_dir", lambda: str(tmp_dir))
+
+		result = runner.invoke(mod.app, ["algebra", "list", "weights", "--user", "alice"])
+		assert result.exit_code == 0, result.output
+		assert "Problems start with 1000 weight" in result.output
+
+		save_file = tmp_dir / "robolson" / "algebra" / "config.toml"
+		assert save_file.exists()
 
 
-def test_list_weights_with_user(monkeypatch):
-    with runner.isolated_filesystem():
-        tmp_dir = Path(os.getcwd()) / "_appdata"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
+def test_weights_persist_for_user(monkeypatch):
+	# stub survey to avoid interactive import side-effects
+	survey_stub = ModuleType("survey")
+	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-        hw = _load_homework(monkeypatch)
-        # Monkeypatch user_data_dir to our isolated path
-        monkeypatch.setattr(hw.appdirs, "user_data_dir", lambda: str(tmp_dir))
+	mod = importlib.import_module("robo.rob.homework")
 
-        result = runner.invoke(hw.app, ["algebra", "list", "weights", "--user", "alice"])
-        assert result.exit_code == 0, result.output
+	import os
+	from pathlib import Path
 
-        save_file = _save_file_path(tmp_dir)
-        assert save_file.exists(), "Expected config file to be created"
+	from typer.testing import CliRunner
 
-        data = toml.loads(save_file.read_text())
-        # Ensure per-user weights mapping exists
-        assert "weights" in data
-        assert "alice" in data["weights"]
+	runner = CliRunner()
 
+	try:
+		import click._winconsole as _wc  # type: ignore
+		monkeypatch.setattr(_wc, "get_windows_console_stream", lambda *a, **k: None)
+	except Exception:
+		pass
 
-def test_list_weights_default_user(monkeypatch):
-    with runner.isolated_filesystem():
-        tmp_dir = Path(os.getcwd()) / "_appdata"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
+	with runner.isolated_filesystem():
+		tmp_dir = Path(os.getcwd()) / "_appdata"
+		tmp_dir.mkdir(parents=True, exist_ok=True)
 
-        hw = _load_homework(monkeypatch)
-        monkeypatch.setattr(hw.appdirs, "user_data_dir", lambda: str(tmp_dir))
+		# monkeypatch.setattr("robo.rob.homework.appdirs.user_data_dir", lambda: str(tmp_dir))
+		monkeypatch.setattr("appdirs.user_data_dir", lambda: str(tmp_dir))
 
-        result = runner.invoke(hw.app, ["algebra", "list", "weights"])  # no --user
-        assert result.exit_code == 0, result.output
+		
+		result = runner.invoke(mod.app, ["algebra", "list", "weights", "--user", "alice"])
+		assert result.exit_code == 0, result.output
 
-        save_file = _save_file_path(tmp_dir)
-        assert save_file.exists()
-
-        data = toml.loads(save_file.read_text())
-        # Fallback default user from fallback config is "default"
-        assert data.get("default_user", "default") == "default"
-        # Ensure default weight bucket present
-        assert "weights" in data
-        assert "default" in data["weights"]
+		save_file = tmp_dir / "robolson" / "algebra" / "config.toml"
+		assert save_file.exists()
+		data = toml.loads(save_file.read_text())
+		assert "weights" in data
+		assert "alice" in data["weights"]
+		assert isinstance(data["weights"]["alice"], dict)
+		assert len(data["weights"]["alice"]) > 0
 
 
-def test_algebra_render_with_user(monkeypatch):
-    with runner.isolated_filesystem():
-        tmp_dir = Path(os.getcwd()) / "_appdata"
-        tmp_dir.mkdir(parents=True, exist_ok=True)
+def test_render_produces_tex(monkeypatch):
+	# stub survey to avoid interactive import side-effects
+	survey_stub = ModuleType("survey")
+	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-        hw = _load_homework(monkeypatch)
-        monkeypatch.setattr(hw.appdirs, "user_data_dir", lambda: str(tmp_dir))
+	mod = importlib.import_module("robo.rob.homework")
 
-        # Keep the output small and avoid saving weights by using --debug
-        result = runner.invoke(
-            hw.app,
-            [
-                "algebra",
-                "render",
-                "--user",
-                "bob",
-                "--assignment-count",
-                "1",
-                "--problem-count",
-                "1",
-                "--debug",
-            ],
-        )
-        assert result.exit_code == 0, result.output
-        # Confirm a .tex file was produced
-        produced = list(Path(".").glob("Algebra Homework *.tex"))
-        assert produced, "Expected a LaTeX file to be created"
+	import os
+	from pathlib import Path
+
+	from typer.testing import CliRunner
+
+	runner = CliRunner()
+
+	try:
+		import click._winconsole as _wc  # type: ignore
+		monkeypatch.setattr(_wc, "get_windows_console_stream", lambda *a, **k: None)
+	except Exception:
+		pass
+
+	with runner.isolated_filesystem():
+		tmp_dir = Path(os.getcwd()) / "_appdata"
+		tmp_dir.mkdir(parents=True, exist_ok=True)
+
+		monkeypatch.setattr("appdirs.user_data_dir", lambda: str(tmp_dir))
+
+		result = runner.invoke(
+			mod.app,
+			[
+				"algebra",
+				"render",
+				"--user",
+				"carol",
+				"--assignment-count",
+				"1",
+				"--problem-count",
+				"1",
+				"--debug",
+			],
+		)
+		assert result.exit_code == 0, result.output
+		produced = list(Path(".").glob("Algebra Homework *.tex"))
+		assert produced, "Expected a LaTeX file to be created"
+
+
+def test_config_algebra_updates_weights(monkeypatch):
+	# stub survey to avoid interactive import side-effects
+	survey_stub = ModuleType("survey")
+	monkeypatch.setitem(sys.modules, "survey", survey_stub)
+
+	mod = importlib.import_module("robo.rob.homework")
+
+	import os
+	from pathlib import Path
+
+	from typer.testing import CliRunner
+
+	runner = CliRunner()
+
+	# Avoid Windows console access under pytest capture
+	try:
+		import click._winconsole as _wc  # type: ignore
+		monkeypatch.setattr(_wc, "get_windows_console_stream", lambda *a, **k: None)
+	except Exception:
+		pass
+
+	# Stub the interactive form to return fixed values for all entries
+	def fake_form_from_dict(form, *args, **kwargs):  # type: ignore
+		return {k: 111 for k in form.keys()}
+
+	monkeypatch.setattr("robo.rob.homework.query.form_from_dict", fake_form_from_dict)
+
+	with runner.isolated_filesystem():
+		tmp_dir = Path(os.getcwd()) / "_appdata"
+		tmp_dir.mkdir(parents=True, exist_ok=True)
+
+		monkeypatch.setattr("appdirs.user_data_dir", lambda: str(tmp_dir))
+
+		# Run config algebra to trigger configure_problem_set and save
+		result = runner.invoke(
+			mod.app,
+			[
+				"config",
+				"algebra",
+				"--user",
+				"dave",
+			],
+		)
+		assert result.exit_code == 0, result.output
+
+		save_file = tmp_dir / "robolson" / "algebra" / "config.toml"
+		assert save_file.exists()
+		data = toml.loads(save_file.read_text())
+		assert "weights" in data and "dave" in data["weights"]
+
+		# Ensure every known generator has been written with value 111
+		for gen in getattr(mod, "_PROBLEM_GENERATORS", []):
+			assert data["weights"]["dave"][gen] == 111
 
 

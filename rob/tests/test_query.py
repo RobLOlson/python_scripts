@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import readchar
-import rich
 
 from ..utilities.query import (
     approve_dict,
@@ -156,16 +155,16 @@ class TestReconstituteObject:
 @patch("readchar.readkey")
 class TestFormFromDict:
     def test_simple_form(self, mock_readkey):
-        # Simulate pressing Enter to accept defaults
-        mock_readkey.side_effect = ["\r"]
+        # Simulate pressing Ctrl+Enter (commit) to accept defaults
+        mock_readkey.side_effect = ["\n"]
         test_dict = {"name": "John", "age": 30}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)
         assert all(key in result for key in test_dict)
 
     def test_nested_form(self, mock_readkey):
-        # Simulate pressing Enter to accept defaults
-        mock_readkey.side_effect = ["\r"]
+        # Simulate pressing Ctrl+Enter (commit) to accept defaults
+        mock_readkey.side_effect = ["\n"]
         test_dict = {"personal": {"name": "John", "age": 30}, "settings": {"dark_mode": True}}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)

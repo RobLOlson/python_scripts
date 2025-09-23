@@ -332,20 +332,23 @@ def edit_object(
             continue
         break
 
-    rich.print(
-        "\n[green]Move cursor with up/down. Press right or tab to edit. Press Enter to confirm and commit."
-    )
-    rich.print(preamble)
+    # rich.print(
+    #     "\n[green]Move cursor with up/down. Press right or tab to edit. Press Enter to confirm and commit."
+    # )
+    # rich.print(preamble)
 
     long_contents = max(len(str(elem)) for elem in target2) > shutil.get_terminal_size().columns
     end = ""
 
-    print("\n" * (len(target2) + 1))
+
+    # print("\n" * (len(target2) + 1))
     while True:
         if long_contents or not edit_keys:
+            # clear screen
             print("\033[2J")
         else:
             print((_MOVE_UP + _CLEAR_LINE) * (len(target2)+1))
+        print(preamble)
         display_string = ""
         for index, item in enumerate(target2):
             if not show_brackets and not item[2] and str(item[0]) in "]}[{":
@@ -389,7 +392,6 @@ def edit_object(
             # rich.print(rf"{style}{indent}{display}{end}", end="")
 
         rich.print(display_string, end="")
-
         rich.print("\n[green]Press Enter, right, or tab to edit.\nCtrl+Enter or 'q' to save and quit.")
         choice = readchar.readkey()
         match choice:
@@ -403,6 +405,7 @@ def edit_object(
                 else:
                     print((_MOVE_UP + _CLEAR_LINE) * (len(target2)+1))
                 display_string = ""
+                print(preamble)
                 for index, item in enumerate(target2):
                     if not show_brackets and not item[2] and str(item[0]) in "]}[{":
                         continue
@@ -614,8 +617,8 @@ def confirm(default: bool = False):
     else:
         return False
 
-def form_from_dict(target:dict[str, str|int|float|bool]):
-    return edit_object(target=target, show_brackets=False, edit_keys=False, dict_inline=True)
+def form_from_dict(target:dict[str, str|int|float|bool], preamble: str = ""):
+    return edit_object(target=target, show_brackets=False, edit_keys=False, dict_inline=True, preamble=preamble)
 
 # print(approve_list([1,2,3,4,5,6,7,8,9,10]))
 # print(approve_dict({'settings_1':True, 'settings_2':False, 'settings_3':False, 'settings_4':False, 'settings_5':False}))

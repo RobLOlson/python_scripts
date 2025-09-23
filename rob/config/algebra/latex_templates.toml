@@ -15,7 +15,7 @@ doc_header = """\\documentclass[12pt, fleqn]{article}
 
 page_header = """% Using makebox and \\vspace* to manually add the title and date
 \\noindent\\makebox[\\textwidth]{
-  \\large\\textbf{Algebra}%
+  \\large\\textbf{Algebra} \\noindent\\textbf{(INSERT_STUDENT_HERE)}%
   \\hfill%
   INSERT_DATE_HERE
 }
