@@ -47,8 +47,10 @@ def prepare_disk_io():
     """Prepare disk I/O for algebra homework."""
 
     start = time.perf_counter()
-    global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START
+    global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START, _FALLBACK_CONFIG
     _THIS_FILE = pathlib.Path(__file__)
+
+    _FALLBACK_CONFIG = toml.loads(open(_THIS_FILE.parent / "config" / "algebra" / "config.toml", "r").read())
 
     _LATEX_FILE = _THIS_FILE.parent / "config" / "algebra" / "latex_templates.toml"
     _LATEX_FILE.parent.mkdir(exist_ok=True)
@@ -56,20 +58,24 @@ def prepare_disk_io():
 
     _SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
 
-    if not _SAVE_FILE.exists():
+    if not _SAVE_FILE.exists() or _SAVE_FILE.stat().st_size == 0:
         # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
-        NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
-        _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
+        # NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
+        # _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
+        _SAVE_DATA = _FALLBACK_CONFIG.copy()
         _SAVE_FILE.parent.mkdir(exist_ok=True)
         # _SAVE_FILE.touch()
-        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.name, "w"))
+        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
     else:
         _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
-
-    _WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
-    _MONTHS = _SAVE_DATA["constants"]["months"]
-    _VARIABLES = _SAVE_DATA["constants"]["variables"]
+    
+    # _WEEKDAYS = _SAVE_DATA["constants"]["weekdays"]
+    _WEEKDAYS = _SAVE_DATA.get("constants", {}).get("weekdays", _FALLBACK_CONFIG["constants"]["weekdays"])
+    # _MONTHS = _SAVE_DATA["constants"]["months"]
+    _MONTHS = _SAVE_DATA.get("constants", {}).get("months", _FALLBACK_CONFIG["constants"]["months"])
+    # _VARIABLES = _SAVE_DATA["constants"]["variables"]
+    _VARIABLES = _SAVE_DATA.get("constants", {}).get("variables", _FALLBACK_CONFIG["constants"]["variables"])
 
     _START = datetime.datetime.today()
     _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
@@ -131,7 +137,7 @@ def list_weights(
 
     for problem in _PROBLEM_GENERATORS:
         statement = globals()[problem].__doc__.split("\n")[-1]
-        print(f"{statement}: {_SAVE_DATA['weights'][problem]}")
+        print(f"{statement}: {_SAVE_DATA['weights'][_USERNAME].get(problem, "????")}")
 
 
 @algebra_app.command("render")
@@ -148,7 +154,6 @@ def render_latex(
     """Return a string coding for {assignment_count} pages of LaTeX algebra problems."""
 
     prepare_globals()
-    prepare_disk_io()
 
     if not problem_set or len(problem_set) == len(_ALL_PROBLEMS):
         problem_set: list[ProblemCategory] = _ALL_PROBLEMS
@@ -190,8 +195,8 @@ def render_latex(
             solution_set += rf"{k+1}: {problem.solution}\;\;"
 
             # _SAVE_DATA["weights"][problem.name] = int(_SAVE_DATA["weights"][problem.name] * 0.9)
-            _SAVE_DATA["weights"][problem.name] = int(
-                _SAVE_DATA["weights"].get(problem.name, 1000) * 0.9
+            _SAVE_DATA["weights"][_USERNAME][problem.name] = int(
+                _SAVE_DATA["weights"][_USERNAME].get(problem.name, 1000) * 0.9
             )
 
         page_footer = r"\end{enumerate}"
@@ -228,8 +233,8 @@ def reset_weights(
     prepare_disk_io()
 
     # weights: dict[str, int] = _SAVE_DATA["weights"]
-    for key in _SAVE_DATA["weights"].keys():
-        _SAVE_DATA["weights"][key] = 1000
+    for key in _SAVE_DATA["weights"][_USERNAME].keys():
+        _SAVE_DATA["weights"][_USERNAME][key] = _FALLBACK_CONFIG["weights"]["default"].get(key, 1000)
 
     if not debug:
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
@@ -249,25 +254,23 @@ def configure_problem_set(
 
     prepare_globals()
 
-    missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(_SAVE_DATA["weights"].keys())
+    missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(_SAVE_DATA["weights"][_USERNAME].keys())
 
     for problem_type in missing_problems:
-        _SAVE_DATA["weights"][problem_type] = 1000
-        
-            
+        _SAVE_DATA["weights"][_USERNAME][problem_type] = _FALLBACK_CONFIG["weights"]["default"].get(problem_type, 1000)
+                    
     form = {
-        _NAME_TO_DESCRIPTION[problem_type]: int(_SAVE_DATA["weights"][problem_type])
+        _NAME_TO_DESCRIPTION[problem_type]: int(_SAVE_DATA["weights"][_USERNAME][problem_type])
         for problem_type in _PROBLEM_GENERATORS
     }
 
-
-    data = query.form_from_dict(form)
+    data = query.form_from_dict(form, preamble=f"  Student: {_USERNAME}\n----------------------------")
 
     if not data:
         return
 
     data = {_DESCRIPTION_TO_NAME[desc]: data[desc] for desc in data.keys()}
-    _SAVE_DATA["weights"] = data
+    _SAVE_DATA["weights"][_USERNAME] = data
     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
 
@@ -315,7 +318,7 @@ def edit_config(
 ):
     """Edit configuration for a specific module."""
 
-    prepare_disk_io()
+    prepare_globals()
     
     if not module:
         choices = ["algebra", "english"]
@@ -354,7 +357,7 @@ def edit_english_config(
     """Edit algebra configuration."""
     
     prepare_disk_io()
-            
+
     from .english import config_english  # noqa: F401
     config_english()
 
@@ -451,8 +454,14 @@ def list_default(
     if ctx.invoked_subcommand:
         return
 
-    print("???")
-    list_app.rich_help_panel
+    selection = query.select(["algebra", "english", "chemistry"])
+    match selection:
+        case "algebra":
+            list_weights(user=user)
+        case "english":
+            pass
+        case "chemistry":
+            pass
 
 
 @app.callback(invoke_without_command=True)
@@ -465,6 +474,8 @@ def default_homework(
         help="User profile name to use for this session",
     ),
 ):
+    breakpoint()
+    
     if ctx and ctx.invoked_subcommand:
         return
 
@@ -492,25 +503,62 @@ _PROBLEM_GENERATORS = []
 _ALL_PROBLEMS = []
 _NAME_TO_DESCRIPTION = {}
 _DESCRIPTION_TO_NAME = {}
+_USERNAME: str = None
+_SAVE_DATA = {}
 
 
 def prepare_globals():
-    global _PROBLEM_GENERATORS, _ALL_PROBLEMS, _NAME_TO_DESCRIPTION, _DESCRIPTION_TO_NAME
+    global _PROBLEM_GENERATORS, _ALL_PROBLEMS, _NAME_TO_DESCRIPTION, _DESCRIPTION_TO_NAME, _USERNAME
 
     prepare_disk_io()
+    
+    # _USERNAME should be set to the `--user` option if it exists
+    cli_user = None
+    try:
+        for i, token in enumerate(sys.argv):
+            if token == "--user" or token == "-u":
+                if i + 1 < len(sys.argv):
+                    cli_user = sys.argv[i + 1]
+                break
+            if token.startswith("--user="):
+                cli_user = token.split("=", 1)[1]
+                break
+            if token.startswith("-u") and len(token) > 2:
+                cli_user = token[2:]
+                break
+    except Exception:
+        cli_user = None
+
+    try:
+        default_user = _SAVE_DATA["default_user"]
+    except KeyError:
+        default_user = _FALLBACK_CONFIG.get("default_user", "default")
+        _SAVE_DATA["default_user"] = default_user
+        
+    _USERNAME = cli_user or default_user or "default"
 
     _problem_dict = {k: v for k, v in globals().items() if k.startswith("generate") and callable(v)}
     _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
 
+    
     _ALL_PROBLEMS = [
-        ProblemCategory(logic=logic, weight=int(_SAVE_DATA["weights"].get(name, 1000)))
+        ProblemCategory(logic=logic, weight=int(_SAVE_DATA.get("weights", {}).get(_USERNAME, {}).get(name, 1000)))
         for name, logic in _problem_dict.items()
     ]
+    
+    if _SAVE_DATA.get("weights", None) is None:
+        _SAVE_DATA["weights"] = {}
+        _SAVE_DATA["weights"][_USERNAME] = {}
+        
+    if _SAVE_DATA["weights"].get(_USERNAME, None) is None:
+        _SAVE_DATA["weights"][_USERNAME] = {}
 
     for problem in _ALL_PROBLEMS:
-        if problem.weight is None:
+        if problem.weight is None: 
             problem.weight = 1000
-            _SAVE_DATA["weights"][problem.name] = 1000
+        if _SAVE_DATA["weights"][_USERNAME].get(problem.name, None) is None:
+            # if the problem is not in the user's weights, use the default weights (user config takes precedence over fallback config)
+            _SAVE_DATA["weights"][_USERNAME][problem.name] = _SAVE_DATA["weights"]["default"].get(problem.name, _FALLBACK_CONFIG["weights"]["default"].get(problem.name, 1000))
 
     # mapping of problem function name to problem description
     _NAME_TO_DESCRIPTION = {
@@ -522,18 +570,20 @@ def prepare_globals():
         globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
     }
 
-    removed_old_generator = False
-    for generator in list(_SAVE_DATA["weights"].keys()):
-        if generator not in globals().keys():
-            del _SAVE_DATA["weights"][generator]
-            removed_old_generator = True
+    # removed_old_generator = False
+    # for generator in list(_SAVE_DATA["weights"].keys()):
+    #     if generator not in globals().keys():
+    #         del _SAVE_DATA["weights"][generator]
+    #         removed_old_generator = True
 
-    if removed_old_generator:
-        _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
-        _SAVE_DATA["constants"]["months"] = _MONTHS
-        _SAVE_DATA["constants"]["variables"] = _VARIABLES
+    # if removed_old_generator:
+    #     breakpoint()
+    #     _SAVE_DATA["constants"] = {}
+    #     _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
+    #     _SAVE_DATA["constants"]["months"] = _MONTHS
+    #     _SAVE_DATA["constants"]["variables"] = _VARIABLES
 
-        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+    toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 
 # _problem_dict = { =_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
