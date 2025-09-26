@@ -26,9 +26,9 @@ def test_cli_decorator_registration():
 
 
 def test_main_dispatch(capsys):
-    @cli_mod.cli("config --user=alice")
-    def configure_problem_set():
-        print("Configured", cli_mod.options.get("user"))
+    @cli_mod.cli("config")
+    def configure_problem_set(user: str = "alice"):
+        print(f"Configured {user}")
 
     cli_mod.main(["config", "--user=alice"])
     captured = capsys.readouterr()
@@ -42,7 +42,7 @@ def test_usage_shows_docstring_first_line(capsys):
         pass
 
     with pytest.raises(SystemExit):
-        cli_mod.main([])
+        cli_mod.main(["-h"])
 
     captured = capsys.readouterr()
     assert "Do a sample thing." in captured.out
