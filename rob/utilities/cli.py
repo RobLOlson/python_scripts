@@ -166,7 +166,7 @@ def cli(interface: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
 
     cli_interface = interface.strip()
     if not cli_interface:
-        cli_interface = ""
+        cli_interface = "main"
         # raise ValueError("cli interface must be a non-empty string")
 
     # key = cli_interface.split()[0]
@@ -178,8 +178,8 @@ def cli(interface: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
         ]
     )
 
-    # if not key:
-    #     key = "main"
+    if not key:
+        key = "main"
 
     if key in _COMMANDS:
         raise CollisionError(f"`{interface}` already registered under `{_COMMANDS[key].help_signature}`")
@@ -216,11 +216,12 @@ def cli(interface: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
         )
 
         func.cli_options = (
-            " ".join(f"[--{opt}={default}]" for opt, default in func.py_options.items())
+            " ".join(f"--{param}={default}" for param, default in func.py_options.items())
             if func.py_options
             else ""
         )
-        func.help_signature = f"{func.cli_command if func.cli_command else '[red]<no command>[/red]'} {func.cli_options} {func.cli_required_params}".strip()
+
+        func.help_signature = f"{func.cli_command if func.cli_command != 'main' else '[red]<no command>[/red]'} {func.cli_options} {func.cli_required_params}".strip()
 
         _COMMANDS[key] = func
         return func
@@ -251,17 +252,10 @@ def main(passed_args: list[str] | None = None) -> None:
         # ]
 
     if not passed_command:
-        passed_command = []
+        passed_command = ["main"]
 
-    # if "main" in passed_command and "main" not in _COMMANDS.keys():
-    #     import __main__
-
-    #     if hasattr(__main__, "main") and callable(__main__.main):
-    #         _COMMANDS["main"] = __main__.main
-
-    #     if not _COMMANDS:
-    #         _print_usage()
-    #         sys.exit(1)
+    if "main" in passed_command and "main" not in _COMMANDS.keys():
+        import __main__  # noqa: F401
 
     func = None
     passed_positionals = []
@@ -272,8 +266,7 @@ def main(passed_args: list[str] | None = None) -> None:
             passed_positionals.append(passed_command.pop())
 
     if func is None:
-        func = _COMMANDS.get("", _COMMANDS.get("main", None))
-
+        func = _COMMANDS.get("main", None)
     if "--help" in passed_args or "-h" in passed_args:
         _print_usage(func)
         sys.exit(0)
