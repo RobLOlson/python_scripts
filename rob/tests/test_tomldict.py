@@ -90,9 +90,38 @@ def test_exception_during_context():
         with TomlDict.open(TEST_FILENAME) as d:
             d["a"] = 1
             raise Exception("Intentional error")
-    except:
+    except:  # noqa: E722
         pass  # We expect the exception
 
     # Check file was still closed despite error:
     with pytest.raises(ValueError, match="I/O operation on closed file."):
         d["b"] = 2
+
+
+# this test "works" but the test itself fails to clean up the temporary file
+# TODO: fix this test
+
+# def test_sync_cleanup_on_replace_failure(monkeypatch):
+#     initial_data = {"initial": "data"}
+#     with open(TEST_FILENAME, "w") as f:
+#         toml.dump(initial_data, f)
+
+#     def mock_replace(src, dst):
+#         raise PermissionError("Simulated replace failure")
+
+#     def mock_unlink(path):
+#         raise OSError("Simulated unlink failure")
+
+#     monkeypatch.setattr(os, "replace", mock_replace)
+#     monkeypatch.setattr(os, "unlink", mock_unlink)
+
+#     with pytest.raises(PermissionError, match="Simulated replace failure"):
+#         with TomlDict.open(TEST_FILENAME) as d:
+#             assert d["initial"] == "data"
+#             d["new"] = "value"
+
+#     # Verify file unchanged
+#     with open(TEST_FILENAME, "r") as f:
+#         loaded = toml.load(f)
+#         assert loaded == initial_data
+#         assert "new" not in loaded

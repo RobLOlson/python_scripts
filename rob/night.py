@@ -8,7 +8,6 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import List
 
-import typer
 import wmi
 from appdirs import user_data_dir
 from comtypes import CLSCTX_ALL
@@ -35,8 +34,6 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # logging.basicConfig(filename=log_file, format="%(asctime)s %(levelname)s %(message)s")
-
-# main_app = typer.Typer()
 
 
 logger.addHandler(handler)
@@ -83,7 +80,7 @@ class NightLight:
             data = self._get_data()
             bytes_arr = list(data)
             return bytes_arr[18] == 0x15  # 21 in decimal
-        except:
+        except:  # noqa: E722
             return False
 
     def enable(self):
@@ -141,7 +138,7 @@ def dim_audio_video():
     methods.WmiSetBrightness(brightness, 0)
     logger.warning(f"Brightness set to {brightness}")
     # </REDUCE SCREEN BRIGHTNESS>
-    
+
     # <REDUCE SOUND VOLUME>
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
@@ -155,7 +152,6 @@ def dim_audio_video():
     logger.warning(f"Volume set to {currentVolumeDb - 0.7}")
     # </REDUCE SOUND VOLUME>
     NightLight().enable()
-    
 
 
 def set_loop(start_time: str = "20:00", end_time: str = "08:00", always_on: bool = False):
@@ -169,9 +165,7 @@ def set_loop(start_time: str = "20:00", end_time: str = "08:00", always_on: bool
             dim_audio_video()
             time.sleep(60 * 5)
             current_time = datetime.datetime.now()
-        night_time = datetime.datetime.combine(
-            current_time.date(), datetime.time.fromisoformat("20:00:00")
-        )
+        night_time = datetime.datetime.combine(current_time.date(), datetime.time.fromisoformat("20:00:00"))
         while True:
             seconds_until_night = (night_time - datetime.datetime.now()).total_seconds()
             logger.info(f"Sleeping for {seconds_until_night / 3600:.3} hours.")
@@ -184,16 +178,8 @@ def set_loop(start_time: str = "20:00", end_time: str = "08:00", always_on: bool
                 break
 
 
-
-# @main_app.callback(invoke_without_command=True)
 @cli.cli("main --once --always-on")
-def main(once: bool | None = None, always_on: bool | None = None):
-    if always_on is None:
-        always_on = cli.options.get("always_on", False)
-        
-    if once is None:
-        once = cli.options.get("once", False)
-        
+def main(once: bool = False, always_on: bool = False):
     if once:
         dim_audio_video()
         exit(0)
@@ -203,7 +189,6 @@ def main(once: bool | None = None, always_on: bool | None = None):
         set_loop(always_on=always_on)
 
 
-# @main_app.command("log_file")
 @cli.cli("log_file")
 def logs():
     """Open the log file with your $env.EDITOR."""
@@ -211,5 +196,4 @@ def logs():
 
 
 if __name__ == "__main__":
-    # main_app()
     cli.main()

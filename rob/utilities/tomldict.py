@@ -2,6 +2,7 @@ import os
 import pathlib
 import tempfile
 import threading
+from typing import Any, Self
 
 import toml
 
@@ -77,10 +78,10 @@ class TomlDict:
             raise
 
     @classmethod
-    def open(cls, filename):
+    def open(cls, filename: str | pathlib.Path) -> Self:
         return cls(filename)
 
-    def get(self, key, default=None):
+    def get(self, key, default=None) -> Any | None:
         self._check_closed()
         return self.data.get(key, default)
 
@@ -92,12 +93,12 @@ class TomlDict:
         self._check_closed()
         return self.data.values()
 
-    def clear(self):
+    def clear(self) -> None:
         self._check_closed()
         self.data.clear()
         self.sync()
 
-    def update(self, target):
+    def update(self, target) -> None:
         self._check_closed()
         self.data.update(target)
         self.sync()
@@ -106,28 +107,28 @@ class TomlDict:
         self._check_closed()
         return self.data.keys()
 
-    def pop(self, key, default=None):
+    def pop(self, key, default=None) -> Any:
         self._check_closed()
         value = self.data.pop(key, default)
         self.sync()
         return value
 
-    def popitem(self):
+    def popitem(self) -> tuple[Any, Any]:
         self._check_closed()
         key, value = self.data.popitem()
         self.sync()
         return key, value
 
-    def close(self):
+    def close(self) -> None:
         if not self._closed:
             self.sync()
             self._closed = True
 
-    def sync(self):
+    def sync(self) -> None:
         with self._lock:
             self._sync()
 
-    def load(self):
+    def load(self) -> None:
         with self._lock:  # acquire lock before reading
             try:
                 with open(self.filename, "r") as f:

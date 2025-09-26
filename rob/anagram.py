@@ -4,8 +4,10 @@ import re
 
 import typer
 
+from .utilities import cli
+
 _THIS_FILE = pathlib.Path(__file__)
-fp = open(_THIS_FILE.parent / "data" / "word_list.txt")
+fp = open(file=_THIS_FILE.parent / "data" / "word_list.txt")
 _WORDS = fp.readlines()
 _WORDS = "".join(_WORDS)
 fp.close()
@@ -13,8 +15,10 @@ fp.close()
 app = typer.Typer()
 
 
-@app.command()
-def anagram(word: str, wilds: int = typer.Argument(default=0)) -> list[str]:
+# @app.command()
+@cli.cli("")  # pyright: ignore
+def anagram(word: str, wilds: int = 0) -> list[str]:
+    # def anagram(word: str, wilds: int = typer.Argument(default=0)) -> list[str]:
     """Return all English anagrams of the input word."""
 
     letters = list(word)
@@ -34,5 +38,6 @@ def anagram(word: str, wilds: int = typer.Argument(default=0)) -> list[str]:
 
 
 if __name__ == "__main__":
-    app()
+    # app()
+    cli.main()
     # main()
