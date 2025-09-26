@@ -10,20 +10,21 @@ Current scope (intentionally minimal):
 
 Example:
 
-    from rob.utilities import cli
+                from rob.utilities import cli
 
-    @cli.cli("config")
-    def configure_problem_set():
-        print("Configuring...")
+                @cli.cli("config")
+                def configure_problem_set():
+                                print("Configuring...")
 
-    if __name__ == "__main__":
-        cli.main()
+                if __name__ == "__main__":
+                                cli.main()
 """
 
 from __future__ import annotations
 
 import logging
 import os
+import shlex
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -57,15 +58,14 @@ if log_file.stat().st_size > 2 * 1024 * 1024:
 _COMMANDS: Dict[str, Callable[[], None]] = {}
 
 # Parsed CLI options for the last invocation (e.g., {"user": "alice"})
-options: Dict[str, str] = {}
+options: Dict[str, str | bool] = {}
 
 
-def _parse_options(args: list[str]) -> None:
+def _parse_options(args: list[str]) -> Dict[str, str | bool]:
     """Parse CLI options from a list of arguments."""
-    global options
-
-    options.clear()
+    # options.clear()
     i = 0
+
     while i < len(args):
         token = args[i]
         if token.startswith("--"):
@@ -74,63 +74,78 @@ def _parse_options(args: list[str]) -> None:
                 if key:
                     options[key] = value
             else:
-                if token[2:4] == "no":
-                    no_modifier = True
+                if token[2:5] == "no-":
                     key = token[5:]
+                    options[key] = False
                 else:
-                    no_modifier = False
                     key = token[2:]
-                # Support "--key value" form
-                if i + 1 < len(args) and not args[i + 1].startswith("-"):
-                    options[key] = args[i + 1]
-                    i += 1
-                else:
-                    if no_modifier:
-                        options[key] = False
-                    else:
-                        options[key] = True
-        elif token.startswith("-") and len(token) > 1:
-            key = token[1:]
-            if i + 1 < len(args) and not args[i + 1].startswith("-"):
-                options[key] = args[i + 1]
-                i += 1
-            else:
-                options[key] = "true"
-        # Ignore additional positional args for this minimal version
+                    options[key] = True
         i += 1
+
     return options
+
+
+def get_function_signature(func: Callable) -> str:
+    """Return a string of the function's Python definition, e.g., 'example(arg1: str, arg2: str)'."""
+    import inspect
+
+    sig = inspect.signature(func)
+    name = func.__name__
+    return f"{name}{sig}"
 
 
 def _print_usage(func: Callable[[], None] | None = None) -> None:
     main_file = Path(sys.modules["__main__"].__file__)
-    if func is not None:
-        command = func.__name__
-    else:
+    help_lines: list[str] = []
+
+    if func is None or func.__name__ == "main":
+        command_lengths = [
+            len(getattr(target, "signature", "[red]<no command>[/red]")) for target in _COMMANDS.values()
+        ]
+        if not command_lengths:
+            rich.print("[red]No commands found[/red]")
+            return
+
+        longest_command = max(command_lengths if command_lengths else [0])
+        for command, target in _COMMANDS.items():
+            command_example = f"{getattr(target, 'signature', '[red]<no command>[/red]'): <{longest_command}}"
+            command_example = command_example.removesuffix("main")
+            command_example = command_example.replace("main ", "[red]<no command> [/red]")
+            description = f"{target.__doc__.strip().split('\n')[0] if target.__doc__ else '[red](No description)[/red]'}"
+            python_signature = f"`{get_function_signature(target)}`"
+            help_lines.append(f"{command_example}\n    {description}\n      {python_signature}\n")
         command = "<command>"
+        help_lines.sort()
+    else:
+        command = func.command
+
     if main_file.parent == Path.cwd():
         usage = f"python {main_file.name} [yellow]{command}[/yellow]"
     else:
         usage = f"python -m {main_file.stem} [yellow]{command}[/yellow]"
-    rich.print(f"Usage: {usage}")
+    rich.print(f"Usage: {usage}\n")
 
-    # Build commands list with first line of docstring when available
-    if not _COMMANDS:
-        rich.print("Available commands: <none>")
-        return
-    if func is not None:
-        rich.print(f"  [yellow]{func.__name__}[/yellow] - {func.__doc__.strip().split('\n')[0]}")
+    if func is None or func.__name__ == "main":
+        rich.print("Available commands:\n")
+        for help_line in help_lines:
+            rich.print(f"  {help_line}")
+    else:
+        command_example = f"{getattr(func, 'signature', '[red]<no command>[/red]')}"
+        description = f"{getattr(func, '__doc__', '[red](No description)[/red]').strip().split('\n')[0]}"
+        python_signature = f"`{get_function_signature(func)}`"
+        rich.print(f"  {command_example}\n    {description}\n      {python_signature}\n")
         return
 
-    rich.print("Available commands:\n")
-    for name in sorted(_COMMANDS.keys()):
-        func = _COMMANDS[name]
-        doc = ""
-        if getattr(func, "__doc__", None):
-            doc = func.__doc__.strip().split("\n")[0]
-        if doc:
-            rich.print(f"  [yellow]{name}[/yellow] - {doc}")
-        else:
-            rich.print(f"  [yellow]{name}[/yellow]")
+    # rich.print("Available commands:\n")
+    # for name in sorted(_COMMANDS.keys()):
+    #     func = _COMMANDS[name]
+    #     doc = ""
+    #     if getattr(func, "__doc__", None):
+    #         doc = func.__doc__.strip().split("\n")[0]
+    #     if doc:
+    #         rich.print(f"  [yellow]{name}[/yellow] - {doc}")
+    #     else:
+    #         rich.print(f"  [yellow]{name}[/yellow]")
 
 
 def cli(signature: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
@@ -139,18 +154,24 @@ def cli(signature: str) -> Callable[[Callable[[], None]], Callable[[], None]]:
     Parameters
     ----------
     signature: str
-        Command signature string. May contain spaces (e.g. "algebra render"),
-        but only the first word is used for dispatch in this minimal version.
+                    Command signature string. May contain spaces (e.g. "algebra render"),
+                    but only the first word is used for dispatch in this minimal version.
     """
 
     signature = signature.strip()
     if not signature:
         raise ValueError("cli signature must be a non-empty string")
 
-    key = signature.split()[0]
+    # key = signature.split()[0]
+    key = " ".join([token for token in shlex.split(signature) if "-" not in token])
 
     def _decorator(func: Callable[[], None]) -> Callable[[], None]:
         # Register under the first token only (minimal dispatch)
+        # func.options = [token.removeprefix("--") for token in shlex.split(signature) if "-" in token]
+
+        func.options = _parse_options(shlex.split(signature)).keys()
+        func.command = key
+        func.signature = signature
         _COMMANDS[key] = func
         return func
 
@@ -163,31 +184,50 @@ def main(argv: list[str] | None = None) -> None:
     Only a single positional command is supported in this minimal version.
     """
 
-    args = list(sys.argv[1:] if argv is None else argv)
+    global options
 
-    if args:
-        command = args[0]
-    else:
-        command = None
-
-    func = _COMMANDS.get(command)
-
-    if "--help" in args:
-        _print_usage(func)
-        sys.exit(0)
-
-    _parse_options(args)
-
-    if func is None:
-        # Run the importing module's main function
+    if "main" not in _COMMANDS.keys():
         import __main__
 
         if hasattr(__main__, "main") and callable(__main__.main):
-            print("Running main function")
-            __main__.main()
-            return
+            _COMMANDS["main"] = __main__.main
 
-        rich.print(f"Unknown command: {command}\n")
+        if not _COMMANDS:
+            _print_usage()
+            sys.exit(1)
+
+    args = list(sys.argv[1:] if argv is None else argv)
+    if args:
+        command = " ".join([token for token in args if "-" not in token])
+    else:
+        command = "main"
+
+    if not command:
+        command = "main"
+
+    func = _COMMANDS.get(command)
+
+    if "--help" in args or "-h" in args:
+        _print_usage(func)
+        sys.exit(0)
+        # if func.__name__ == "main":
+        #     _print_usage()
+        #     sys.exit(0)
+        # else:
+        #     _print_usage(func)
+        #     sys.exit(0)
+
+    options = _parse_options(args)
+
+    for option in options:
+        if func and hasattr(func, "options") and option not in func.options:
+            rich.print(f"[red]Unknown option: {option}[/red]\n")
+            _print_usage(func)
+            sys.exit(1)
+    if func is None:
+        # Run the importing module's main function
+
+        rich.print(f"[red]Unknown command: {command}[/red]\n")
         _print_usage()
         sys.exit(1)
 
@@ -196,7 +236,6 @@ def main(argv: list[str] | None = None) -> None:
     # Call registered function (no positional args passed; read from cli.options)
     func()
     logger.info(f"{' '.join(sys.argv)}: {func.__name__}")
-
 
 
 if __name__ == "__main__":

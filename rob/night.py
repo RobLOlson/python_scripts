@@ -14,6 +14,8 @@ from appdirs import user_data_dir
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
+from .utilities import cli
+
 # from typing import Optional
 
 # from typing_extensions import Annotated
@@ -34,7 +36,7 @@ logger.addHandler(handler)
 
 # logging.basicConfig(filename=log_file, format="%(asctime)s %(levelname)s %(message)s")
 
-main_app = typer.Typer()
+# main_app = typer.Typer()
 
 
 logger.addHandler(handler)
@@ -156,13 +158,13 @@ def dim_audio_video():
     
 
 
-def set_loop(start_time: str = "20:00", end_time: str = "08:00"):
+def set_loop(start_time: str = "20:00", end_time: str = "08:00", always_on: bool = False):
     current_time = datetime.datetime.now()
     start_hour = datetime.time.fromisoformat(start_time).hour
     end_hour = datetime.time.fromisoformat(end_time).hour
 
     while True:
-        while current_time.hour >= start_hour or current_time.hour < end_hour:
+        while current_time.hour >= start_hour or current_time.hour < end_hour or always_on:
             # while current_time.hour > 20 or current_time.hour < 8:
             dim_audio_video()
             time.sleep(60 * 5)
@@ -183,21 +185,31 @@ def set_loop(start_time: str = "20:00", end_time: str = "08:00"):
 
 
 
-@main_app.callback(invoke_without_command=True)
-def main(ctx: typer.Context, once: bool = False):
+# @main_app.callback(invoke_without_command=True)
+@cli.cli("main --once --always-on")
+def main(once: bool | None = None, always_on: bool | None = None):
+    if always_on is None:
+        always_on = cli.options.get("always_on", False)
+        
+    if once is None:
+        once = cli.options.get("once", False)
+        
     if once:
         dim_audio_video()
         exit(0)
 
-    if not ctx.invoked_subcommand:
-        set_loop()
+    # if not ctx.invoked_subcommand:
+    else:
+        set_loop(always_on=always_on)
 
 
-@main_app.command("log_file")
+# @main_app.command("log_file")
+@cli.cli("log_file")
 def logs():
     """Open the log file with your $env.EDITOR."""
     os.startfile(log_file)
 
 
 if __name__ == "__main__":
-    main_app()
+    # main_app()
+    cli.main()

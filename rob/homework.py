@@ -47,7 +47,17 @@ def prepare_disk_io():
     """Prepare disk I/O for algebra homework."""
 
     start = time.perf_counter()
-    global _LATEX_FILE, _SAVE_FILE, _SAVE_DATA, _LATEX_TEMPLATES, _WEEKDAYS, _MONTHS, _VARIABLES, _START, _FALLBACK_CONFIG, _DATES
+    global \
+        _LATEX_FILE, \
+        _SAVE_FILE, \
+        _SAVE_DATA, \
+        _LATEX_TEMPLATES, \
+        _WEEKDAYS, \
+        _MONTHS, \
+        _VARIABLES, \
+        _START, \
+        _FALLBACK_CONFIG, \
+        _DATES
     _THIS_FILE = pathlib.Path(__file__)
 
     _FALLBACK_CONFIG = toml.loads(open(_THIS_FILE.parent / "config" / "algebra" / "config.toml", "r").read())
@@ -69,16 +79,14 @@ def prepare_disk_io():
 
     else:
         _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
-    
+
     _WEEKDAYS = _SAVE_DATA.get("constants", {}).get("weekdays", _FALLBACK_CONFIG["constants"]["weekdays"])
     _MONTHS = _SAVE_DATA.get("constants", {}).get("months", _FALLBACK_CONFIG["constants"]["months"])
     _VARIABLES = _SAVE_DATA.get("constants", {}).get("variables", _FALLBACK_CONFIG["constants"]["variables"])
 
     _START = datetime.datetime.today()
     _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
-    _DATES = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS
-    ]
+    _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS]
     stop = time.perf_counter()
     if _DEBUG:
         print(f"File i/o boilerplate executed. ({stop - start: .3f} sec)")
@@ -168,8 +176,6 @@ def render_latex(
     solutions = []
 
     doc_header = _LATEX_TEMPLATES["doc_header"]
-    
-    
 
     for i in range(assignment_count):
         solution_set = rf"{_DATES[i]}\\"
@@ -195,7 +201,7 @@ def render_latex(
                 problem_statement += r"\newpage"
 
             problem_statement += problem.problem
-            solution_set += rf"{k+1}: {problem.solution}\;\;"
+            solution_set += rf"{k + 1}: {problem.solution}\;\;"
 
             # _SAVE_DATA["weights"][problem.name] = int(_SAVE_DATA["weights"][problem.name] * 0.9)
             _SAVE_DATA["weights"][_USERNAME][problem.name] = int(
@@ -208,9 +214,7 @@ def render_latex(
 
     doc_footer = r"\end{document}"
 
-    document = (
-        doc_header + r"\newpage".join(pages) + r"\newpage " + r"\\".join(solutions) + doc_footer
-    )
+    document = doc_header + r"\newpage".join(pages) + r"\newpage " + r"\\".join(solutions) + doc_footer
 
     document_name = f"Algebra Homework {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex"
 
@@ -257,11 +261,15 @@ def configure_problem_set(
 
     prepare_globals(user=user)
 
-    missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(_SAVE_DATA["weights"][_USERNAME].keys())
+    missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(
+        _SAVE_DATA["weights"][_USERNAME].keys()
+    )
 
     for problem_type in missing_problems:
-        _SAVE_DATA["weights"][_USERNAME][problem_type] = _FALLBACK_CONFIG["weights"]["default"].get(problem_type, 1000)
-                    
+        _SAVE_DATA["weights"][_USERNAME][problem_type] = _FALLBACK_CONFIG["weights"]["default"].get(
+            problem_type, 1000
+        )
+
     form = {
         _NAME_TO_DESCRIPTION[problem_type]: int(_SAVE_DATA["weights"][_USERNAME][problem_type])
         for problem_type in _PROBLEM_GENERATORS
@@ -276,6 +284,7 @@ def configure_problem_set(
     _SAVE_DATA["weights"][_USERNAME] = data
     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
+
 
 @config_app.command("open")
 def open_config(
@@ -312,6 +321,7 @@ def open_config(
             print(f"Unknown module: {module}")
             print("Available modules: algebra, english")
 
+
 @config_app.command("edit")
 def edit_config(
     module: str = typer.Argument(None, help="Module to edit config for (algebra, english, etc.)"),
@@ -322,14 +332,14 @@ def edit_config(
     """Edit configuration for a specific module."""
 
     prepare_globals(user=user)
-    
+
     if not module:
         choices = ["algebra", "english"]
         choice = query.select(choices)
         if choice is None:
             return
         module = choice
-    
+
     if module == "algebra":
         edit_algebra_config(user=user)
     elif module == "english":
@@ -346,10 +356,11 @@ def edit_algebra_config(
     ),
 ):
     """Edit algebra configuration."""
-    
+
     prepare_globals(user=user)
-    
+
     configure_problem_set(user=user)
+
 
 @config_app.command("english")
 def edit_english_config(
@@ -358,11 +369,13 @@ def edit_english_config(
     ),
 ):
     """Edit algebra configuration."""
-    
+
     prepare_disk_io()
 
     from .english import config_english  # noqa: F401
+
     config_english()
+
 
 @config_app.callback(invoke_without_command=True)
 def config_default(
@@ -372,10 +385,10 @@ def config_default(
     ),
 ):
     """Manage configuration for different modules."""
-    
+
     if ctx and ctx.invoked_subcommand:
         return
-    
+
     available_apps = ["algebra", "english", "chemistry"]
 
     print("Which config?")
@@ -404,11 +417,7 @@ def algebra_default(
 
     prepare_globals(user=user)
 
-    selected_problems = query.approve_list(
-        _ALL_PROBLEMS, repr_func=lambda p: p.long_description
-    )
-
-
+    selected_problems = query.approve_list(_ALL_PROBLEMS, repr_func=lambda p: p.long_description)
 
     start_date = survey.routines.datetime(
         "Select assignment start date: ",
@@ -424,9 +433,7 @@ def algebra_default(
     if not assignment_count:
         assignment_count = 5
 
-    problem_count = survey.routines.numeric(
-        "How many problems per assignment? ", decimal=False, value=4
-    )
+    problem_count = survey.routines.numeric("How many problems per assignment? ", decimal=False, value=4)
 
     if not problem_count:
         problem_count = 4
@@ -434,9 +441,7 @@ def algebra_default(
     days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
 
     global _DATES
-    _DATES = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
-    ]
+    _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days]
 
     render_latex(
         assignment_count=assignment_count,
@@ -478,7 +483,6 @@ def default_homework(
         help="User profile name to use for this session",
     ),
 ):
-    
     if ctx and ctx.invoked_subcommand:
         return
 
@@ -514,7 +518,7 @@ def prepare_globals(user: Optional[str] = None):
     global _PROBLEM_GENERATORS, _ALL_PROBLEMS, _NAME_TO_DESCRIPTION, _DESCRIPTION_TO_NAME, _USERNAME
 
     prepare_disk_io()
-    
+
     # _USERNAME should be set to the `--user` option if it exists
     cli_user = None
     if user is not None:
@@ -540,31 +544,34 @@ def prepare_globals(user: Optional[str] = None):
     except KeyError:
         default_user = _FALLBACK_CONFIG.get("default_user", "default")
         _SAVE_DATA["default_user"] = default_user
-        
+
     _USERNAME = cli_user or default_user or "default"
 
     _problem_dict = {k: v for k, v in globals().items() if k.startswith("generate") and callable(v)}
     _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
 
-    
     _ALL_PROBLEMS = [
-        ProblemCategory(logic=logic, weight=int(_SAVE_DATA.get("weights", {}).get(_USERNAME, {}).get(name, 1000)))
+        ProblemCategory(
+            logic=logic, weight=int(_SAVE_DATA.get("weights", {}).get(_USERNAME, {}).get(name, 1000))
+        )
         for name, logic in _problem_dict.items()
     ]
-    
+
     if _SAVE_DATA.get("weights", None) is None:
         _SAVE_DATA["weights"] = {}
         _SAVE_DATA["weights"][_USERNAME] = {}
-        
+
     if _SAVE_DATA["weights"].get(_USERNAME, None) is None:
         _SAVE_DATA["weights"][_USERNAME] = {}
 
     for problem in _ALL_PROBLEMS:
-        if problem.weight is None: 
+        if problem.weight is None:
             problem.weight = 1000
         if _SAVE_DATA["weights"][_USERNAME].get(problem.name, None) is None:
             # if the problem is not in the user's weights, use the default weights (user config takes precedence over fallback config)
-            _SAVE_DATA["weights"][_USERNAME][problem.name] = _SAVE_DATA["weights"]["default"].get(problem.name, _FALLBACK_CONFIG["weights"]["default"].get(problem.name, 1000))
+            _SAVE_DATA["weights"][_USERNAME][problem.name] = _SAVE_DATA["weights"]["default"].get(
+                problem.name, _FALLBACK_CONFIG["weights"]["default"].get(problem.name, 1000)
+            )
 
     # mapping of problem function name to problem description
     _NAME_TO_DESCRIPTION = {
