@@ -150,19 +150,15 @@ def _parse_options(raw_args: list[str]) -> Dict[str, str | bool]:
 
 _REGISTERED_COMMANDS: Dict[str, Callable[[], None]] = {}
 OPTIONS: Dict[str, Any] = _CONFIG.get("options", {})
-_PASSED_OPTIONS: Dict[str, Any] = _parse_options(sys.argv[1:])
+_PASSED_OPTIONS: Dict[str, Any] = {}
 
 
 def _update_options():
     for option, value in _PASSED_OPTIONS.items():
         if option in OPTIONS:
             OPTIONS[option] = value
-        else:
-            rich.print(f"[red]Unknown option: {option}[/red]\n")
-            _print_usage()
-            sys.exit(1)
+        # Don't error on unknown options here - they might be function parameters
 
-    OPTIONS.update(_PASSED_OPTIONS)
     _DEBUG = OPTIONS.get("debug", False)
 
 
@@ -288,11 +284,13 @@ def main(passed_args: list[str] | None = None) -> None:
     If passed_args is not provided, sys.argv[1:] is used.
     """
 
-    global OPTIONS, _DEBUG
-    _update_options()
-
+    global OPTIONS, _DEBUG, _PASSED_OPTIONS
+    
     if passed_args is None:
         passed_args = sys.argv[1:]
+    
+    _PASSED_OPTIONS = _parse_options(passed_args)
+    _update_options()
 
     passed_command = []
     for token in passed_args:
