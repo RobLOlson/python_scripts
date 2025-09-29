@@ -1,0 +1,3 @@
+[options]
+log_output = false
+debug = false

@@ -10,10 +10,17 @@ import toml
 class TomlDict:
     _lock = threading.Lock()
 
-    def __init__(self, filename: str | pathlib.Path):
+    def __init__(self, filename: str | pathlib.Path, readonly: bool = False):
+        """
+        Initialize a TomlDict object.
+
+        Args:
+            filename: The path to the TOML file to load.
+        """
         self.filename = filename
         self.data = {}
         self._closed = False
+        self.readonly = readonly
         self.load()
 
     def __getitem__(self, key):
@@ -41,6 +48,9 @@ class TomlDict:
     def __repr__(self):
         return f'TomlDict("{self.filename}")'
 
+    def __str__(self):
+        return str(self.data)
+
     def __iter__(self):
         self._check_closed()
         return iter(self.data)
@@ -59,6 +69,8 @@ class TomlDict:
             raise ValueError("I/O operation on closed file.")
 
     def _sync(self):  # Separate writing logic
+        if self.readonly:
+            return
         temp_file = None
         try:
             with tempfile.NamedTemporaryFile(

@@ -16,7 +16,7 @@ app = typer.Typer()
 
 
 # @app.command()
-@cli.cli("")  # pyright: ignore
+@cli.cli()  # pyright: ignore
 def anagram(word: str, wilds: int = 0) -> list[str]:
     # def anagram(word: str, wilds: int = typer.Argument(default=0)) -> list[str]:
     """Return all English anagrams of the input word."""
