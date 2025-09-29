@@ -9,7 +9,10 @@ def test_homework_module_exposes_app(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ImportError:
+		mod = importlib.import_module("rob.homework")
 	assert hasattr(mod, "app")
 
 
@@ -18,7 +21,10 @@ def test_help_shows_user_option(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ImportError:
+		mod = importlib.import_module("rob.homework")
 
 	from typer.testing import CliRunner
 
@@ -41,7 +47,10 @@ def test_algebra_list_weights_smoke(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ImportError:
+		mod = importlib.import_module("rob.homework")
 
 	import os
 	from pathlib import Path
@@ -77,7 +86,10 @@ def test_weights_persist_for_user(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ImportError:
+		mod = importlib.import_module("rob.homework")
 
 	import os
 	from pathlib import Path
@@ -117,7 +129,10 @@ def test_render_produces_tex(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ImportError:
+		mod = importlib.import_module("rob.homework")
 
 	import os
 	from pathlib import Path
@@ -162,7 +177,10 @@ def test_config_algebra_updates_weights(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ImportError:
+		mod = importlib.import_module("rob.homework")
 
 	import os
 	from pathlib import Path
@@ -182,7 +200,7 @@ def test_config_algebra_updates_weights(monkeypatch):
 	def fake_form_from_dict(form, *args, **kwargs):  # type: ignore
 		return {k: 111 for k in form.keys()}
 
-	monkeypatch.setattr("robo.rob.homework.query.form_from_dict", fake_form_from_dict)
+	monkeypatch.setattr("rob.homework.query.form_from_dict", fake_form_from_dict)
 
 	with runner.isolated_filesystem():
 		tmp_dir = Path(os.getcwd()) / "_appdata"
