@@ -34,9 +34,6 @@ class TomlConfig:
         self.user_config_path.parent.mkdir(parents=True, exist_ok=True)
         self.user_config_path.touch(exist_ok=True)
         self.config = TomlDict(self.user_config_path, readonly=readonly)
-        # user_dict = toml.load(self.user_config_path)
-
-        self.config = TomlDict(self.user_config_path, readonly=readonly)
         default_dict.update(self.config)
         self.config.update(default_dict)
 
@@ -44,9 +41,16 @@ class TomlConfig:
         return self.config[key]
 
     def __setitem__(self, key, value):
-        self.config[key] = value
+        if self.readonly:
+            raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
+            return
+        self.config.update({key: value})
+        # self.config[key] = value
 
     def __delitem__(self, key):
+        if self.readonly:
+            raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
+            return
         del self.config[key]
 
     def __contains__(self, key):
@@ -59,7 +63,7 @@ class TomlConfig:
         return iter(self.config)
 
     def __repr__(self):
-        return f"TomlConfig({self.user_config_path.stem})"
+        return f"TomlConfig('{self.user_config_path.name}')"
 
     def __str__(self):
         return str(self.config)
@@ -83,21 +87,36 @@ class TomlConfig:
         return self.config.keys()
 
     def update(self, target):
+        if self.readonly:
+            raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
+            return
         self.config.update(target)
 
     def clear(self):
+        if self.readonly:
+            raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
+            return
         self.config.clear()
 
     def pop(self, key, default=None):
+        if self.readonly:
+            raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
+            return
         return self.config.pop(key, default)
 
-    def open(self):
+    def sync(self):
+        if self.readonly:
+            raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
+            return
+        self.config.sync()
+
+    def open_with_editor(self):
         os.startfile(self.user_config_path)
 
-    def edit(self):
+    def edit_in_terminal(self):
         if self.readonly:
+            raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
             return
 
         self.config.data = query.edit_object(dict(self.config))
-        breakpoint()
         self.config.sync()
