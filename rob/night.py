@@ -178,7 +178,7 @@ def set_loop(start_time: str = "20:00", end_time: str = "08:00", always_on: bool
                 break
 
 
-@cli.cli("main --once --always-on")
+@cli.cli("")
 def main(once: bool = False, always_on: bool = False):
     if once:
         dim_audio_video()
@@ -196,4 +196,4 @@ def logs():
 
 
 if __name__ == "__main__":
-    cli.main()
+    cli.main(use_configs=True)
