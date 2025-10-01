@@ -25,6 +25,7 @@ import inspect
 import logging
 import os
 import shlex
+import shutil
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -39,12 +40,13 @@ except ImportError:
     from .tomlconfig import TomlConfig
 
 _DEBUG = False
-_CONFIG = TomlConfig(
-    user_toml_file=Path(user_config_dir()) / "robolson" / "cli" / "config.toml",
-    default_toml_file=Path(__file__).parent / "config" / "cli" / "cli.toml",
-)
-
-# vvvvvvvv def _print_usage(func) vvvvvvvv
+_CONFIG: TomlConfig | None = None
+OPTIONS: Dict[str, Any] = {}  # validated options
+_HARDCODED_OPTIONS: Dict[str, Any] = {
+    "help": False,
+    "h": False,
+    "capture_output": True,
+}
 
 
 def _print_usage(func: Callable[[], None] | None = None, passed_command: list[str] | None = None) -> None:
@@ -104,18 +106,50 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         return
 
     if OPTIONS:
-        rich.print("  Global options: [--help] ", end="")
-        rich.print(" ".join(f"[--{option}]" for option in OPTIONS.keys()))
-        rich.print("")
+        # rich.print("  Global options: ", end="")
+        display_options = [
+            option
+            for option in sorted(set(_HARDCODED_OPTIONS.keys()) | set(OPTIONS.keys()))
+            if len(option) > 1
+        ]
+        # Show options in a way that fits the terminal width
+        try:
+            term_width = shutil.get_terminal_size((80, 20)).columns
+        except shutil.GetTerminalSizeError:
+            term_width = 80
+
+        opt_strs = [f"[--{option}]" for option in display_options]
+        line = "  Global options:"
+        for opt in opt_strs:
+            if len(line) + len(opt) + 1 > term_width:
+                rich.print(line)
+                line = "                  " + opt
+            else:
+                if line:
+                    line += " " + opt
+                else:
+                    line = opt
+        if line:
+            rich.print(line)
+        # rich.print(" ".join(f"[--{option}]" for option in display_options))
 
 
-# ^^^^^^^^^^ def _print_usage(func) ^^^^^^^^^^
-
-# vvvvvvvv def _parse_options(raw_args) vvvvvvvv
+# ^^^^^^^^^^ def _print_usage ^^^^^^^^^^
 
 
 def _parse_options(raw_args: list[str]) -> Dict[str, str | bool]:
-    """Parse CLI options from a list of arguments."""
+    """Parse CLI options from a list of arguments.
+
+    Parameters
+    ----------
+    raw_args: list[str]
+    List of arguments to parse. Non-option arguments are filtered out.
+
+    Returns
+    -------
+    opts: Dict[str, str | bool]
+    Dictionary of parsed options.
+    """
     # options.clear()
     i = 0
 
@@ -140,45 +174,57 @@ def _parse_options(raw_args: list[str]) -> Dict[str, str | bool]:
                 else:
                     key = token[2:]
                     opts[key] = True
+        elif token.startswith("-"):
+            for char in token[1:]:
+                opts[char] = True
         i += 1
 
     return opts
 
 
-# ^^^^^^^^^^ def _parse_options(raw_args) ^^^^^^^^^^
+# ^^^^^^^^^^ def _parse_options ^^^^^^^^^^
 
 
 _REGISTERED_COMMANDS: Dict[str, Callable[[], None]] = {}
-OPTIONS: Dict[str, Any] = _CONFIG.get("options", {})
-_PASSED_OPTIONS: Dict[str, Any] = _parse_options(sys.argv[1:])
+_PASSED_OPTIONS: Dict[str, Any] = _parse_options(sys.argv[1:])  # unvalidated options
+OPTIONS.update(_PASSED_OPTIONS)
 
+# def _update_options():
+#     global OPTIONS
 
-def _update_options():
-    for option, value in _PASSED_OPTIONS.items():
-        if option in OPTIONS:
-            OPTIONS[option] = value
-        else:
-            rich.print(f"[red]Unknown option: {option}[/red]\n")
-            _print_usage()
-            sys.exit(1)
+# for option, value in _PASSED_OPTIONS.items():
+#     if option in OPTIONS:
+#         OPTIONS[option] = value
+#     elif option in _HARDCODED_OPTIONS.keys():
+#         OPTIONS[option] = value
+# else:
+#     rich.print(f"[red]Unknown option: {option}[/red]\n")
+#     _print_usage()
+#     sys.exit(1)
+# else:
+#     if option not in _HARDCODED_OPTIONS.keys():
+#         rich.print(f"[red]Unknown option: {option}[/red]\n")
+#         _print_usage()
+#         sys.exit(1)
+#     else:
+#         _CONFIG["options"].get(option, _HARDCODED_OPTIONS[option]) = value
 
-    OPTIONS.update(_PASSED_OPTIONS)
-    _DEBUG = OPTIONS.get("debug", False)
+# OPTIONS.update(_PASSED_OPTIONS)
 
 
 cli_log_dir = Path(user_data_dir()) / "robolson" / "cli" / "logs"
 cli_log_dir.mkdir(parents=True, exist_ok=True)
 cli_log_file = cli_log_dir / "cli.log"
 
-logger = logging.getLogger()
+cli_logger = logging.getLogger()
 
-logger.setLevel(logging.INFO)
+cli_logger.setLevel(logging.INFO)
 
 handler = RotatingFileHandler(filename=cli_log_file.absolute(), maxBytes=100_000, backupCount=2)
 formatter = logging.Formatter("%(message)s")
 
 handler.setFormatter(formatter)
-logger.addHandler(handler)
+cli_logger.addHandler(handler)
 
 if cli_log_file.stat().st_size > 2 * 1024 * 1024:
     with open(cli_log_file, "r") as fp:
@@ -186,10 +232,6 @@ if cli_log_file.stat().st_size > 2 * 1024 * 1024:
         half_log = half_log[int(len(half_log) / 2) :]
     with open(cli_log_file, "w") as fp:
         fp.writelines(half_log)
-
-# Parsed CLI options for the last invocation (e.g., {"user": "alice"})
-# options: Dict[str, str | bool] = {}
-# positionals: list[str] = []
 
 
 class CollisionError(Exception):
@@ -219,9 +261,7 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
     cli_interface = interface.strip()
     if not cli_interface:
         cli_interface = "<no command>"
-        # raise ValueError("cli interface must be a non-empty string")
 
-    # key = cli_interface.split()[0]
     key = " ".join(
         [
             token
@@ -239,9 +279,6 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
         )
 
     def _decorator(func: Callable[[], None]) -> Callable[[], None]:
-        # Register under the first token only (minimal dispatch)
-        # func.options = [token.removeprefix("--") for token in shlex.split(cli_interface) if "-" in token]
-
         func.cli_options: list[str] = _parse_options(shlex.split(cli_interface)).keys()
         func.cli_command: str = key
         func.cli_interface: str = cli_interface
@@ -257,7 +294,7 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
         }
         params = inspect.signature(func).parameters.values()
         py_required_params = [
-            param.name
+            param
             for param in params
             if param.default is inspect.Parameter.empty
             and param.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.POSITIONAL_ONLY)
@@ -282,14 +319,62 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
     return _decorator
 
 
-def main(passed_args: list[str] | None = None) -> None:
-    """Parse passed_args and invoke the registered command.
-
-    If passed_args is not provided, sys.argv[1:] is used.
+def main(
+    passed_args: list[str] | None = None,
+    user_config_file: str | Path | None = None,
+    default_config_file: str | Path | None = None,
+    use_configs: bool = False,
+) -> None:
+    """
+    Parse passed_args and invoke the registered command
     """
 
-    global OPTIONS, _DEBUG
-    _update_options()
+    global OPTIONS, _DEBUG, _CONFIG
+
+    main_file = Path(sys.modules["__main__"].__file__)
+
+    new_file_created: bool = False
+
+    if use_configs and default_config_file is None:
+        default_config_file = main_file.parent / "cli" / f"{main_file.stem}_config.toml"
+        default_config_file.parent.mkdir(parents=True, exist_ok=True)
+        default_config_file.touch(exist_ok=True)
+
+    if use_configs and user_config_file is None:
+        great_grandparent = (
+            f"{main_file.parent.parent.parent.name if main_file.parent.parent.parent.name else 'drive'}"
+        )
+        grandparent = f"{main_file.parent.parent.name if main_file.parent.parent.name else ''}"
+
+        user_config_file = (
+            Path(user_config_dir())
+            / "robolson"
+            / "cli"
+            / "configs"
+            / f"{great_grandparent}_{grandparent}_{main_file.parent.name}_{main_file.stem}"
+            / f"{main_file.parent.name}_{main_file.stem}_config.toml"
+        )
+        if not user_config_file.exists():
+            rich.print(
+                f"[yellow]WARNING:[/yellow] Config file not found ({user_config_file}). Creating new one."
+            )
+            new_file_created = True
+
+    if use_configs:
+        _HARDCODED_OPTIONS.update({"edit_cli_config": False, "open_cli_config": False})
+
+        _CONFIG = TomlConfig(
+            user_toml_file=user_config_file, default_toml_file=default_config_file, readonly=True
+        )
+
+        if new_file_created:
+            with TomlConfig(
+                user_toml_file=user_config_file, default_toml_file=default_config_file
+            ) as config_writer:
+                config_writer["options"] = {}
+                config_writer["options"]["capture_output"] = True
+
+        _HARDCODED_OPTIONS.update(_CONFIG.get("options", {}))
 
     if passed_args is None:
         passed_args = sys.argv[1:]
@@ -301,15 +386,8 @@ def main(passed_args: list[str] | None = None) -> None:
         else:
             break
 
-        # passed_command = [
-        #     token for token in passed_args if "-" not in token and token[0] != "<" and token[-1] != ">"
-        # ]
-
     if not passed_command:
         passed_command = ["<no command>"]
-
-    # if "<no command>" in passed_command and "<no command>" not in _REGISTERED_COMMANDS.keys():
-    #     import __main__  # noqa: F401
 
     func = None
     passed_positionals = []
@@ -326,38 +404,57 @@ def main(passed_args: list[str] | None = None) -> None:
             _print_usage()
             sys.exit(1)
 
-    if "--help" in passed_args or "-h" in passed_args:
+    if OPTIONS.get("help", False) or OPTIONS.get("h", False):
         if passed_command != ["<no command>"]:
             _print_usage(func, passed_command)
         else:
             _print_usage()
         sys.exit(0)
 
+    if use_configs and OPTIONS.get("edit_cli_config", False):
+        # breakpoint()
+        with TomlConfig(
+            user_toml_file=user_config_file, default_toml_file=default_config_file
+        ) as config_writer:
+            config_writer.edit_in_terminal()
+        # _CONFIG.edit()
+        # _CONFIG.open_with_editor()
+        sys.exit(0)
+
+    if use_configs and OPTIONS.get("open_cli_config", False):
+        # breakpoint()
+        with TomlConfig(
+            user_toml_file=user_config_file, default_toml_file=default_config_file
+        ) as config_writer:
+            config_writer.open_with_editor()
+        # _CONFIG.edit()
+        # _CONFIG.open_with_editor()
+        sys.exit(0)
+
     if len(passed_positionals) > len(func.py_required_params):
         if passed_command != ["<no command>"]:
             excess_params = passed_positionals[: len(passed_positionals) - len(func.py_required_params)]
-            rich.print(f"[red]Too many positional arguments: {', '.join(excess_params)}[/red]\n")
+            rich.print(
+                f"[red]Too many positional arguments: {f', '.join(excess_param.name for excess_param in excess_params)}[/red]\n"
+            )
             _print_usage(func, passed_command)
         else:
             _print_usage()
         sys.exit(1)
     elif len(passed_positionals) < len(func.py_required_params):
         missing_params = list(func.py_required_params)[len(passed_positionals) :]
-        rich.print(f"[red]Missing required positional arguments: {', '.join(missing_params)}[/red]\n")
+        rich.print(
+            f"[red]Missing required positional arguments: {', '.join(missing_param.name for missing_param in missing_params)}[/red]\n"
+        )
         _print_usage(func, passed_command)
         sys.exit(1)
     else:
         for i in range(len(passed_positionals)):
-            pos_type = type(func.py_required_params[i])
-            passed_positionals[i] = pos_type(passed_positionals[i])
+            # pos_type = type(func.py_required_params[i])
+            # passed_positionals[i] = pos_type(passed_positionals[i])
+            passed_positionals[i] = func.py_required_params[i]._annotation(passed_positionals[i])
 
     passed_options = _parse_options(passed_args)
-    # options = {option: passed_options[option] for option in passed_options}
-
-    #
-    if "debug" in passed_options and "debug" not in func.py_options:
-        del passed_options["debug"]
-        _DEBUG = True
 
     for option, default in func.py_options.items():
         if option not in passed_options and option not in OPTIONS:
@@ -369,7 +466,7 @@ def main(passed_args: list[str] | None = None) -> None:
     removed_options = []
     for option in passed_options:
         if func and hasattr(func, "py_options") and option not in func.py_options:
-            if option not in OPTIONS:
+            if option not in _HARDCODED_OPTIONS:
                 rich.print(f"[red]Unknown option: {option}[/red]\n")
                 _print_usage(func)
                 sys.exit(1)
@@ -384,12 +481,6 @@ def main(passed_args: list[str] | None = None) -> None:
     for option in removed_options:
         del passed_options[option]
 
-    # if func is None:
-    #     rich.print(f"[red]Unknown command: {passed_args[0]}[/red]\n")
-    #     _print_usage()
-    #     sys.exit(1)
-
-    # Call registered function (no positional args passed; read from cli.options)
     if _DEBUG:
         rich.print(
             f"Calling `{func.py_signature}` with parameters: {passed_positionals} and options: {passed_options} and global options: {OPTIONS}"
@@ -407,8 +498,11 @@ def main(passed_args: list[str] | None = None) -> None:
     #         print(output, end="")
     # else:
     # func(*passed_positionals, **passed_options)
+    if OPTIONS.get("capture_output", False):
+        cli_logger.info(
+            f"Command:`{' '.join(sys.argv[1:])}`\nFunction:`{func.__name__}`\nParameters:`{passed_positionals}`\nOptions:`{passed_options}`\nGlobal Options:`{OPTIONS}`"
+        )
     func(*passed_positionals, **passed_options)
-    logger.info(f"{' '.join(sys.argv)}: {func.__name__}")
 
 
 if __name__ == "__main__":

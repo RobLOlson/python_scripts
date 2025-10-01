@@ -1,4 +1,5 @@
 import importlib
+from pathlib import Path
 
 import pytest
 
@@ -29,6 +30,8 @@ def test_main_dispatch(capsys):
     @cli_mod.cli("config")
     def configure_problem_set(user: str = "alice"):
         print(f"Configured {user}")
+
+    test_folder = Path(cli_mod.__file__).parent
 
     cli_mod.main(["config", "--user=alice"])
     captured = capsys.readouterr()
