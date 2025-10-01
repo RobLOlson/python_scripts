@@ -336,6 +336,9 @@ def edit_object(
 
     cursor_index = 0
 
+    print("\n" * len(target2) * 2, end="\n\n\n\n")
+    print((_CLEAR_LINE + _MOVE_UP) * len(target2))
+
     while True:
         cursor_index = (cursor_index + 1) % len(target2)
         if not target2[cursor_index][2]:  # [2] is element's type ("brackets" have no type)
@@ -358,7 +361,8 @@ def edit_object(
             # clear screen
             print("\033[2J")
         else:
-            print((_MOVE_UP + _CLEAR_LINE) * (len(target2) + 1))
+            print((_MOVE_UP + _CLEAR_LINE) * (len(target2) + 5))
+
         print(preamble)
         display_string = ""
         for index, item in enumerate(target2):
@@ -417,7 +421,7 @@ def edit_object(
                 if long_contents or not edit_keys:
                     print("\033[2J")
                 else:
-                    print((_MOVE_UP + _CLEAR_LINE) * (len(target2) + 1))
+                    print((_MOVE_UP + _CLEAR_LINE) * (len(target2) + 5))
                 display_string = ""
                 print(preamble)
                 for index, item in enumerate(target2):
@@ -496,7 +500,8 @@ def edit_object(
                 if replace:
                     target2[cursor_index] = (replace, target2[cursor_index][1], target2[cursor_index][2])
 
-                print(_MOVE_DOWN * (len(target2) - cursor_index))
+                # This line moves the cursor down to its original position after editing, so the display remains consistent.
+                print(_MOVE_DOWN * (len(target2) - cursor_index + 1))
 
             case "s" | "j" | readchar.key.DOWN:
                 while True:
@@ -608,7 +613,12 @@ def reconstitute_object(linearized_object):
             elif next_val[2] == float:  # noqa: E721
                 next_val = float(next_val[0])
             elif next_val[2] == bool:  # noqa: E721
-                next_val = bool(next_val[0])
+                if next_val[0].lower() == "true":
+                    next_val = True
+                elif next_val[0].lower() == "false":
+                    next_val = False
+                else:
+                    next_val = bool(next_val[0])
 
             sub_dict.update({next_key: next_val})
 
@@ -618,7 +628,6 @@ def reconstitute_object(linearized_object):
         pre_list.extend(post_list)
         composite = pre_list
     else:
-        # breakpoint()
         raise Exception("Expected '[' or '{'.")
 
     return reconstitute_object(composite)
