@@ -17,10 +17,10 @@ class TomlDict:
         Args:
             filename: The path to the TOML file to load.
         """
-        self.filename = filename
-        self.data = {}
-        self._closed = False
-        self.readonly = readonly
+        self.filename: pathlib.Path = filename
+        self.data: dict[str, Any] = {}
+        self._closed: bool = False
+        self.readonly: bool = readonly
         self.load()
 
     def __getitem__(self, key):
@@ -111,7 +111,9 @@ class TomlDict:
         self.sync()
 
     def update(self, target) -> None:
-        self._check_closed()
+        if self._check_closed():
+            raise ValueError("I/O operation on closed file.")
+            return
         self.data.update(target)
         self.sync()
 
