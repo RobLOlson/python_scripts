@@ -2,11 +2,12 @@ import itertools
 import pathlib
 import re
 
+import appdirs
 import typer
 
 from .utilities import cli
 
-_THIS_FILE = pathlib.Path(__file__)
+_THIS_FILE: pathlib.Path = pathlib.Path(__file__)
 fp = open(file=_THIS_FILE.parent / "data" / "word_list.txt")
 _WORDS = fp.readlines()
 _WORDS = "".join(_WORDS)
@@ -39,5 +40,8 @@ def anagram(word: str, wilds: int = 0) -> list[str]:
 
 if __name__ == "__main__":
     # app()
-    cli.main()
-    # main()
+    cli.main(
+        user_config_file=appdirs.user_config_dir() / "robolson" / "anagram" / "config" / "cli_config.toml",
+        default_config_file=_THIS_FILE.parent / "config" / "anagram" / "cli_config.toml",
+        use_configs=True,
+    )
