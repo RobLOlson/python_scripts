@@ -31,8 +31,6 @@ def test_main_dispatch(capsys):
     def configure_problem_set(user: str = "alice"):
         print(f"Configured {user}")
 
-    test_folder = Path(cli_mod.__file__).parent
-
     cli_mod.main(["config", "--user=alice"])
     captured = capsys.readouterr()
     assert "Configured alice" in captured.out
@@ -60,7 +58,9 @@ def test_print_usage_specific_function(capsys):
         pass
 
     # Call _print_usage with the specific function
-    cli_mod._print_usage(test_function)
+    # cli_mod._print_usage(test_function)
+    with pytest.raises(SystemExit):
+        cli_mod.main(["test_command", "-h"])
 
     captured = capsys.readouterr()
     output = captured.out

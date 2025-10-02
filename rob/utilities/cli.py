@@ -137,12 +137,10 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
     for help_line in help_lines:
         rich.print(f"  {help_line}")
 
-    if OPTIONS:
-        display_options = [
-            option
-            for option in sorted(set(_HARDCODED_OPTIONS.keys()) | set(OPTIONS.keys()))
-            if len(option) > 1
-        ]
+    # if OPTIONS:
+    display_options = [
+        option for option in sorted(set(_HARDCODED_OPTIONS.keys()) | set(OPTIONS.keys())) if len(option) > 1
+    ]
 
     opt_strs = [f"[--{option}]" for option in display_options]
     wrapped_string = wrapped(f"Global options: {' '.join(opt_strs)}", indent=2, indent_2=18, sep=" ")
