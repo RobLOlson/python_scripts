@@ -99,7 +99,13 @@ Press Enter to continue."""
 
             rich.print(rf"{style}{prefix}{display}")
 
-        choice = readchar.readkey()
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+
         match choice:
             case "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
                 i = int(choice)
@@ -156,8 +162,7 @@ Press Enter to continue."""
 
                 print("")
                 break
-
-            case "\x1b":
+            case "\x1b":  # ESC
                 rich.print("[red]Terminated.", end="")
                 exit(1)
 
@@ -336,9 +341,6 @@ def edit_object(
 
     cursor_index = 0
 
-    print("\n" * len(target2) * 2, end="\n\n\n\n")
-    print((_CLEAR_LINE + _MOVE_UP) * len(target2))
-
     while True:
         cursor_index = (cursor_index + 1) % len(target2)
         if not target2[cursor_index][2]:  # [2] is element's type ("brackets" have no type)
@@ -355,11 +357,13 @@ def edit_object(
     long_contents = max(len(str(elem)) for elem in target2) > shutil.get_terminal_size().columns
     end = ""
 
+    if not long_contents:
+        print("\n" * len(target2) * 2, end="\n\n\n\n")
+        print((_CLEAR_LINE + _MOVE_UP) * len(target2))
     # print("\n" * (len(target2) + 1))
     while True:
         if long_contents or not edit_keys:
-            # clear screen
-            print("\033[2J")
+            print("\033[2J")  # clear screen
         else:
             print((_MOVE_UP + _CLEAR_LINE) * (len(target2) + 5))
 
