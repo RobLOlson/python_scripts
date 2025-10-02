@@ -2,7 +2,7 @@ import importlib
 
 import pytest
 
-cli_mod = importlib.import_module("robo.rob.utilities.cli")
+cli_mod = importlib.import_module("rob.utilities.cli")
 
 
 @pytest.fixture(autouse=True)
