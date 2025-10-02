@@ -11,7 +11,10 @@ import survey
 import toml
 import typer
 
-from .utilities import query
+try:
+    from .utilities import cli, query
+except ImportError:
+    from utilities import cli, query
 
 try:
     from .algebra.problems import *  # noqa: F403
@@ -127,12 +130,14 @@ class Problem:
         self.name = name
 
 
-@list_app.command("weights")
-def list_weights(
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-) -> None:
+# @list_app.command("weights")
+@cli.cli("list weights")
+def list_weights(user: str | None = None):
+    # def list_weights(
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ) -> None:
     """List the frequency weights for each problem type."""
     prepare_globals(user=user)
 
@@ -145,19 +150,27 @@ def list_weights(
         print(f"{statement}: {_SAVE_DATA['weights'][_USERNAME].get(problem, '????')}")
 
 
-@algebra_app.command("render")
+# @algebra_app.command("render")
+@cli.cli("algebra render")
 def render_latex(
     assignment_count: int = 1,
     problem_count: int = 4,
     debug: bool = False,
     threshold: int = 0,
-    problem_set=None,  # type: ignore Typer
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-) -> None:
-    """Return a string c
-    oding for {assignment_count} pages of LaTeX algebra problems."""
+    problem_set=None,
+    user: str | None = None,
+):
+    # def render_latex(
+    #     assignment_count: int = 1,
+    #     problem_count: int = 4,
+    #     debug: bool = False,
+    #     threshold: int = 0,
+    #     problem_set=None,  # type: ignore Typer
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ) -> None:
+    """Return a string coding for `assignment_count` pages of LaTeX algebra problems."""
 
     prepare_globals(user=user)
 
@@ -228,18 +241,22 @@ def render_latex(
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 
-@algebra_app.command("reset")
-def reset_weights(
-    debug: bool = True,
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
+# @algebra_app.command("reset")
+@cli.cli("reset algebra")
+@cli.cli("algebra reset")
+def reset_weights(user: str | None = None, debug: bool = True):
+    # def reset_weights(
+    #     debug: bool = True,
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
     """Reset problem frequency rates to default."""
 
     prepare_globals(user=user)
 
     # weights: dict[str, int] = _SAVE_DATA["weights"]
+
     for key in _SAVE_DATA["weights"][_USERNAME].keys():
         _SAVE_DATA["weights"][_USERNAME][key] = _FALLBACK_CONFIG["weights"]["default"].get(key, 1000)
 
@@ -251,12 +268,14 @@ def reset_weights(
     exit(0)
 
 
-@algebra_app.command("config")
-def configure_problem_set(
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
+# @algebra_app.command("config")
+@cli.cli("algebra config")
+def configure_problem_set(user: str | None = None):
+    # def configure_problem_set(
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
     """Configures the frequency rates of problems."""
 
     prepare_globals(user=user)
@@ -286,10 +305,12 @@ def configure_problem_set(
     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
 
 
-@config_app.command("open")
-def open_config(
-    module: str = typer.Argument(None, help="Module to open config for (algebra, english)"),  # type: ignore Typer
-):
+# @config_app.command("open")
+@cli.cli("config open")
+def open_config(module: str | None = None):
+    # def open_config(
+    #     module: str = typer.Argument(None, help="Module to open config for (algebra, english)"),  # type: ignore Typer
+    # ):
     """Open the configuration for a specific module in the default editor."""
 
     if not module:
@@ -322,13 +343,15 @@ def open_config(
             print("Available modules: algebra, english")
 
 
-@config_app.command("edit")
-def edit_config(
-    module: str = typer.Argument(None, help="Module to edit config for (algebra, english, etc.)"),
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
+# @config_app.command("edit")
+@cli.cli("config edit")
+def edit_config(module: str | None = None, user: str | None = None):
+    # def edit_config(
+    #     module: str = typer.Argument(None, help="Module to edit config for (algebra, english, etc.)"),
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
     """Edit configuration for a specific module."""
 
     prepare_globals(user=user)
@@ -349,12 +372,14 @@ def edit_config(
         print("Available modules: algebra, english")
 
 
-@config_app.command("algebra")
-def edit_algebra_config(
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
+# @config_app.command("algebra")
+@cli.cli("config algebra")
+def edit_algebra_config(user: str | None = None):
+    # def edit_algebra_config(
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
     """Edit algebra configuration."""
 
     prepare_globals(user=user)
@@ -362,13 +387,15 @@ def edit_algebra_config(
     configure_problem_set(user=user)
 
 
-@config_app.command("english")
-def edit_english_config(
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
-    """Edit algebra configuration."""
+# @config_app.command("english")
+@cli.cli("config english")
+def edit_english_config(user: str | None = None):
+    # def edit_english_config(
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
+    """Edit english configuration."""
 
     prepare_disk_io()
 
@@ -377,21 +404,24 @@ def edit_english_config(
     config_english()
 
 
-@config_app.callback(invoke_without_command=True)
-def config_default(
-    ctx: typer.Context,
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
-    """Manage configuration for different modules."""
+# @config_app.callback(invoke_without_command=True)
+@cli.cli("config")
+def config_default(user: str | None = None):
+    """Managing configuration for target modules."""
+    # def config_default(
+    #     ctx: typer.Context,
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
+    #     """Manage configuration for different modules."""
 
-    if ctx and ctx.invoked_subcommand:
-        return
+    #     if ctx and ctx.invoked_subcommand:
+    #         return
 
     available_apps = ["algebra", "english", "chemistry"]
 
-    print("Which config?")
+    print("Which module?")
     choice = query.select(available_apps)
 
     match choice:
@@ -402,18 +432,21 @@ def config_default(
             edit_english_config()
 
 
-@algebra_app.callback(invoke_without_command=True)
-def algebra_default(
-    ctx: typer.Context,
-    debug: bool = False,
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
-    """Manage and generate algebra homework assignments."""
+# @algebra_app.callback(invoke_without_command=True)
+@cli.cli("algebra")
+def algebra_default(user: str | None = None, debug: bool = False):
+    """Launch TUI for managing and generating algebra homework assignments."""
+    # def algebra_default(
+    #     ctx: typer.Context,
+    #     debug: bool = False,
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
+    #     """Manage and generate algebra homework assignments."""
 
-    if ctx and ctx.invoked_subcommand:
-        return
+    #     if ctx and ctx.invoked_subcommand:
+    #         return
 
     prepare_globals(user=user)
 
@@ -452,16 +485,19 @@ def algebra_default(
     )
 
 
-@list_app.callback(invoke_without_command=True)
-def list_default(
-    ctx: typer.Context,
-    user: Optional[str] = typer.Option(
-        None, "--user", "-u", help="User profile name to use for this session"
-    ),
-):
-    """List problem types, frequency weights, etc."""
-    if ctx.invoked_subcommand:
-        return
+# @list_app.callback(invoke_without_command=True)
+@cli.cli("list")
+def list_default(user: str | None = None):
+    """Launch TUI for listing problem types, frequency weights, etc."""
+    # def list_default(
+    #     ctx: typer.Context,
+    #     user: Optional[str] = typer.Option(
+    #         None, "--user", "-u", help="User profile name to use for this session"
+    #     ),
+    # ):
+    #     """List problem types, frequency weights, etc."""
+    #     if ctx.invoked_subcommand:
+    #         return
 
     selection = query.select(["algebra", "english", "chemistry"])
     match selection:
@@ -473,18 +509,21 @@ def list_default(
             pass
 
 
-@app.callback(invoke_without_command=True)
-def default_homework(
-    ctx: typer.Context,
-    user: Optional[str] = typer.Option(
-        None,
-        "--user",
-        "-u",
-        help="User profile name to use for this session",
-    ),
-):
-    if ctx and ctx.invoked_subcommand:
-        return
+# @app.callback(invoke_without_command=True)
+@cli.cli("")
+def homework(user: str | None = None):
+    """Launch TUI for homework generation."""
+    # def default_homework(
+    #     ctx: typer.Context,
+    #     user: Optional[str] = typer.Option(
+    #         None,
+    #         "--user",
+    #         "-u",
+    #         help="User profile name to use for this session",
+    #     ),
+    # ):
+    # if ctx and ctx.invoked_subcommand:
+    #     return
 
     available_apps = ["algebra", "english", "chemistry"]
 
@@ -595,10 +634,12 @@ def prepare_globals(user: Optional[str] = None):
     #     _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
     #     _SAVE_DATA["constants"]["months"] = _MONTHS
     #     _SAVE_DATA["constants"]["variables"] = _VARIABLES
+
     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 
 # _problem_dict = { =_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 if __name__ == "__main__":
-    main()
+    cli.main()
+    # main()
