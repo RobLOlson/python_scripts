@@ -49,89 +49,104 @@ _HARDCODED_OPTIONS: Dict[str, Any] = {
 }
 
 
+def wrapped(text: str, indent: int = 0, indent_2: int = 18, sep: str = " ") -> str:
+    try:
+        term_width = shutil.get_terminal_size((80, 20)).columns
+    except shutil.GetTerminalSizeError:
+        term_width = 80
+    final_string = ""
+    tokens = text.split(sep)
+    line = " " * indent + tokens[0]
+    for token in tokens[1:]:
+        if len(line) + len(token) + 1 > term_width:
+            final_string += line + "\n"
+            line = " " * indent_2 + token
+        else:
+            line += sep + token
+    final_string += line
+    return final_string
+
+
 def _print_usage(func: Callable[[], None] | None = None, passed_command: list[str] | None = None) -> None:
     main_file = Path(sys.modules["__main__"].__file__)
     help_lines: list[str] = []
 
-    if passed_command == ["<no command>"]:
-        passed_command = None
+    if not _REGISTERED_COMMANDS:
+        rich.print("[red]No commands registered.[/red]")
+        return
+
+    # if passed_command == ["<no command>"]:
+    #     passed_command = None
+    if passed_command is None:
+        passed_command = ["<no command>"]
+
+    target_commands: list[tuple[str, Callable[[], None]]] = []
 
     if func is None or func.__name__ == "main":
-        if not _REGISTERED_COMMANDS:
-            rich.print("[red]No commands registered.[/red]")
-            return
-        for command, target_func in _REGISTERED_COMMANDS.items():
-            if passed_command and not command.startswith(" ".join(passed_command)):
-                continue
-            command_example = getattr(target_func, "help_signature", "<no command>")
-            command_example = command_example.replace("<no command>", "[red]<no command>[/red]")
-            description = f"{target_func.__doc__.strip().split('\n')[0] if target_func.__doc__ else '[red](No description)[/red]'}"
-            py_signature = f"`{getattr(target_func, 'py_signature', f'{target_func.__name__}(...)')}`"
-            help_lines.append(f"{command_example}\n    {description}\n      {py_signature}\n")
-        command = "<command>"
-        help_lines.sort()
+        target_commands = list(_REGISTERED_COMMANDS.items())
     else:
-        command = func.cli_command
+        target_commands = [
+            (command, target_func)
+            for command, target_func in _REGISTERED_COMMANDS.items()
+            if " ".join(passed_command) in command
+        ]
+
+    for command, target_func in target_commands:
+        # if passed_command and not command.startswith(" ".join(passed_command)):
+        #     continue
+        command_example = getattr(target_func, "help_signature", "<no command>")
+        command_example = command_example.replace(target_func.cli_command, command)
+
+        underline = "  " + "-" * len(command_example)
+        underline = "\n" + underline if len(target_commands) < 5 else ""
+
+        command_example = command_example.replace("<no command>", "[red]<no command>[/red]")
+        description = f"{target_func.__doc__.strip().split('\n')[0] if target_func.__doc__ else '[red](No description)[/red]'}"
+        description = wrapped(description, indent=4, indent_2=5, sep=" ")
+        description = "\n" + description if len(target_commands) < 15 else ""
+
+        py_signature = f"`{getattr(target_func, 'py_signature', f'{target_func.__name__}(...)')}`"
+        py_signature = wrapped(py_signature, indent=6, indent_2=7, sep=" ")
+        py_signature = "\n" + py_signature if len(target_commands) < 10 else ""
+        help_lines.append(f"{command_example}{underline}{description}{py_signature}\n")
+    if len(passed_command) > 1:
+        command = passed_command[0]
+    else:
+        command = "<command>"
+
+    help_lines.sort()
+    # else:
+    #     command = func.cli_command
 
     if main_file.parent == Path.cwd():
-        usage = f"python {main_file.name} [yellow]<command>[/yellow]"
+        usage = f"python {main_file.name} [yellow]{command}[/yellow]"
     else:
         if (main_file.parent / "__init__.py").exists():
             module_path = main_file.parent.name
-            usage = f"python -m {module_path}.{main_file.stem} [yellow]<command>[/yellow]"
+            usage = f"python -m {module_path}.{main_file.stem} [yellow]{command}[/yellow]"
         else:
-            usage = f"python -m {main_file.stem} [yellow]<command>[/yellow]"
+            usage = f"python -m {main_file.stem} [yellow]{command}[/yellow]"
 
     rich.print(f"Usage: {usage}\n")
-
     if func is None or func.__name__ == "main":
-        if passed_command:
-            rich.print("Available " + " ".join(passed_command) + " subcommands: \n")
-        else:
-            rich.print("Available commands: \n")
-        for help_line in help_lines:
-            rich.print(f"  {help_line}")
+        rich.print("Available commands: \n")
     else:
-        cli_interface = getattr(func, "help_signature", "[red]<no command>[/red]")
-        cli_interface = cli_interface.replace("<no command>", "[red]<no command>[/red]")
-        description = getattr(func, "__doc__")
-        if not description:
-            description = "[red](No description)[/red]"
-        else:
-            description = description.strip().split("\n")[0]
-
-        py_signature = f"`{getattr(func, 'py_signature', '[red]<no command>[/red]')}`"
-
-        rich.print(f"  {cli_interface}\n    {description}\n      {py_signature}\n")
-        return
+        rich.print("Available " + " ".join(passed_command) + " subcommands: \n")
+        # if passed_command:
+        # else:
+    for help_line in help_lines:
+        rich.print(f"  {help_line}")
 
     if OPTIONS:
-        # rich.print("  Global options: ", end="")
         display_options = [
             option
             for option in sorted(set(_HARDCODED_OPTIONS.keys()) | set(OPTIONS.keys()))
             if len(option) > 1
         ]
-        # Show options in a way that fits the terminal width
-        try:
-            term_width = shutil.get_terminal_size((80, 20)).columns
-        except shutil.GetTerminalSizeError:
-            term_width = 80
 
-        opt_strs = [f"[--{option}]" for option in display_options]
-        line = "  Global options:"
-        for opt in opt_strs:
-            if len(line) + len(opt) + 1 > term_width:
-                rich.print(line)
-                line = "                  " + opt
-            else:
-                if line:
-                    line += " " + opt
-                else:
-                    line = opt
-        if line:
-            rich.print(line)
-        # rich.print(" ".join(f"[--{option}]" for option in display_options))
+    opt_strs = [f"[--{option}]" for option in display_options]
+    wrapped_string = wrapped(f"Global options: {' '.join(opt_strs)}", indent=2, indent_2=18, sep=" ")
+    rich.print(wrapped_string)
 
 
 # ^^^^^^^^^^ def _print_usage ^^^^^^^^^^
@@ -292,6 +307,11 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
             for param in inspect.signature(func).parameters.values()
             if param.default is not inspect.Parameter.empty
         }
+        func.py_options_annotations = {
+            param.name: param.annotation
+            for param in inspect.signature(func).parameters.values()
+            if param.default is not inspect.Parameter.empty
+        }
         params = inspect.signature(func).parameters.values()
         py_required_params = [
             param
@@ -400,7 +420,9 @@ def main(
     if func is None:
         func = _REGISTERED_COMMANDS.get("<no command>", None)
         if func is None or not func.py_required_params:
-            rich.print(f"[red]Unknown command: {passed_args[0]}[/red]\n")
+            rich.print(
+                f"[red]Unknown command: {passed_command[0] if passed_command else '<no command>'}[/red]\n"
+            )
             _print_usage()
             sys.exit(1)
 
@@ -412,23 +434,17 @@ def main(
         sys.exit(0)
 
     if use_configs and OPTIONS.get("edit_cli_config", False):
-        # breakpoint()
         with TomlConfig(
             user_toml_file=user_config_file, default_toml_file=default_config_file
         ) as config_writer:
             config_writer.edit_in_terminal()
-        # _CONFIG.edit()
-        # _CONFIG.open_with_editor()
         sys.exit(0)
 
     if use_configs and OPTIONS.get("open_cli_config", False):
-        # breakpoint()
         with TomlConfig(
             user_toml_file=user_config_file, default_toml_file=default_config_file
         ) as config_writer:
             config_writer.open_with_editor()
-        # _CONFIG.edit()
-        # _CONFIG.open_with_editor()
         sys.exit(0)
 
     if len(passed_positionals) > len(func.py_required_params):
@@ -450,17 +466,33 @@ def main(
         sys.exit(1)
     else:
         for i in range(len(passed_positionals)):
-            # pos_type = type(func.py_required_params[i])
-            # passed_positionals[i] = pos_type(passed_positionals[i])
             passed_positionals[i] = func.py_required_params[i]._annotation(passed_positionals[i])
 
     passed_options = _parse_options(passed_args)
-
     for option, default in func.py_options.items():
+        # if option is None:
+
         if option not in passed_options and option not in OPTIONS:
             passed_options[option] = default
+            # if default is None:
+            #     passed_options[option] = str
+            # else:
+            #     passed_options[option] = default
         else:
-            opt_type = type(default)
+            if default is None:
+                if "str" in str(func.py_options_annotations[option]):
+                    opt_type = str
+                elif "int" in str(func.py_options_annotations[option]):
+                    opt_type = int
+                elif "float" in str(func.py_options_annotations[option]):
+                    opt_type = float
+                elif "bool" in str(func.py_options_annotations[option]):
+                    opt_type = bool
+                else:
+                    opt_type = lambda x: None
+            else:
+                opt_type = type(default)
+
             passed_options[option] = opt_type(passed_options[option])
 
     removed_options = []
@@ -502,6 +534,7 @@ def main(
         cli_logger.info(
             f"Command:`{' '.join(sys.argv[1:])}`\nFunction:`{func.__name__}`\nParameters:`{passed_positionals}`\nOptions:`{passed_options}`\nGlobal Options:`{OPTIONS}`"
         )
+
     func(*passed_positionals, **passed_options)
 
 
