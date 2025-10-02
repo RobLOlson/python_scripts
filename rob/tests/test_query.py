@@ -1,7 +1,28 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-import readchar
+
+import sys
+from types import ModuleType
+
+# Provide a minimal fallback for readchar when not installed and ensure import in module under test works
+try:
+    import readchar  # type: ignore
+except Exception:  # pragma: no cover
+    readchar_stub = ModuleType("readchar")
+    class _Key:
+        UP = "UP"
+        DOWN = "DOWN"
+        LEFT = "LEFT"
+        RIGHT = "RIGHT"
+        CTRL_J = "CTRL_J"
+        CTRL_M = "CTRL_M"
+    def _readkey():
+        return "\n"
+    setattr(readchar_stub, "key", _Key)
+    setattr(readchar_stub, "readkey", _readkey)
+    sys.modules["readchar"] = readchar_stub
+    import readchar  # type: ignore
 
 from ..utilities.query import (
     approve_dict,
@@ -155,16 +176,16 @@ class TestReconstituteObject:
 @patch("readchar.readkey")
 class TestFormFromDict:
     def test_simple_form(self, mock_readkey):
-        # Simulate pressing Ctrl+Enter (commit) to accept defaults
-        mock_readkey.side_effect = ["\n"]
+        # Simulate repeatedly pressing Enter to commit defaults
+        mock_readkey.return_value = "\n"
         test_dict = {"name": "John", "age": 30}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)
         assert all(key in result for key in test_dict)
 
     def test_nested_form(self, mock_readkey):
-        # Simulate pressing Ctrl+Enter (commit) to accept defaults
-        mock_readkey.side_effect = ["\n"]
+        # Simulate repeatedly pressing Enter to commit defaults
+        mock_readkey.return_value = "\n"
         test_dict = {"personal": {"name": "John", "age": 30}, "settings": {"dark_mode": True}}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)

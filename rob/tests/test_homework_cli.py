@@ -1,15 +1,45 @@
 import importlib
+import importlib.util
 import sys
 from types import ModuleType
 
-import toml
+# toml is optional; prefer tomllib in newer Python
+try:  # Python <3.11 or when toml package present
+    import toml  # type: ignore
+except Exception:
+    import tomllib as _tomllib  # type: ignore
+    import types
+    toml = types.ModuleType("toml")  # type: ignore
+    toml.load = _tomllib.load  # type: ignore
+    toml.loads = _tomllib.loads  # type: ignore
+    def _dump(obj, fp):
+        fp.write("\n".join(f"{k} = {repr(v)}" for k, v in obj.items()))
+    toml.dump = _dump  # type: ignore
 
 
 def test_homework_module_exposes_app(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	# Import local module if package path is unavailable
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ModuleNotFoundError:
+		try:
+			mod = importlib.import_module("rob.homework")
+		except ModuleNotFoundError:
+			import pathlib
+			# create a pseudo 'rob' package so relative imports succeed
+			if "rob" not in sys.modules:
+				rob_pkg = ModuleType("rob")
+				rob_pkg.__path__ = ["/workspace/rob"]  # type: ignore[attr-defined]
+				sys.modules["rob"] = rob_pkg
+			path = pathlib.Path("/workspace/rob/homework.py")
+			spec = importlib.util.spec_from_file_location("rob.homework", path)
+			assert spec and spec.loader
+			mod = importlib.util.module_from_spec(spec)
+			sys.modules["rob.homework"] = mod
+			spec.loader.exec_module(mod)  # type: ignore[attr-defined]
 	assert hasattr(mod, "app")
 
 
@@ -18,7 +48,23 @@ def test_help_shows_user_option(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ModuleNotFoundError:
+		try:
+			mod = importlib.import_module("rob.homework")
+		except ModuleNotFoundError:
+			import pathlib
+			if "rob" not in sys.modules:
+				rob_pkg = ModuleType("rob")
+				rob_pkg.__path__ = ["/workspace/rob"]  # type: ignore[attr-defined]
+				sys.modules["rob"] = rob_pkg
+			path = pathlib.Path("/workspace/rob/homework.py")
+			spec = importlib.util.spec_from_file_location("rob.homework", path)
+			assert spec and spec.loader
+			mod = importlib.util.module_from_spec(spec)
+			sys.modules["rob.homework"] = mod
+			spec.loader.exec_module(mod)  # type: ignore[attr-defined]
 
 	from typer.testing import CliRunner
 
@@ -41,7 +87,23 @@ def test_algebra_list_weights_smoke(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ModuleNotFoundError:
+		try:
+			mod = importlib.import_module("rob.homework")
+		except ModuleNotFoundError:
+			import pathlib
+			if "rob" not in sys.modules:
+				rob_pkg = ModuleType("rob")
+				rob_pkg.__path__ = ["/workspace/rob"]  # type: ignore[attr-defined]
+				sys.modules["rob"] = rob_pkg
+			path = pathlib.Path("/workspace/rob/homework.py")
+			spec = importlib.util.spec_from_file_location("rob.homework", path)
+			assert spec and spec.loader
+			mod = importlib.util.module_from_spec(spec)
+			sys.modules["rob.homework"] = mod
+			spec.loader.exec_module(mod)  # type: ignore[attr-defined]
 
 	import os
 	from pathlib import Path
@@ -77,7 +139,19 @@ def test_weights_persist_for_user(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ModuleNotFoundError:
+		try:
+			mod = importlib.import_module("rob.homework")
+		except ModuleNotFoundError:
+			import importlib.util, pathlib
+			path = pathlib.Path("/workspace/rob/homework.py")
+			spec = importlib.util.spec_from_file_location("rob.homework", path)
+			assert spec and spec.loader
+			mod = importlib.util.module_from_spec(spec)
+			sys.modules["rob.homework"] = mod
+			spec.loader.exec_module(mod)  # type: ignore[attr-defined]
 
 	import os
 	from pathlib import Path
@@ -117,7 +191,13 @@ def test_render_produces_tex(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	# Ensure any stubbed 'rich' module from other tests doesn't break Typer
+	if "rich" in sys.modules and getattr(sys.modules["rich"], "__spec__", None) is None:
+		del sys.modules["rich"]
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ModuleNotFoundError:
+		mod = importlib.import_module("rob.homework")
 
 	import os
 	from pathlib import Path
@@ -162,7 +242,12 @@ def test_config_algebra_updates_weights(monkeypatch):
 	survey_stub = ModuleType("survey")
 	monkeypatch.setitem(sys.modules, "survey", survey_stub)
 
-	mod = importlib.import_module("robo.rob.homework")
+	if "rich" in sys.modules and getattr(sys.modules["rich"], "__spec__", None) is None:
+		del sys.modules["rich"]
+	try:
+		mod = importlib.import_module("robo.rob.homework")
+	except ModuleNotFoundError:
+		mod = importlib.import_module("rob.homework")
 
 	import os
 	from pathlib import Path
