@@ -46,6 +46,8 @@ _HARDCODED_OPTIONS: Dict[str, Any] = {
     "help": False,
     "h": False,
     "capture_output": True,
+    "edit_cli_config": False,
+    "open_cli_config": False,
 }
 
 
@@ -94,13 +96,33 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
     for command, target_func in target_commands:
         # if passed_command and not command.startswith(" ".join(passed_command)):
         #     continue
-        command_example = getattr(target_func, "help_signature", "<no command>")
-        command_example = command_example.replace(target_func.cli_command, command)
 
-        underline = "  " + "-" * len(command_example)
+        # command_example = getattr(target_func, "help_signature", "<no command>")
+        # command_example = command_example.replace(target_func.cli_command, command)
+
+        # command_example = command_example.replace("<no command>", "[red]<no command>[/red]")
+        # command_example = wrapped(
+        #     command_example, indent=2, indent_2=len(target_func.cli_command) + 3, sep=" "
+        # )
+
+        help_options = " ".join(
+            f"--{option}={target_func.py_options[option]}"
+            for option in target_func.py_options
+            if option not in _HARDCODED_OPTIONS  # remove global options from help
+        )
+
+        params2 = " ".join(f"<{param}>" for param in target_func.py_required_params)
+
+        command_example = f"{command} {help_options} {params2}"
+        command_example = command_example.strip()
+        command_example = wrapped(
+            command_example, indent=2, indent_2=len(target_func.cli_command) + 3, sep=" "
+        )
+
+        underline = "  " + "-" * (len(command_example) - 2)
+        command_example = command_example.replace("<no command>", "[red]<no command>[/red]")
         underline = "\n" + underline if len(target_commands) < 5 else ""
 
-        command_example = command_example.replace("<no command>", "[red]<no command>[/red]")
         description = f"{target_func.__doc__.strip().split('\n')[0] if target_func.__doc__ else '[red](No description)[/red]'}"
         description = wrapped(description, indent=4, indent_2=5, sep=" ")
         description = "\n" + description if len(target_commands) < 15 else ""
@@ -135,14 +157,14 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         # if passed_command:
         # else:
     for help_line in help_lines:
-        rich.print(f"  {help_line}")
+        rich.print(f"{help_line}")
 
     # if OPTIONS:
     display_options = [
         option for option in sorted(set(_HARDCODED_OPTIONS.keys()) | set(OPTIONS.keys())) if len(option) > 1
     ]
 
-    opt_strs = [f"[--{option}]" for option in display_options]
+    opt_strs = [f"[--{option}={_HARDCODED_OPTIONS[option]}]" for option in display_options]
     wrapped_string = wrapped(f"Global options: {' '.join(opt_strs)}", indent=2, indent_2=18, sep=" ")
     rich.print(wrapped_string)
 
@@ -295,6 +317,11 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
         func.cli_options: list[str] = _parse_options(shlex.split(cli_interface)).keys()
         func.cli_command: str = key
         func.cli_interface: str = cli_interface
+
+        for option in _HARDCODED_OPTIONS:
+            if option in func.cli_options:
+                func.cli_options.remove(option)
+
         func.cli_required_params: list[str] = [
             token[1:-1] for token in shlex.split(cli_interface) if token[0] == "<" and token[-1] == ">"
         ]
@@ -324,7 +351,11 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
         )
 
         func.cli_options = (
-            " ".join(f"--{param}={default}" for param, default in func.py_options.items())
+            " ".join(
+                f"--{param}={default}"
+                for param, default in func.py_options.items()
+                if param not in _HARDCODED_OPTIONS
+            )
             if func.py_options
             else ""
         )
@@ -337,7 +368,7 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
     return _decorator
 
 
-def main(
+def parse_and_invoke(
     passed_args: list[str] | None = None,
     user_config_file: str | Path | None = None,
     default_config_file: str | Path | None = None,
@@ -379,8 +410,6 @@ def main(
             new_file_created = True
 
     if use_configs:
-        _HARDCODED_OPTIONS.update({"edit_cli_config": False, "open_cli_config": False})
-
         _CONFIG = TomlConfig(
             user_toml_file=user_config_file, default_toml_file=default_config_file, readonly=True
         )
@@ -390,9 +419,14 @@ def main(
                 user_toml_file=user_config_file, default_toml_file=default_config_file
             ) as config_writer:
                 config_writer["options"] = {}
-                config_writer["options"]["capture_output"] = True
+                config_writer["options"].update(_HARDCODED_OPTIONS)
+                # config_writer["options"]["capture_output"] = True
 
         _HARDCODED_OPTIONS.update(_CONFIG.get("options", {}))
+
+    else:
+        dummy = _HARDCODED_OPTIONS.pop("edit_cli_config", None)
+        dummy = _HARDCODED_OPTIONS.pop("open_cli_config", None)
 
     if passed_args is None:
         passed_args = sys.argv[1:]
