@@ -229,7 +229,13 @@ Press Enter to continue."""
             print(f"[{'x' if approved_targets.count(index + 1) else ' '}]", end="")
             rich.print(rf" {style}{index + 1:02}.) {display}")
 
-        choice = readchar.readkey()
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+
         match choice:
             case "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
                 i = int(choice)
@@ -415,7 +421,13 @@ def edit_object(
 
         rich.print(display_string, end="")
         rich.print("\n[green]Press Enter, right, or tab to edit.\nCtrl+Enter or 'q' to save and quit.")
-        choice = readchar.readkey()
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+
         match choice:
             case "\t" | "d" | "l" | ">" | readchar.key.RIGHT | "\r":
                 if not target2[cursor_index][2]:
