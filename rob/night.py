@@ -196,4 +196,4 @@ def logs():
 
 
 if __name__ == "__main__":
-    cli.main(use_configs=True)
+    cli.parse_and_invoke(use_configs=True)

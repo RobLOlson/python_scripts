@@ -40,8 +40,12 @@ def anagram(word: str, wilds: int = 0) -> list[str]:
 
 if __name__ == "__main__":
     # app()
-    cli.main(
-        user_config_file=appdirs.user_config_dir() / "robolson" / "anagram" / "config" / "cli_config.toml",
+    cli.parse_and_invoke(
+        user_config_file=pathlib.Path(appdirs.user_config_dir())
+        / "robolson"
+        / "anagram"
+        / "config"
+        / "cli_config.toml",
         default_config_file=_THIS_FILE.parent / "config" / "anagram" / "cli_config.toml",
         use_configs=True,
     )

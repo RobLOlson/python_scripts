@@ -160,11 +160,10 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         rich.print(f"{help_line}")
 
     # if OPTIONS:
-    display_options = [
-        option for option in sorted(set(_HARDCODED_OPTIONS.keys()) | set(OPTIONS.keys())) if len(option) > 1
-    ]
+    display_options = [option for option in sorted(_HARDCODED_OPTIONS.keys()) if len(option) > 1]
 
     opt_strs = [f"[--{option}={_HARDCODED_OPTIONS[option]}]" for option in display_options]
+
     wrapped_string = wrapped(f"Global options: {' '.join(opt_strs)}", indent=2, indent_2=18, sep=" ")
     rich.print(wrapped_string)
 
@@ -380,10 +379,14 @@ def parse_and_invoke(
 
     global OPTIONS, _DEBUG, _CONFIG
 
+    if passed_args is None:
+        passed_args = sys.argv[1:]
+
+    passed_options = _parse_options(passed_args)
+
     main_file = Path(sys.modules["__main__"].__file__)
 
     new_file_created: bool = False
-
     if use_configs and default_config_file is None:
         default_config_file = main_file.parent / "cli" / f"{main_file.stem}_config.toml"
         default_config_file.parent.mkdir(parents=True, exist_ok=True)
@@ -420,16 +423,16 @@ def parse_and_invoke(
             ) as config_writer:
                 config_writer["options"] = {}
                 config_writer["options"].update(_HARDCODED_OPTIONS)
+                config_writer["options"].update(_CONFIG.get("options", {}))
                 # config_writer["options"]["capture_output"] = True
 
+        OPTIONS.update(_CONFIG.get("options", {}))
+        OPTIONS.update(passed_options)
         _HARDCODED_OPTIONS.update(_CONFIG.get("options", {}))
 
     else:
         dummy = _HARDCODED_OPTIONS.pop("edit_cli_config", None)
         dummy = _HARDCODED_OPTIONS.pop("open_cli_config", None)
-
-    if passed_args is None:
-        passed_args = sys.argv[1:]
 
     passed_command = []
     for token in passed_args:
@@ -500,7 +503,6 @@ def parse_and_invoke(
         for i in range(len(passed_positionals)):
             passed_positionals[i] = func.py_required_params[i]._annotation(passed_positionals[i])
 
-    passed_options = _parse_options(passed_args)
     for option, default in func.py_options.items():
         # if option is None:
 
@@ -525,6 +527,7 @@ def parse_and_invoke(
             else:
                 opt_type = type(default)
 
+            # passed_options[option] = opt_type(OPTIONS[option])
             passed_options[option] = opt_type(passed_options[option])
 
     removed_options = []

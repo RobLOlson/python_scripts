@@ -532,12 +532,12 @@ def homework(user: str | None = None):
 
     match choice:
         case "algebra":
-            algebra_default(ctx=None, user=user)
+            algebra_default(user=user)
 
         case "english":
             from .english import english_default
 
-            english_default(ctx=None)
+            english_default()
 
 
 def main():
@@ -641,5 +641,9 @@ def prepare_globals(user: Optional[str] = None):
 # _problem_dict = { =_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 if __name__ == "__main__":
-    cli.main()
+    cli.parse_and_invoke(
+        # passed_args=sys.argv[1:],
+        use_configs=True,
+        default_config_file=pathlib.Path(__file__).parent / "cli" / "homework_config.toml",
+    )
     # main()

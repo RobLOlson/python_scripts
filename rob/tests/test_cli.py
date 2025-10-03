@@ -31,7 +31,7 @@ def test_main_dispatch(capsys):
     def configure_problem_set(user: str = "alice"):
         print(f"Configured {user}")
 
-    cli_mod.main(["config", "--user=alice"])
+    cli_mod.parse_and_invoke(["config", "--user=alice"])
     captured = capsys.readouterr()
     assert "Configured alice" in captured.out
 
@@ -43,7 +43,7 @@ def test_usage_shows_docstring_first_line(capsys):
         pass
 
     with pytest.raises(SystemExit):
-        cli_mod.main(["-h"])
+        cli_mod.parse_and_invoke(["-h"])
 
     captured = capsys.readouterr()
     assert "Do a sample thing." in captured.out
@@ -60,7 +60,7 @@ def test_print_usage_specific_function(capsys):
     # Call _print_usage with the specific function
     # cli_mod._print_usage(test_function)
     with pytest.raises(SystemExit):
-        cli_mod.main(["test_command", "-h"])
+        cli_mod.parse_and_invoke(["test_command", "-h"])
 
     captured = capsys.readouterr()
     output = captured.out
@@ -82,7 +82,7 @@ def test_print_usage_function_without_docstring(capsys):
 
     # cli_mod._print_usage(no_doc_function)
     with pytest.raises(SystemExit):
-        cli_mod.main(["-h"])
+        cli_mod.parse_and_invoke(["-h"])
 
     captured = capsys.readouterr()
     output = captured.out
