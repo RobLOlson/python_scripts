@@ -1,4 +1,5 @@
 import shutil
+from textwrap import wrap
 from typing import Any
 
 import readchar
@@ -647,6 +648,97 @@ def reconstitute_object(linearized_object):
         raise Exception("Expected '[' or '{'.")
 
     return reconstitute_object(composite)
+
+
+def integer(
+    preamble: str = "",
+    default: int | None = None,
+    minimum: int | None = None,
+    maximum: int | None = None,
+) -> int:
+    """Query for an integer value within a given range."""
+
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise ValueError("minimum must be less than maximum")
+
+    if default is None:
+        if minimum is not None:
+            target = minimum
+        else:
+            target = 0
+    else:
+        target = default
+
+    input_number = ""
+    print("\n" * (4 + len(preamble.split("\n"))), end="")
+    while True:
+        term_width = shutil.get_terminal_size().columns
+        preamble_lines = wrap(preamble, term_width)
+        if minimum is None and maximum is None:
+            instruct1 = wrap("Enter integer or use up/down keys to adjust.", term_width)
+        else:
+            instruct1 = wrap(
+                f"Enter integer or use up/down keys to adjust. [{minimum if minimum is not None else '-inf'}, {maximum if maximum is not None else '+inf'}]",
+                term_width,
+            )
+        instruct2 = wrap("Press Ctrl+Enter to confirm and commit.", term_width)
+        print(_MOVE_UP * (1 + len(preamble_lines) + len(instruct1) + len(instruct2)) + _CLEAR_LINE, end="")
+        rich.print("\n".join(preamble_lines), end="")
+        if input_number:
+            rich.print(f"[yellow]{input_number}[/yellow]")
+        else:
+            rich.print(f"[yellow]{target}[/yellow]")
+        rich.print(f"\n[green]{'\n'.join(instruct1)}[/green]")
+        rich.print(f"[green]{'\n'.join(instruct2)}[/green]")
+
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+
+        match choice:
+            case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
+                input_number += choice
+            case "\r":
+                continue
+            case "k" | readchar.key.UP:
+                target = target + 1
+                if maximum is not None and target > maximum:
+                    if minimum is not None:
+                        target = minimum
+                    else:
+                        target = maximum
+                    # target = max(target + 1, maximum)
+                input_number = ""
+            case "j" | readchar.key.DOWN:
+                target = target - 1
+                if minimum is not None and target < minimum:
+                    if maximum is not None:
+                        target = maximum
+                    else:
+                        target = minimum
+                input_number = ""
+
+            case readchar.key.CTRL_J | "\r":
+                break
+            case "\x08":
+                if input_number:
+                    input_number = input_number[:-1]
+                else:
+                    input_number = ""
+            case "\x1b":
+                rich.print("[red]Terminated.", end="")
+                exit(1)
+    if input_number:
+        target = int(input_number)
+        if maximum is not None and target > maximum:
+            target = maximum
+        elif minimum is not None and target < minimum:
+            target = minimum
+
+    return int(target)
 
 
 def confirm(default: bool = False):
