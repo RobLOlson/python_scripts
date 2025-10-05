@@ -179,7 +179,6 @@ def render_latex(
 
         problem_statement = ""
 
-        breakpoint()
         for k in range(problem_count):
             if k % 3 == 0 and k != 0:
                 problem_statement += r"\newpage"
@@ -510,18 +509,15 @@ def multiple_default(user: str | None = None):
                         interact=False,
                     )
                 )
-        breakpoint()
 
     # problem_count = query.integer("How many problems per assignment? ", default=6)
     # WARNING: got a sporadic ValueError here, sample larger than population
     try:
         problem_set = random.sample(problem_set, k=max(assignment_count * problem_count, len(problem_set)))
     except ValueError:
-        breakpoint()
         problem_set = random.choices(problem_set, k=max(assignment_count * problem_count, len(problem_set)))
 
     problem_count = sum(data["problem count"].values())
-    breakpoint()
     render_latex(
         start_date=start_date,
         assignment_count=assignment_count,
