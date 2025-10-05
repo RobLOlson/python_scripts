@@ -1,5 +1,4 @@
 import importlib
-from pathlib import Path
 
 import pytest
 
@@ -31,7 +30,14 @@ def test_main_dispatch(capsys):
     def configure_problem_set(user: str = "alice"):
         print(f"Configured {user}")
 
-    cli_mod.parse_and_invoke(["config", "--user=alice"])
+    # Ensure global OPTIONS contains the option since parse_and_invoke reads from it
+    original_options = dict(cli_mod.OPTIONS)
+    try:
+        cli_mod.OPTIONS["user"] = "alice"
+        cli_mod.parse_and_invoke(["config", "--user=alice"])
+    finally:
+        cli_mod.OPTIONS.clear()
+        cli_mod.OPTIONS.update(original_options)
     captured = capsys.readouterr()
     assert "Configured alice" in captured.out
 

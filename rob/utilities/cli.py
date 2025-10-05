@@ -34,6 +34,8 @@ from typing import Any, Callable, Dict
 import rich
 from appdirs import user_config_dir, user_data_dir
 
+from rob.utilities import query
+
 try:
     from tomlconfig import TomlConfig
 except ImportError:
@@ -48,7 +50,13 @@ _HARDCODED_OPTIONS: Dict[str, Any] = {
     "capture_output": True,
     "edit_cli_config": False,
     "open_cli_config": False,
+    "open_base_config": False,
 }
+_HIDDEN_OPTIONS: list[str] = [
+    "edit_cli_config",
+    "open_base_config",
+    "h",
+]
 
 
 def wrapped(text: str, indent: int = 0, indent_2: int = 18, sep: str = " ") -> str:
@@ -77,8 +85,6 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         rich.print("[red]No commands registered.[/red]")
         return
 
-    # if passed_command == ["<no command>"]:
-    #     passed_command = None
     if passed_command is None:
         passed_command = ["<no command>"]
 
@@ -94,17 +100,6 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         ]
 
     for command, target_func in target_commands:
-        # if passed_command and not command.startswith(" ".join(passed_command)):
-        #     continue
-
-        # command_example = getattr(target_func, "help_signature", "<no command>")
-        # command_example = command_example.replace(target_func.cli_command, command)
-
-        # command_example = command_example.replace("<no command>", "[red]<no command>[/red]")
-        # command_example = wrapped(
-        #     command_example, indent=2, indent_2=len(target_func.cli_command) + 3, sep=" "
-        # )
-
         help_options = " ".join(
             f"--{option}={target_func.py_options[option]}"
             for option in target_func.py_options
@@ -120,6 +115,7 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         )
 
         underline = "  " + "-" * (len(command_example) - 2)
+        underline = underline[: shutil.get_terminal_size().columns]
         command_example = command_example.replace("<no command>", "[red]<no command>[/red]")
         underline = "\n" + underline if len(target_commands) < 5 else ""
 
@@ -137,8 +133,6 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         command = "<command>"
 
     help_lines.sort()
-    # else:
-    #     command = func.cli_command
 
     if main_file.parent == Path.cwd():
         usage = f"python {main_file.name} [yellow]{command}[/yellow]"
@@ -154,15 +148,17 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         rich.print("Available commands: \n")
     else:
         rich.print("Available " + " ".join(passed_command) + " subcommands: \n")
-        # if passed_command:
-        # else:
+
     for help_line in help_lines:
         rich.print(f"{help_line}")
 
-    # if OPTIONS:
     display_options = [option for option in sorted(_HARDCODED_OPTIONS.keys()) if len(option) > 1]
 
-    opt_strs = [f"[--{option}={_HARDCODED_OPTIONS[option]}]" for option in display_options]
+    opt_strs = [
+        f"[--{option}={_HARDCODED_OPTIONS[option]}]"
+        for option in display_options
+        if option not in _HIDDEN_OPTIONS
+    ]
 
     wrapped_string = wrapped(f"Global options: {' '.join(opt_strs)}", indent=2, indent_2=18, sep=" ")
     rich.print(wrapped_string)
@@ -184,7 +180,6 @@ def _parse_options(raw_args: list[str]) -> Dict[str, str | bool]:
     opts: Dict[str, str | bool]
     Dictionary of parsed options.
     """
-    # options.clear()
     i = 0
 
     opts: Dict[str, str | bool] = {}
@@ -377,7 +372,7 @@ def parse_and_invoke(
     Parse passed_args and invoke the registered command
     """
 
-    global OPTIONS, _DEBUG, _CONFIG
+    global OPTIONS, _DEBUG, _CONFIG, _HIDDEN_OPTIONS
 
     if passed_args is None:
         passed_args = sys.argv[1:]
@@ -386,11 +381,20 @@ def parse_and_invoke(
 
     main_file = Path(sys.modules["__main__"].__file__)
 
-    new_file_created: bool = False
-    if use_configs and default_config_file is None:
-        default_config_file = main_file.parent / "cli" / f"{main_file.stem}_config.toml"
-        default_config_file.parent.mkdir(parents=True, exist_ok=True)
-        default_config_file.touch(exist_ok=True)
+    new_config_created: bool = False
+    if use_configs and default_config_file is not None:
+        if not default_config_file.exists():
+            rich.print(
+                f"[yellow]WARNING:[/yellow] Config file not found ({default_config_file}). Creating new one."
+            )
+
+            default_config_file = main_file.parent / "cli config" / f"{main_file.stem}_config.toml"
+            default_config_file.parent.mkdir(parents=True, exist_ok=True)
+            default_config_file.touch(exist_ok=True)
+            with TomlConfig(user_toml_file=default_config_file, default_toml_file=None) as config_writer:
+                config_writer["options"] = {}
+                config_writer["options"].update(_HARDCODED_OPTIONS)
+                config_writer["hidden_options"] = _HIDDEN_OPTIONS
 
     if use_configs and user_config_file is None:
         great_grandparent = (
@@ -410,29 +414,30 @@ def parse_and_invoke(
             rich.print(
                 f"[yellow]WARNING:[/yellow] Config file not found ({user_config_file}). Creating new one."
             )
-            new_file_created = True
+            new_config_created = True
 
     if use_configs:
         _CONFIG = TomlConfig(
             user_toml_file=user_config_file, default_toml_file=default_config_file, readonly=True
         )
 
-        if new_file_created:
+        if new_config_created:
             with TomlConfig(
                 user_toml_file=user_config_file, default_toml_file=default_config_file
             ) as config_writer:
                 config_writer["options"] = {}
                 config_writer["options"].update(_HARDCODED_OPTIONS)
                 config_writer["options"].update(_CONFIG.get("options", {}))
-                # config_writer["options"]["capture_output"] = True
+                config_writer["hidden_options"] = _HIDDEN_OPTIONS
 
         OPTIONS.update(_CONFIG.get("options", {}))
         OPTIONS.update(passed_options)
         _HARDCODED_OPTIONS.update(_CONFIG.get("options", {}))
+        _HIDDEN_OPTIONS = _CONFIG.get("hidden_options", [])
 
     else:
-        dummy = _HARDCODED_OPTIONS.pop("edit_cli_config", None)
-        dummy = _HARDCODED_OPTIONS.pop("open_cli_config", None)
+        dummy = _HARDCODED_OPTIONS.pop("edit_cli_config", None)  # noqa: F841
+        dummy = _HARDCODED_OPTIONS.pop("open_cli_config", None)  # noqa: F841
 
     passed_command = []
     for token in passed_args:
@@ -468,6 +473,22 @@ def parse_and_invoke(
             _print_usage()
         sys.exit(0)
 
+    if use_configs and OPTIONS.get("open_base_config", False):
+        if default_config_file is None:
+            rich.print("\n[red]  No default config file found.[/red]\n")
+            proposed_config_file = main_file.parent / "cli config" / f"{main_file.stem}_config.toml"
+            rich.print(f"  Create one at [yellow]{proposed_config_file}[/yellow]?")
+            if query.confirm():
+                with TomlConfig(user_toml_file=proposed_config_file, default_toml_file=None) as config_writer:
+                    config_writer["options"] = {}
+                    config_writer["options"].update(_HARDCODED_OPTIONS)
+                    config_writer["hidden_options"] = _HIDDEN_OPTIONS
+                default_config_file = proposed_config_file
+            sys.exit(1)
+        with TomlConfig(user_toml_file=default_config_file, default_toml_file=None) as config_writer:
+            config_writer.open_with_editor()
+        sys.exit(0)
+
     if use_configs and OPTIONS.get("edit_cli_config", False):
         with TomlConfig(
             user_toml_file=user_config_file, default_toml_file=default_config_file
@@ -486,7 +507,7 @@ def parse_and_invoke(
         if passed_command != ["<no command>"]:
             excess_params = passed_positionals[: len(passed_positionals) - len(func.py_required_params)]
             rich.print(
-                f"[red]Too many positional arguments: {f', '.join(excess_param.name for excess_param in excess_params)}[/red]\n"
+                f"[red]Too many positional arguments: {', '.join(excess_param.name for excess_param in excess_params)}[/red]\n"
             )
             _print_usage(func, passed_command)
         else:
@@ -504,14 +525,8 @@ def parse_and_invoke(
             passed_positionals[i] = func.py_required_params[i]._annotation(passed_positionals[i])
 
     for option, default in func.py_options.items():
-        # if option is None:
-
         if option not in passed_options and option not in OPTIONS:
             passed_options[option] = default
-            # if default is None:
-            #     passed_options[option] = str
-            # else:
-            #     passed_options[option] = default
         else:
             if default is None:
                 if "str" in str(func.py_options_annotations[option]):
@@ -523,12 +538,12 @@ def parse_and_invoke(
                 elif "bool" in str(func.py_options_annotations[option]):
                     opt_type = bool
                 else:
-                    opt_type = lambda x: None
+                    opt_type = lambda x: None  # noqa: E731
             else:
                 opt_type = type(default)
 
-            # passed_options[option] = opt_type(OPTIONS[option])
-            passed_options[option] = opt_type(passed_options[option])
+            passed_options[option] = opt_type(OPTIONS[option])
+            # passed_options[option] = opt_type(passed_options[option])
 
     removed_options = []
     for option in passed_options:
