@@ -4,12 +4,11 @@ import pathlib
 import random
 import sys
 import time
-from typing import Optional
 
 import appdirs
+import rich
 import survey
 import toml
-import typer
 
 try:
     from .utilities import cli, query
@@ -17,82 +16,70 @@ except ImportError:
     from utilities import cli, query
 
 try:
-    from .algebra.problems import *  # noqa: F403
+    from .utilities import tomlconfig
 except ImportError:
-    from algebra.problems import *  # noqa: F403
+    from utilities import tomlconfig
+
+try:
+    from .algebra import problems
+except ImportError:
+    from algebra import problems
+
+import PyMultiDictionary
 
 _DEBUG = False
 
 
-app = typer.Typer()
-algebra_app = typer.Typer()
-list_app = typer.Typer()
-config_app = typer.Typer()
-app.add_typer(algebra_app, name="algebra")
-algebra_app.add_typer(list_app, name="list")
-app.add_typer(config_app, name="config")
+# def prepare_disk_io():
+#     """Prepare disk I/O for algebra homework."""
 
-if "english" in sys.argv:
-    try:
-        from .english import app as english_app
+#     start = time.perf_counter()
+#     global \
+#         _LATEX_FILE, \
+#         _SAVE_FILE, \
+#         _SAVE_DATA, \
+#         _LATEX_TEMPLATES, \
+#         _WEEKDAYS, \
+#         _VARIABLES, \
+#         _START, \
+#         _FALLBACK_CONFIG, \
+#         _CONFIG, \
+#         _VOCABULARY_WORDS, \
+#         _DATES
+#     _THIS_FILE = pathlib.Path(__file__)
 
-    except ImportError:
-        from english import app as english_app
+#     _VOCABULARY_FILE = _THIS_FILE.parent / "data" / "sat_words.txt"
+#     _VOCABULARY_WORDS = open(_VOCABULARY_FILE).read().split("\n")
+#     _FALLBACK_CONFIG = toml.loads(open(_THIS_FILE.parent / "config" / "homework" / "config.toml", "r").read())
 
-    app.add_typer(
-        english_app,
-        name="english",
-        help="Prepare and generate English homework assignments.",
-    )
+#     _LATEX_FILE = _THIS_FILE.parent / "config" / "homework" / "latex_templates.toml"
+#     _LATEX_FILE.parent.mkdir(exist_ok=True)
+#     _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
 
+#     _SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "homework" / "config.toml"
 
-def prepare_disk_io():
-    """Prepare disk I/O for algebra homework."""
+#     if not _SAVE_FILE.exists() or _SAVE_FILE.stat().st_size == 0:
+#         # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
+#         # NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
+#         # _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
+#         _SAVE_DATA = _FALLBACK_CONFIG.copy()
+#         _SAVE_FILE.parent.mkdir(parents=True, exist_ok=True)
+#         # _SAVE_FILE.touch()
+#         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
-    start = time.perf_counter()
-    global \
-        _LATEX_FILE, \
-        _SAVE_FILE, \
-        _SAVE_DATA, \
-        _LATEX_TEMPLATES, \
-        _WEEKDAYS, \
-        _MONTHS, \
-        _VARIABLES, \
-        _START, \
-        _FALLBACK_CONFIG, \
-        _DATES
-    _THIS_FILE = pathlib.Path(__file__)
+#     else:
+#         _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
 
-    _FALLBACK_CONFIG = toml.loads(open(_THIS_FILE.parent / "config" / "algebra" / "config.toml", "r").read())
+#     _WEEKDAYS = _CONFIG.get("constants", {}).get("weekdays", _FALLBACK_CONFIG["constants"]["weekdays"])
+#     _MONTHS = _CONFIG.get("constants", {}).get("months", _FALLBACK_CONFIG["constants"]["months"])
+#     _VARIABLES = _CONFIG.get("constants", {}).get("variables", _FALLBACK_CONFIG["constants"]["variables"])
 
-    _LATEX_FILE = _THIS_FILE.parent / "config" / "algebra" / "latex_templates.toml"
-    _LATEX_FILE.parent.mkdir(exist_ok=True)
-    _LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
-
-    _SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "algebra" / "config.toml"
-
-    if not _SAVE_FILE.exists() or _SAVE_FILE.stat().st_size == 0:
-        # NEW_SAVE_FILE = pathlib.Path("data/algebra/save.toml")
-        # NEW_SAVE_FILE = _THIS_FILE.parent / "config" / "algebra" / "config.toml"
-        # _SAVE_DATA = toml.loads(open(NEW_SAVE_FILE.absolute(), "r").read())
-        _SAVE_DATA = _FALLBACK_CONFIG.copy()
-        _SAVE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        # _SAVE_FILE.touch()
-        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
-
-    else:
-        _SAVE_DATA = toml.loads(open(_SAVE_FILE.absolute(), "r").read())
-
-    _WEEKDAYS = _SAVE_DATA.get("constants", {}).get("weekdays", _FALLBACK_CONFIG["constants"]["weekdays"])
-    _MONTHS = _SAVE_DATA.get("constants", {}).get("months", _FALLBACK_CONFIG["constants"]["months"])
-    _VARIABLES = _SAVE_DATA.get("constants", {}).get("variables", _FALLBACK_CONFIG["constants"]["variables"])
-
-    _START = datetime.datetime.today()
-    _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
-    _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS]
-    stop = time.perf_counter()
-    if _DEBUG:
-        print(f"File i/o boilerplate executed. ({stop - start: .3f} sec)")
+#     _START = datetime.datetime.today()
+#     _DAYS = [_START + datetime.timedelta(days=i) for i in range(30)]
+#     _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in _DAYS]
+#     stop = time.perf_counter()
+#     if _DEBUG:
+#         print(f"File i/o boilerplate executed. ({stop - start: .3f} sec)")
 
 
 class ProblemCategory:
@@ -113,7 +100,7 @@ class ProblemCategory:
         self.long_description = f"{self.description} ({self.weight})"
 
     def generate(self):
-        """Return a tuple of strings ('problem statement', 'solution')"""
+        """Return a Problem object"""
 
         # return self.logic(self.weight)
 
@@ -122,7 +109,7 @@ class ProblemCategory:
 
 
 class Problem:
-    """Represents a specific algebra problem and its solution."""
+    """Represents a homework problem and its solution."""
 
     def __init__(self, problem: str, solution: str, name: str):
         self.problem = rf"\item {problem}"
@@ -130,97 +117,78 @@ class Problem:
         self.name = name
 
 
-# @list_app.command("weights")
-@cli.cli("list weights")
-def list_weights(user: str | None = None):
-    # def list_weights(
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ) -> None:
-    """List the frequency weights for each problem type."""
-    prepare_globals(user=user)
+# # @list_app.command("weights")
+# @cli.cli("list weights")
+# def list_weights(user: str | None = None):
+#     # def list_weights(
+#     #     user: Optional[str] = typer.Option(
+#     #         None, "--user", "-u", help="User profile name to use for this session"
+#     #     ),
+#     # ) -> None:
+#     """List the frequency weights for each problem type."""
+#     # prepare_globals(user=user)
 
-    print(
-        "--------------------------------\nProblems start with 1000 weight.  \nWeight decreases exponentially with use.  \nProblems with smaller weight are less likely to appear in problem sets.  \nSome problem types will increase with difficulty as their weight decreases.  \n--------------------------------"
-    )
+#     print(
+#         "--------------------------------\nProblems start with 1000 weight.  \nWeight decreases exponentially with use.  \nProblems with smaller weight are less likely to appear in problem sets.  \nSome problem types will increase with difficulty as their weight decreases.  \n--------------------------------"
+#     )
 
-    for problem in _PROBLEM_GENERATORS:
-        statement = globals()[problem].__doc__.split("\n")[-1]
-        print(f"{statement}: {_SAVE_DATA['weights'][_USERNAME].get(problem, '????')}")
+#     for problem in _PROBLEM_GENERATORS:
+#         statement = globals()[problem].__doc__.split("\n")[-1]
+#         print(f"{statement}: {_SAVE_DATA['weights'][_USERNAME].get(problem, '????')}")
 
 
-# @algebra_app.command("render")
-@cli.cli("algebra render")
 def render_latex(
+    problem_set: list[tuple[str, str]],
+    start_date: datetime.datetime | None = None,
     assignment_count: int = 1,
     problem_count: int = 4,
-    debug: bool = False,
-    threshold: int = 0,
-    problem_set=None,
+    debug: bool = True,
+    subject_name: str | None = None,
+    stdout: bool = False,
     user: str | None = None,
 ):
-    # def render_latex(
-    #     assignment_count: int = 1,
-    #     problem_count: int = 4,
-    #     debug: bool = False,
-    #     threshold: int = 0,
-    #     problem_set=None,  # type: ignore Typer
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ) -> None:
     """Return a string coding for `assignment_count` pages of LaTeX algebra problems."""
-
-    prepare_globals(user=user)
-
-    if not problem_set or len(problem_set) == len(_ALL_PROBLEMS):
-        problem_set: list[ProblemCategory] = _ALL_PROBLEMS
-        problem_mass: int = 1000 * problem_count
-        filtered_set: list[ProblemCategory] = []
-        while problem_mass > 0 and len(filtered_set) < len(_ALL_PROBLEMS):
-            filtered_set.append(problem_set[0])
-            problem_set = problem_set[1:]
-            problem_mass -= filtered_set[-1].weight
-
-        problem_set = filtered_set
 
     pages = []
     solutions = []
+
+    if start_date is None:
+        start_date = datetime.datetime.today()
 
     doc_header = _LATEX_TEMPLATES["doc_header"]
 
     for i in range(assignment_count):
         solution_set = rf"{_DATES[i]}\\"
+
         page_header = _LATEX_TEMPLATES["page_header"]
         parts = page_header.split("INSERT_DATE_HERE")
-        page_header = _DATES[i].join(parts)
-        # Inject username
+
+        # page_header = _DATES[i].join(parts)
+        date = start_date + datetime.timedelta(days=i)
+        date = f"{_WEEKDAYS[date.weekday()]} {_MONTHS[date.month]} {date.day}, {date.year}"
+        page_header = parts[0] + date + parts[1]
         parts = page_header.split("INSERT_STUDENT_HERE")
-        page_header = _USERNAME.join(parts)
+
+        if _USERNAME is not None and _USERNAME != "default":
+            page_header = _USERNAME.capitalize().join(parts)
+        else:
+            page_header = parts[0] + parts[1]
+
+        parts = page_header.split("INSERT_SUBJECT_HERE")
+        page_header = subject_name.title().join(parts)
 
         problem_statement = ""
 
-        problem_generators = random.sample(
-            problem_set,
-            k=problem_count,
-            counts=[problem.weight + problem_count + 1 for problem in problem_set],
-        )
-
-        problems: list[Problem] = [problem.generate() for problem in problem_generators]
-
-        for k, problem in enumerate(problems):
+        breakpoint()
+        for k in range(problem_count):
             if k % 3 == 0 and k != 0:
                 problem_statement += r"\newpage"
 
-            problem_statement += problem.problem
-            solution_set += rf"{k + 1}: {problem.solution}\;\;"
+            # WARNING:got a sporadic IndexError here, k not in problem_set
+            problem_statement += "\\item " + problem_set[k][0] + "\\\\"
+            solution_set += rf"{k + 1}: {problem_set[k][1]}\;\;"
 
-            # _SAVE_DATA["weights"][problem.name] = int(_SAVE_DATA["weights"][problem.name] * 0.9)
-            _SAVE_DATA["weights"][_USERNAME][problem.name] = int(
-                _SAVE_DATA["weights"][_USERNAME].get(problem.name, 1000) * 0.9
-            )
-
+        problem_set = problem_set[k + 1 :]
         page_footer = r"\end{enumerate}"
         solutions.append(solution_set)
         pages.append(page_header + problem_statement + page_footer)
@@ -229,7 +197,11 @@ def render_latex(
 
     document = doc_header + r"\newpage".join(pages) + r"\newpage " + r"\\".join(solutions) + doc_footer
 
-    document_name = f"Algebra Homework {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex"
+    if stdout:
+        print(document)
+        return
+
+    document_name = f"{subject_name} Homework {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex"
 
     print(f"Writing LaTeX document to '{document_name}")
 
@@ -241,404 +213,625 @@ def render_latex(
         toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
 
 
-# @algebra_app.command("reset")
 @cli.cli("reset algebra")
 @cli.cli("algebra reset")
 def reset_weights(user: str | None = None, debug: bool = True):
-    # def reset_weights(
-    #     debug: bool = True,
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
     """Reset problem frequency rates to default."""
 
-    prepare_globals(user=user)
+    # prepare_globals(user=user)
 
     # weights: dict[str, int] = _SAVE_DATA["weights"]
+    rich.print(f"[red]Reset [yellow]{_USERNAME}'s[/yellow] frequency weights to default (1000)?[/red]")
+    if query.confirm():
+        for key in _CONFIG[_USERNAME]["algebra"]["weights"].keys():
+            _CONFIG[_USERNAME]["algebra"]["weights"][key] = _FALLBACK_CONFIG["default"]["algebra"][
+                "weights"
+            ].get(key, 1000)
+        _CONFIG.sync()
 
-    for key in _SAVE_DATA["weights"][_USERNAME].keys():
-        _SAVE_DATA["weights"][_USERNAME][key] = _FALLBACK_CONFIG["weights"]["default"].get(key, 1000)
-
-    if not debug:
-        toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
-        print("Frequency weights reset to default (1000).")
-    else:
-        print("Invoke with --no-debug to save changes.")
     exit(0)
 
 
-# @algebra_app.command("config")
-@cli.cli("algebra config")
-def configure_problem_set(user: str | None = None):
-    # def configure_problem_set(
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
-    """Configures the frequency rates of problems."""
+# # @algebra_app.command("config")
+# @cli.cli("algebra config")
+# def configure_problem_set(user: str | None = None):
+#     # def configure_problem_set(
+#     #     user: Optional[str] = typer.Option(
+#     #         None, "--user", "-u", help="User profile name to use for this session"
+#     #     ),
+#     # ):
+#     """Configures the frequency rates of problems."""
 
-    prepare_globals(user=user)
+#     prepare_globals(user=user)
 
-    missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(
-        _SAVE_DATA["weights"][_USERNAME].keys()
-    )
+#     missing_problems = set(elem for elem in _PROBLEM_GENERATORS) - set(
+#         _SAVE_DATA["weights"][_USERNAME].keys()
+#     )
 
-    for problem_type in missing_problems:
-        _SAVE_DATA["weights"][_USERNAME][problem_type] = _FALLBACK_CONFIG["weights"]["default"].get(
-            problem_type, 1000
-        )
+#     for problem_type in missing_problems:
+#         _SAVE_DATA["weights"][_USERNAME][problem_type] = _FALLBACK_CONFIG["weights"]["default"].get(
+#             problem_type, 1000
+#         )
 
-    form = {
-        _NAME_TO_DESCRIPTION[problem_type]: int(_SAVE_DATA["weights"][_USERNAME][problem_type])
-        for problem_type in _PROBLEM_GENERATORS
-    }
+#     form = {
+#         _NAME_TO_DESCRIPTION[problem_type]: int(_SAVE_DATA["weights"][_USERNAME][problem_type])
+#         for problem_type in _PROBLEM_GENERATORS
+#     }
 
-    data = query.form_from_dict(form, preamble=f"  Student: {_USERNAME}\n----------------------------")
+#     data = query.form_from_dict(form, preamble=f"  Student: {_USERNAME}\n----------------------------")
 
-    if not data:
-        return
+#     if not data:
+#         return
 
-    data = {_DESCRIPTION_TO_NAME[desc]: data[desc] for desc in data.keys()}
-    _SAVE_DATA["weights"][_USERNAME] = data
-    toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
-    print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
+#     data = {_DESCRIPTION_TO_NAME[desc]: data[desc] for desc in data.keys()}
+#     _SAVE_DATA["weights"][_USERNAME] = data
+#     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+#     print(f"\nNew weights saved to {_SAVE_FILE.absolute()}")
 
 
 # @config_app.command("open")
-@cli.cli("config open")
-def open_config(module: str | None = None):
-    # def open_config(
-    #     module: str = typer.Argument(None, help="Module to open config for (algebra, english)"),  # type: ignore Typer
-    # ):
-    """Open the configuration for a specific module in the default editor."""
+# @cli.cli("config open")
+# def open_config(module: str | None = None):
+#     # def open_config(
+#     #     module: str = typer.Argument(None, help="Module to open config for (algebra, english)"),  # type: ignore Typer
+#     # ):
+#     """Open the configuration for a specific module in the default editor."""
 
-    if not module:
-        choices = ["algebra", "english"]
-        choice = query.select(choices)
-        if choice is None:
-            return
-        module = choice
+#     if not module:
+#         choices = ["algebra", "english"]
+#         choice = query.select(choices)
+#         if choice is None:
+#             return
+#         module = choice
 
-    match module.lower():
-        case "algebra":
-            prepare_disk_io()
-            try:
-                os.startfile(_SAVE_FILE.absolute())  # type: ignore[attr-defined]
-            except Exception as e:  # pragma: no cover
-                print(f"Failed to open algebra config: {e}")
+#     match module.lower():
+#         case "algebra":
+#             prepare_disk_io()
+#             try:
+#                 os.startfile(_SAVE_FILE.absolute())  # type: ignore[attr-defined]
+#             except Exception as e:  # pragma: no cover
+#                 print(f"Failed to open algebra config: {e}")
 
-        case "english":
-            try:
-                try:
-                    from .english import config_file as open_english_config
-                except ImportError:
-                    from english import config_file as open_english_config
-                open_english_config()
-            except Exception as e:  # pragma: no cover
-                print(f"Failed to open english config: {e}")
+#         case "english":
+#             try:
+#                 try:
+#                     from .english import config_file as open_english_config
+#                 except ImportError:
+#                     from english import config_file as open_english_config
+#                 open_english_config()
+#             except Exception as e:  # pragma: no cover
+#                 print(f"Failed to open english config: {e}")
 
-        case _:
-            print(f"Unknown module: {module}")
-            print("Available modules: algebra, english")
-
-
-# @config_app.command("edit")
-@cli.cli("config edit")
-def edit_config(module: str | None = None, user: str | None = None):
-    # def edit_config(
-    #     module: str = typer.Argument(None, help="Module to edit config for (algebra, english, etc.)"),
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
-    """Edit configuration for a specific module."""
-
-    prepare_globals(user=user)
-
-    if not module:
-        choices = ["algebra", "english"]
-        choice = query.select(choices)
-        if choice is None:
-            return
-        module = choice
-
-    if module == "algebra":
-        edit_algebra_config(user=user)
-    elif module == "english":
-        edit_english_config(user=user)
-    else:
-        print(f"Unknown module: {module}")
-        print("Available modules: algebra, english")
+#         case _:
+#             print(f"Unknown module: {module}")
+#             print("Available modules: algebra, english")
 
 
-# @config_app.command("algebra")
-@cli.cli("config algebra")
-def edit_algebra_config(user: str | None = None):
-    # def edit_algebra_config(
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
-    """Edit algebra configuration."""
+# @cli.cli("config edit")
+# def edit_config(module: str | None = None, user: str | None = None):
+#     """Edit configuration for a specific module."""
 
-    prepare_globals(user=user)
+#     _CONFIG[_USERNAME]["algebra"] = query.edit_object(_CONFIG[_USERNAME]["algebra"])
+# prepare_globals(user=user)
 
-    configure_problem_set(user=user)
+# if not module:
+#     choices = ["algebra", "english"]
+#     choice = query.select(choices)
+#     if choice is None:
+#         return
+#     module = choice
 
-
-# @config_app.command("english")
-@cli.cli("config english")
-def edit_english_config(user: str | None = None):
-    # def edit_english_config(
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
-    """Edit english configuration."""
-
-    prepare_disk_io()
-
-    from .english import config_english  # noqa: F401
-
-    config_english()
+# if module == "algebra":
+#     edit_algebra_config(user=user)
+# elif module == "english":
+#     edit_english_config(user=user)
+# else:
+#     print(f"Unknown module: {module}")
+#     print("Available modules: algebra, english")
 
 
 # @config_app.callback(invoke_without_command=True)
+@cli.cli("config open")
 @cli.cli("config")
 def config_default(user: str | None = None):
-    """Managing configuration for target modules."""
-    # def config_default(
-    #     ctx: typer.Context,
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
-    #     """Manage configuration for different modules."""
+    """Open configuration file."""
 
-    #     if ctx and ctx.invoked_subcommand:
-    #         return
-
-    available_apps = ["algebra", "english", "chemistry"]
-
-    print("Which module?")
-    choice = query.select(available_apps)
-
-    match choice:
-        case "algebra":
-            edit_algebra_config(user=user)
-
-        case "english":
-            edit_english_config()
+    os.startfile(_SAVE_FILE.absolute())
 
 
 # @algebra_app.callback(invoke_without_command=True)
 @cli.cli("algebra")
-def algebra_default(user: str | None = None, debug: bool = False):
-    """Launch TUI for managing and generating algebra homework assignments."""
-    # def algebra_default(
-    #     ctx: typer.Context,
-    #     debug: bool = False,
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
-    #     """Manage and generate algebra homework assignments."""
+def algebra_default(
+    user: str | None = None,
+    start_date: datetime.datetime | None = None,
+    assignment_count: int = 5,
+    problem_count: int = 4,
+    stdout: bool = False,
+    interact: bool = True,
+    render: bool = True,
+) -> list[tuple[str, str]]:
+    """Generate algebra homework assignments.
 
-    #     if ctx and ctx.invoked_subcommand:
-    #         return
+    Returns a list of tuples of problem statements and solutions."""
 
-    prepare_globals(user=user)
+    # prepare_globals(user=user)
 
-    selected_problems = query.approve_list(_ALL_PROBLEMS, repr_func=lambda p: p.long_description)
+    try:
+        from .algebra import problems
+    except ImportError:
+        from algebra import problems
 
-    start_date = survey.routines.datetime(
-        "Select assignment start date: ",
-        attrs=("month", "day", "year"),
-    )
-    if not start_date:
+        # prepare_globals(user=user)
+
+    if start_date is None:
         start_date = datetime.datetime.today()
 
-    assignment_count = survey.routines.numeric(
-        "How many algebra assignments to generate? ", decimal=False, value=5
-    )
+    db = tomlconfig.TomlConfig(_SAVE_FILE)
 
-    if not assignment_count:
-        assignment_count = 5
+    all_problems = [p for p in dir(problems) if p.startswith("generate_")]
+    all_problems = [getattr(problems, p) for p in all_problems]
 
-    problem_count = survey.routines.numeric("How many problems per assignment? ", decimal=False, value=4)
+    for problem in all_problems:
+        try:
+            db[_USERNAME]["algebra"]["weights"][problem.__name__]
+        except KeyError:
+            db[_USERNAME] = db.get(_USERNAME, {})
+            db[_USERNAME]["algebra"] = db.get(_USERNAME, {}).get("algebra", {})
+            db[_USERNAME]["algebra"]["weights"] = db.get(_USERNAME, {}).get("algebra", {}).get("weights", {})
+            db[_USERNAME]["algebra"]["weights"][problem.__name__] = 1000
+    db.sync()
 
-    if not problem_count:
-        problem_count = 4
+    if interact:
+        approved_problems = query.approve_list(
+            all_problems,
+            repr_func=lambda p: p.__doc__.split("\n")[-1].strip()
+            + f" ({db.get(_USERNAME, {}).get('algebra', {}).get('weights', {}).get(p.__name__, 1000)})",
+        )
+
+        start_date = survey.routines.datetime(
+            "Select assignment start date: ",
+            attrs=("month", "day", "year"),
+        )
+
+        assignment_count = query.integer(
+            "How many algebra assignments to generate? ", default=assignment_count
+        )
+
+        problem_count = query.integer("How many problems per assignment? ", default=problem_count)
+    else:
+        approved_problems = all_problems
+        start_date = datetime.datetime.today()
 
     days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
 
     global _DATES
     _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days]
 
+    approved_weights = [
+        db.get(_USERNAME, {}).get("algebra", {}).get("weights", {}).get(p.__name__, 1000)
+        for p in approved_problems
+    ]
+
+    used_problems = []
+    problem_list = []
+    for n in range(assignment_count * problem_count):
+        target_weight = random.randint(0, 1000)
+        cur_weight = 0
+        chosen_problem = None
+        for problem in approved_problems:
+            if len(used_problems) == len(approved_problems):
+                used_problems = []
+
+            cur_weight += approved_weights[approved_problems.index(problem)]
+            if cur_weight >= target_weight and problem not in used_problems:
+                chosen_problem = problem
+                # problem_list.append(problem)
+                # used_problems.append(problem)
+                break
+        if chosen_problem is None:
+            problem_list.append(random.choice(approved_problems))
+            used_problems.append(problem_list[-1])
+        else:
+            problem_list.append(chosen_problem)
+            used_problems.append(chosen_problem)
+            db[_USERNAME]["algebra"]["weights"][chosen_problem.__name__] = int(
+                db[_USERNAME]["algebra"]["weights"][chosen_problem.__name__] * 0.8
+            )
+            approved_weights[approved_problems.index(chosen_problem)] = int(
+                approved_weights[approved_problems.index(chosen_problem)] * 0.8
+            )
+
+    problem_set = []
+    for problem in problem_list:
+        problem_set.append(problem(freq_weight=approved_weights[approved_problems.index(problem)]))
+
+    db.sync()
+
+    if render:
+        render_latex(
+            start_date=start_date,
+            assignment_count=assignment_count,
+            problem_count=problem_count,
+            problem_set=problem_set,
+            subject_name="Algebra",
+            user=user,
+            stdout=stdout,
+        )
+    return problem_set
+
+
+@cli.cli("multiple")
+def multiple_default(user: str | None = None):
+    """Launch TUI for multiple subject generation."""
+
+    all_subjects = ["algebra", "vocabulary"]
+    approved_subjects = query.approve_list(all_subjects)
+
+    form = {}
+
+    form["start_date"] = datetime.datetime.today()
+    form["assignment_count"] = 5
+    form["problem count"] = {}
+    for subject in approved_subjects:
+        form["problem count"][f"{subject}"] = 3
+
+    data = query.form_from_dict(form)
+    start_date = data["start_date"]
+    assignment_count = data["assignment_count"]
+    # for subject in approved_subjects:
+    #     problem_count[subject] = data["problem count"][f"{subject}"]
+
+    # assignment_count = query.integer("How many assignments to generate? ", default=5)
+
+    problem_set = []
+    for subject in approved_subjects:
+        problem_count = data["problem count"][f"{subject}"]
+        match subject:
+            case "algebra":
+                # problem_count = query.integer("How many algebra problems per assignment? ", default=4)
+                problem_set.extend(
+                    algebra_default(
+                        user=user,
+                        start_date=start_date,
+                        assignment_count=assignment_count,
+                        problem_count=problem_count,
+                        render=False,
+                        interact=False,
+                    )
+                )
+            case "vocabulary":
+                # problem_count = query.integer("How many vocabulary problems per assignment? ", default=2)
+                problem_set.extend(
+                    vocabulary_default(
+                        user=user,
+                        assignment_count=assignment_count,
+                        problem_count=problem_count,
+                        render=False,
+                        interact=False,
+                    )
+                )
+        breakpoint()
+
+    # problem_count = query.integer("How many problems per assignment? ", default=6)
+    # WARNING: got a sporadic ValueError here, sample larger than population
+    try:
+        problem_set = random.sample(problem_set, k=max(assignment_count * problem_count, len(problem_set)))
+    except ValueError:
+        breakpoint()
+        problem_set = random.choices(problem_set, k=max(assignment_count * problem_count, len(problem_set)))
+
+    problem_count = sum(data["problem count"].values())
+    breakpoint()
     render_latex(
+        start_date=start_date,
         assignment_count=assignment_count,
         problem_count=problem_count,
-        debug=debug,
-        problem_set=selected_problems,
+        problem_set=problem_set,
+        subject_name="+".join(approved_subjects),
         user=user,
     )
 
 
-# @list_app.callback(invoke_without_command=True)
-@cli.cli("list")
-def list_default(user: str | None = None):
-    """Launch TUI for listing problem types, frequency weights, etc."""
-    # def list_default(
-    #     ctx: typer.Context,
-    #     user: Optional[str] = typer.Option(
-    #         None, "--user", "-u", help="User profile name to use for this session"
-    #     ),
-    # ):
-    #     """List problem types, frequency weights, etc."""
-    #     if ctx.invoked_subcommand:
-    #         return
+# @cli.cli("vocabulary test")
+# def vocabulary_default(
+#     default_n: int = 1,
+#     user: str | None = None,
+#     interact: bool = True,
+#     stdout: bool = False,
+#     render: bool = True,
+# ):
+#     """Launch TUI for vocabulary generation."""
 
-    selection = query.select(["algebra", "english", "chemistry"])
-    match selection:
-        case "algebra":
-            list_weights(user=user)
-        case "english":
-            pass
-        case "chemistry":
-            pass
+#     db = tomlconfig.TomlConfig(_SAVE_FILE)
+
+#     try:
+#         db[_USERNAME]
+#         db[_USERNAME]["vocabulary"]
+#         db[_USERNAME]["vocabulary"]["weights"]
+#     except KeyError:
+#         db[_USERNAME] = db.get(_USERNAME, {})
+#         db[_USERNAME]["vocabulary"] = db.get(_USERNAME, {}).get("vocabulary", {})
+#         db[_USERNAME]["vocabulary"]["weights"] = (
+#             db.get(_USERNAME, {}).get("vocabulary", {}).get("weights", {})
+#         )
+
+#     if interact:
+#         n = query.integer(
+#             preamble="How many vocabulary problems to generate? ", default=default_n, minimum=1, maximum=100
+#         )
+#     else:
+#         n = default_n
+
+#     vocab_weights: dict[str, int] = [
+#         weight for weight in db.get(_USERNAME, {}).get("vocabulary", {}).get("weights", {}).items()
+#     ]
+
+
+@cli.cli("vocabulary")
+def vocabulary_default(
+    user: str | None = None,
+    assignment_count: int = 5,
+    problem_count: int = 3,
+    stdout: bool = False,
+    interact: bool = True,
+    debug: bool = True,
+    render: bool = True,
+):
+    """Render a set of vocabulary problems."""
+
+    # prepare_globals(user=user)
+
+    # db = tomlconfig.TomlConfig(_SAVE_FILE)
+
+    # try:
+    #     db[_USERNAME]
+    #     db[_USERNAME]["vocabulary"]
+    #     db[_USERNAME]["vocabulary"]["weights"]
+    # except KeyError:
+    #     db[_USERNAME] = db.get(_USERNAME, {})
+    #     db[_USERNAME]["vocabulary"] = db.get(_USERNAME, {}).get("vocabulary", {})
+    #     db[_USERNAME]["vocabulary"]["weights"] = (
+    #         db.get(_USERNAME, {}).get("vocabulary", {}).get("weights", {})
+    #     )
+
+    # db.sync()
+
+    if interact:
+        start_date = survey.routines.datetime(
+            "Select assignment start date: ",
+            attrs=("month", "day", "year"),
+        )
+        assignment_count = query.integer(
+            preamble="How many vocabulary assignments to generate? ",
+            default=assignment_count,
+            minimum=1,
+            maximum=100,
+        )
+        problem_count = query.integer(
+            preamble="How many problems per assignment? ", default=problem_count, minimum=1, maximum=100
+        )
+    else:
+        start_date = datetime.datetime.today()
+
+    days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
+
+    global _DATES
+    _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days]
+
+    used_words = []
+    selected_problems = []
+
+    for n in range(assignment_count * problem_count):
+        proposed_problem = vocab_problem(excludes=used_words)
+        used_words.append(proposed_problem[0])
+        selected_problems.append(proposed_problem)
+
+    problem_set = [(p[1], p[2]) for p in selected_problems]
+
+    if stdout:
+        print()
+        return
+
+    if render:
+        render_latex(
+            assignment_count=assignment_count,
+            problem_count=problem_count,
+            debug=debug,
+            problem_set=problem_set,
+            subject_name="Vocabulary",
+            user=user,
+        )
+
+    return problem_set
+
+
+def vocab_problem(
+    user: str | None = None, excludes: list[str] | None = None, stdout: bool = False
+) -> tuple[str, str]:
+    """Generate a vocabulary problem."""
+
+    # prepare_globals(user=user)
+
+    dictionary = PyMultiDictionary.MultiDictionary()
+
+    if excludes is None:
+        excludes = []
+
+    # vocab_weights = db.get(_USERNAME, {}).get("vocabulary", {}).get("weights")
+    try:
+        vocab_weights = _CONFIG[_USERNAME]["vocabulary"]["weights"]
+    except KeyError:
+        vocab_weights = {}
+        _CONFIG[_USERNAME] = {}
+        _CONFIG[_USERNAME]["vocabulary"] = {}
+        _CONFIG[_USERNAME]["vocabulary"]["weights"] = {}
+        _CONFIG.sync()
+
+    vocab_index = random.randint(0, 1000)
+
+    cur_index = 0
+    target_word: str | None = None
+
+    for word, weight in vocab_weights.items():
+        cur_index += weight
+        if cur_index >= vocab_index and word not in excludes:
+            target_word = word
+            break
+
+    if target_word is None:
+        word_pool = set(_VOCABULARY_WORDS) - set(list(vocab_weights.keys()))
+        target_word = random.choice(list(word_pool))
+        target_weight = 1000
+    else:
+        target_weight = vocab_weights[target_word]
+
+    # with TomlConfig(_SAVE_FILE) as config:
+    #     config["weights"][_USERNAME]["vocabulary"][target_word] = target_weight * 0.75
+    # try:
+    #     db[_USERNAME]
+    #     db[_USERNAME]["vocabulary"]
+    #     db[_USERNAME]["vocabulary"]["weights"]
+    # except KeyError:
+    #     db[_USERNAME] = db.get(_USERNAME, {})
+    #     db[_USERNAME]["vocabulary"] = db.get(_USERNAME, {}).get("vocabulary", {})
+    #     db[_USERNAME]["vocabulary"]["weights"] = (
+    #         db.get(_USERNAME, {}).get("vocabulary", {}).get("weights", {})
+    #     )
+    with tomlconfig.TomlConfig(_SAVE_FILE) as config:
+        config[_USERNAME]["vocabulary"]["weights"][target_word] = int(
+            target_weight * (1 - random.random() * random.random())
+        )
+    # _CONFIG[_USERNAME]["vocabulary"]["weights"][target_word] = int(
+    #     target_weight * (1 - random.random() * random.random())
+    # )
+    # _CONFIG.sync()
+
+    problem = f"What is the definition of \\textit{{{target_word}}}?"
+    solution = f"{dictionary.meaning('en', target_word)[1].replace(f'The definition of {target_word} in the dictionary is', '')}".strip().capitalize()
+    # db.sync()
+    if stdout:
+        print(f"('{target_word}','{problem}', '{solution}')")
+    else:
+        return (target_word, problem, solution)
 
 
 # @app.callback(invoke_without_command=True)
 @cli.cli("")
 def homework(user: str | None = None):
     """Launch TUI for homework generation."""
-    # def default_homework(
-    #     ctx: typer.Context,
-    #     user: Optional[str] = typer.Option(
-    #         None,
-    #         "--user",
-    #         "-u",
-    #         help="User profile name to use for this session",
-    #     ),
-    # ):
-    # if ctx and ctx.invoked_subcommand:
-    #     return
 
-    available_apps = ["algebra", "english", "chemistry"]
+    available_apps = ["multiple", "algebra", "vocabulary"]
 
     print("Which subject?")
     choice = query.select(available_apps)
 
     match choice:
+        case "multiple":
+            multiple_default(user=user)
+
         case "algebra":
             algebra_default(user=user)
 
-        case "english":
-            from .english import english_default
-
-            english_default()
+        case "vocabulary":
+            vocabulary_default(user=user)
 
 
-def main():
-    # default_homework(None)
-    app()
+# def prepare_globals(user: Optional[str] = None):
+#     global _PROBLEM_GENERATORS, _ALL_PROBLEMS, _NAME_TO_DESCRIPTION, _DESCRIPTION_TO_NAME, _USERNAME
+
+#     prepare_disk_io()
+
+#     # _USERNAME should be set to the `--user` option if it exists
+#     cli_user = None
+#     if user is not None:
+#         cli_user = user
+#     else:
+#         try:
+#             for i, token in enumerate(sys.argv):
+#                 if token == "--user" or token == "-u":
+#                     if i + 1 < len(sys.argv):
+#                         cli_user = sys.argv[i + 1]
+#                     break
+#                 if token.startswith("--user="):
+#                     cli_user = token.split("=", 1)[1]
+#                     break
+#                 if token.startswith("-u") and len(token) > 2:
+#                     cli_user = token[2:]
+#                     break
+#         except Exception:
+#             cli_user = None
+
+#     try:
+#         default_user = _SAVE_DATA["default_user"]
+#     except KeyError:
+#         default_user = _FALLBACK_CONFIG.get("default_user", "default")
+#         _SAVE_DATA["default_user"] = default_user
+
+#     _USERNAME = cli_user or default_user or "default"
+
+#     _problem_dict = {k: v for k, v in globals().items() if k.startswith("generate") and callable(v)}
+#     _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
+
+#     _ALL_PROBLEMS = [
+#         ProblemCategory(
+#             logic=logic, weight=int(_SAVE_DATA.get("weights", {}).get(_USERNAME, {}).get(name, 1000))
+#         )
+#         for name, logic in _problem_dict.items()
+#     ]
+
+#     if _SAVE_DATA.get("weights", None) is None:
+#         _SAVE_DATA["weights"] = {}
+#         _SAVE_DATA["weights"][_USERNAME] = {}
+
+#     if _SAVE_DATA["weights"].get(_USERNAME, None) is None:
+#         _SAVE_DATA["weights"][_USERNAME] = {}
+
+#     for problem in _ALL_PROBLEMS:
+#         if problem.weight is None:
+#             problem.weight = 1000
+#         if _SAVE_DATA["weights"][_USERNAME].get(problem.name, None) is None:
+#             # if the problem is not in the user's weights, use the default weights (user config takes precedence over fallback config)
+#             _SAVE_DATA["weights"][_USERNAME][problem.name] = _SAVE_DATA["weights"]["default"].get(
+#                 problem.name, _FALLBACK_CONFIG["weights"]["default"].get(problem.name, 1000)
+#             )
+
+#     # mapping of problem function name to problem description
+#     _NAME_TO_DESCRIPTION = {
+#         name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
+#     }
+
+#     # mapping of problem description to problem function name
+#     _DESCRIPTION_TO_NAME = {
+#         globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
+#     }
+
+#     toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+
+
+_OPTIONS = cli._parse_options(sys.argv[1:])
+_SAVE_FILE = pathlib.Path(appdirs.user_data_dir()) / "robolson" / "homework" / "config.toml"
+_FALLBACK_FILE = pathlib.Path(__file__).parent / "config" / "homework" / "config.toml"
+_FALLBACK_CONFIG = tomlconfig.TomlConfig(
+    user_toml_file=_FALLBACK_FILE, default_toml_file=_FALLBACK_FILE, readonly=True
+)
+_CONFIG = tomlconfig.TomlConfig(user_toml_file=_SAVE_FILE, default_toml_file=_FALLBACK_FILE)
+_USERNAME: str = _OPTIONS.get("user", _CONFIG.get("default_user", "default"))
+_LATEX_FILE = pathlib.Path(__file__).parent / "config" / "homework" / "latex_templates.toml"
+_LATEX_TEMPLATES = toml.loads(open(_LATEX_FILE.absolute(), "r").read())
+
+_VOCABULARY_FILE = pathlib.Path(__file__).parent / "data" / "sat_words.txt"
+_VOCABULARY_WORDS = open(_VOCABULARY_FILE).read().split("\n")
 
 
 _PROBLEM_GENERATORS = []
 _ALL_PROBLEMS = []
 _NAME_TO_DESCRIPTION = {}
 _DESCRIPTION_TO_NAME = {}
-_USERNAME: str = None
 _SAVE_DATA = {}
 
-
-def prepare_globals(user: Optional[str] = None):
-    global _PROBLEM_GENERATORS, _ALL_PROBLEMS, _NAME_TO_DESCRIPTION, _DESCRIPTION_TO_NAME, _USERNAME
-
-    prepare_disk_io()
-
-    # _USERNAME should be set to the `--user` option if it exists
-    cli_user = None
-    if user is not None:
-        cli_user = user
-    else:
-        try:
-            for i, token in enumerate(sys.argv):
-                if token == "--user" or token == "-u":
-                    if i + 1 < len(sys.argv):
-                        cli_user = sys.argv[i + 1]
-                    break
-                if token.startswith("--user="):
-                    cli_user = token.split("=", 1)[1]
-                    break
-                if token.startswith("-u") and len(token) > 2:
-                    cli_user = token[2:]
-                    break
-        except Exception:
-            cli_user = None
-
-    try:
-        default_user = _SAVE_DATA["default_user"]
-    except KeyError:
-        default_user = _FALLBACK_CONFIG.get("default_user", "default")
-        _SAVE_DATA["default_user"] = default_user
-
-    _USERNAME = cli_user or default_user or "default"
-
-    _problem_dict = {k: v for k, v in globals().items() if k.startswith("generate") and callable(v)}
-    _PROBLEM_GENERATORS = [k for k in _problem_dict.keys()]
-
-    _ALL_PROBLEMS = [
-        ProblemCategory(
-            logic=logic, weight=int(_SAVE_DATA.get("weights", {}).get(_USERNAME, {}).get(name, 1000))
-        )
-        for name, logic in _problem_dict.items()
-    ]
-
-    if _SAVE_DATA.get("weights", None) is None:
-        _SAVE_DATA["weights"] = {}
-        _SAVE_DATA["weights"][_USERNAME] = {}
-
-    if _SAVE_DATA["weights"].get(_USERNAME, None) is None:
-        _SAVE_DATA["weights"][_USERNAME] = {}
-
-    for problem in _ALL_PROBLEMS:
-        if problem.weight is None:
-            problem.weight = 1000
-        if _SAVE_DATA["weights"][_USERNAME].get(problem.name, None) is None:
-            # if the problem is not in the user's weights, use the default weights (user config takes precedence over fallback config)
-            _SAVE_DATA["weights"][_USERNAME][problem.name] = _SAVE_DATA["weights"]["default"].get(
-                problem.name, _FALLBACK_CONFIG["weights"]["default"].get(problem.name, 1000)
-            )
-
-    # mapping of problem function name to problem description
-    _NAME_TO_DESCRIPTION = {
-        name: globals()[name].__doc__.split("\n")[-1].strip() for name in _PROBLEM_GENERATORS
-    }
-
-    # mapping of problem description to problem function name
-    _DESCRIPTION_TO_NAME = {
-        globals()[name].__doc__.split("\n")[-1].strip(): name for name in _PROBLEM_GENERATORS
-    }
-
-    # removed_old_generator = False
-    # for generator in list(_SAVE_DATA["weights"].keys()):
-    #     if generator not in globals().keys():
-    #         del _SAVE_DATA["weights"][generator]
-    #         removed_old_generator = True
-
-    # if removed_old_generator:
-    #     breakpoint()
-    #     _SAVE_DATA["constants"] = {}
-    #     _SAVE_DATA["constants"]["weekdays"] = _WEEKDAYS
-    #     _SAVE_DATA["constants"]["months"] = _MONTHS
-    #     _SAVE_DATA["constants"]["variables"] = _VARIABLES
-
-    toml.dump(o=_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
-
-
-# _problem_dict = { =_SAVE_DATA, f=open(_SAVE_FILE.absolute(), "w"))
+_WEEKDAYS = _CONFIG.get("constants", {}).get("weekdays")
+_MONTHS = _CONFIG.get("constants", {}).get("months")
+_VARIABLES = _CONFIG.get("constants", {}).get("variables")
 
 if __name__ == "__main__":
     cli.parse_and_invoke(
@@ -646,4 +839,3 @@ if __name__ == "__main__":
         use_configs=True,
         default_config_file=pathlib.Path(__file__).parent / "cli" / "homework_config.toml",
     )
-    # main()

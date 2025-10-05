@@ -1,2 +1,9 @@
+hidden_options=["edit_cli_config", "open_base_config", "capture_output", "h"]
+
 [options]
-user = "default"
+help = false
+h = false
+capture_output = false
+edit_cli_config = false
+open_cli_config = false
+open_base_config = false

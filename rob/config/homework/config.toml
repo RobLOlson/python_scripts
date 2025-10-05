@@ -1,0 +1,27 @@
+default_user = "default"
+
+[constants]
+weekdays = [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",]
+months = [ "N/a", "Jan", "Feb", "March", "April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec",]
+variables = [ "x", "y", "z", "a", "b", "c", "k", "m", "n", "i", "p", "q",]
+
+[default.algebra.weights]
+generate_numerical_expression_to_ones = 500
+generate_fraction_addition = 1000
+generate_integer_factorization = 1000
+generate_radical_simplification = 1000
+generate_simple_x_expression = 1000
+generate_function_evaluation = 1000
+generate_simple_x_equation = 1000
+generate_decimal_x_equation = 1000
+generate_variable_isolation = 1000
+generate_system_of_equations = 1000
+generate_arithmetic_sequence = 1000
+generate_arithmetic_sequence_formula = 1000
+generate_geometric_sequence = 1000
+generate_geometric_sequence_evaluation = 1000
+generate_power_expression = 1000
+generate_radical_simplification_with_vars = 1000
+generate_binomial_product_expansion = 1000
+generate_multiply_difference_of_squares = 1000
+generate_multiply_squares_of_binomials = 1000

@@ -64,6 +64,42 @@ tests = ["cloudpickle", "hypothesis", "mypy (>=1.11.1)", "pympler", "pytest (>=4
 tests-mypy = ["mypy (>=1.11.1)", "pytest-mypy-plugins"]
 
 [[package]]
+name = "beautifulsoup4"
+version = "4.14.2"
+description = "Screen-scraping library"
+optional = false
+python-versions = ">=3.7.0"
+files = [
+    {file = "beautifulsoup4-4.14.2-py3-none-any.whl", hash = "sha256:5ef6fa3a8cbece8488d66985560f97ed091e22bbc4e9c2338508a9d5de6d4515"},
+    {file = "beautifulsoup4-4.14.2.tar.gz", hash = "sha256:2a98ab9f944a11acee9cc848508ec28d9228abfd522ef0fad6a02a72e0ded69e"},
+]
+
+[package.dependencies]
+soupsieve = ">1.2"
+typing-extensions = ">=4.0.0"
+
+[package.extras]
+cchardet = ["cchardet"]
+chardet = ["chardet"]
+charset-normalizer = ["charset-normalizer"]
+html5lib = ["html5lib"]
+lxml = ["lxml"]
+
+[[package]]
+name = "bs4"
+version = "0.0.2"
+description = "Dummy package for Beautiful Soup (beautifulsoup4)"
+optional = false
+python-versions = "*"
+files = [
+    {file = "bs4-0.0.2-py2.py3-none-any.whl", hash = "sha256:abf8742c0805ef7f662dce4b51cca104cffe52b835238afc169142ab9b3fbccc"},
+    {file = "bs4-0.0.2.tar.gz", hash = "sha256:a48685c58f50fe127722417bae83fe6badf500d54b55f7e39ffe43b798653925"},
+]
+
+[package.dependencies]
+beautifulsoup4 = "*"
+
+[[package]]
 name = "cachetools"
 version = "5.5.0"
 description = "Extensible memoizing collections and decorators"
@@ -737,6 +773,17 @@ files = [
 ]
 
 [[package]]
+name = "iso639-lang"
+version = "2.6.3"
+description = "A fast, comprehensive, ISO 639 library."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "iso639_lang-2.6.3-py3-none-any.whl", hash = "sha256:a6c2fb9f739dca180dc7f48b098880f303bcce2cdf93a4ca3152ed8bbbb94fbb"},
+    {file = "iso639_lang-2.6.3.tar.gz", hash = "sha256:078ddb7cd0182dcc04367691acc8022ddf7158b6cb09f08f798af823fa864265"},
+]
+
+[[package]]
 name = "jinja2"
 version = "3.1.5"
 description = "A very fast and expressive template engine."
@@ -1366,6 +1413,26 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pymultidictionary"
+version = "1.3.2"
+description = "PyMultiDictionary is a Dictionary Module for Python 2 to get meanings, translations, synonyms and antonyms of words in 20 different languages"
+optional = false
+python-versions = "<4,>=3.7"
+files = [
+    {file = "pymultidictionary-1.3.2-py3-none-any.whl", hash = "sha256:7a2a2d7c49000de729e1a0228ed179db4ced9a3332a3060615b6b726a63d54ab"},
+    {file = "pymultidictionary-1.3.2.tar.gz", hash = "sha256:dc09b2df1cdc05e32d5c349e60621e234fefa9b37d89f43148f0d5784e924df6"},
+]
+
+[package.dependencies]
+bs4 = "*"
+iso639-lang = "*"
+requests = "*"
+
+[package.extras]
+docs = ["sphinx (<7)", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
+test = ["nose2[coverage-plugin]", "pytest"]
+
+[[package]]
 name = "pyparsing"
 version = "3.2.0"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
@@ -1645,6 +1712,17 @@ files = [
 ]
 
 [[package]]
+name = "soupsieve"
+version = "2.8"
+description = "A modern CSS selector implementation for Beautiful Soup."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "soupsieve-2.8-py3-none-any.whl", hash = "sha256:0cc76456a30e20f5d7f2e14a98a4ae2ee4e5abdc7c5ea0aafe795f344bc7984c"},
+    {file = "soupsieve-2.8.tar.gz", hash = "sha256:e2dd4a40a628cb5f28f6d4b0db8800b8f581b65bb380b97de22ba5ca8d72572f"},
+]
+
+[[package]]
 name = "survey"
 version = "4.5.4"
 description = "A simple library for creating beautiful interactive prompts."
@@ -1859,4 +1937,4 @@ tests = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9.1"
-content-hash = "a6c76dd491bd567d907eff29b070d49139e0ed4f6179818b4bebace669f44690"
+content-hash = "76ebf5f616e7d4dc14031fdda9c3de1c8d6d7c6a3cf0bd0f676feeeb1736d101"
