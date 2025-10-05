@@ -1,3 +1,4 @@
+import datetime
 import shutil
 from textwrap import wrap
 from typing import Any
@@ -65,10 +66,10 @@ def approve_list(
 
     if preamble:
         rich.print(
-            """\n[green]Toggle approval with number keys.
-Move cursor with up/down.
-Add/remove approval with left/right.
-Press Enter to continue."""
+            """\n[green]  Toggle approval with number keys.
+  Move cursor with up/down.
+  Add/remove approval with left/right.
+  Press Enter to continue."""
         )
 
     print("\n" * (len(target)))
@@ -433,6 +434,26 @@ def edit_object(
             case "\t" | "d" | "l" | ">" | readchar.key.RIGHT | "\r":
                 if not target2[cursor_index][2]:
                     continue
+                if target2[cursor_index][2] is datetime.datetime:
+                    while True:
+                        rich.print(f"[yellow]{target2[cursor_index][0].date()!s}[/yellow]")
+                        choice = readchar.readkey()
+                        match choice:
+                            case "\r":
+                                break
+                            case "k" | readchar.key.UP:
+                                target2[cursor_index] = (
+                                    target2[cursor_index][0] + datetime.timedelta(days=1),
+                                    target2[cursor_index][1],
+                                    target2[cursor_index][2],
+                                )
+                            case "j" | readchar.key.DOWN:
+                                target2[cursor_index] = (
+                                    target2[cursor_index][0] - datetime.timedelta(days=1),
+                                    target2[cursor_index][1],
+                                    target2[cursor_index][2],
+                                )
+                    continue
 
                 modified_text = ""
                 if long_contents or not edit_keys:
@@ -673,15 +694,18 @@ def integer(
     print("\n" * (4 + len(preamble.split("\n"))), end="")
     while True:
         term_width = shutil.get_terminal_size().columns
-        preamble_lines = wrap(preamble, term_width)
+        if len(preamble) > term_width:
+            preamble_lines = wrap(preamble, term_width)
+        else:
+            preamble_lines = [preamble]
         if minimum is None and maximum is None:
-            instruct1 = wrap("Enter integer or use up/down keys to adjust.", term_width)
+            instruct1 = wrap("  Enter integer or use up/down keys to adjust.", term_width)
         else:
             instruct1 = wrap(
-                f"Enter integer or use up/down keys to adjust. [{minimum if minimum is not None else '-inf'}, {maximum if maximum is not None else '+inf'}]",
+                f"  Enter integer or use up/down keys to adjust. [{minimum if minimum is not None else '-inf'}, {maximum if maximum is not None else '+inf'}]",
                 term_width,
             )
-        instruct2 = wrap("Press Ctrl+Enter to confirm and commit.", term_width)
+        instruct2 = wrap("  Press Ctrl+Enter to confirm and commit.", term_width)
         print(_MOVE_UP * (1 + len(preamble_lines) + len(instruct1) + len(instruct2)) + _CLEAR_LINE, end="")
         rich.print("\n".join(preamble_lines), end="")
         if input_number:
