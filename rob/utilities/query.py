@@ -1,7 +1,7 @@
 import datetime
 import shutil
 from textwrap import wrap
-from typing import Any
+from typing import Any, Callable
 
 import readchar
 import rich
@@ -12,7 +12,12 @@ _CLEAR_LINE = "\033[2K"
 _MOVE_UP = "\033[1A"
 _MOVE_DOWN = "\033[1B"
 _MOVE_LEFT = "\033[1D"
+_MOVE_RIGHT = "\033[1C"
 _CLEAR_RIGHT = "\033[K"
+_CLEAR_LEFT = "\033[1K"
+_CLEAR_SCREEN = "\033[2J"
+_SAVE_CURSOR = "\033[s"
+_RESTORE_CURSOR = "\033[u"
 
 
 def approve_list(
@@ -75,7 +80,7 @@ def approve_list(
     print("\n" * (len(target)))
     while True:
         if long_contents:
-            print("\033[2J")
+            print(_CLEAR_SCREEN)
         else:
             print((_MOVE_UP + _CLEAR_LINE) * (len(target) + 1))
         for index, item in enumerate(target):
@@ -337,96 +342,93 @@ def print_linearized_object(linearized_object):
         print("  " * (line[1] + 1) + str(line[0]) + (f" ({line[2]})" if line[2] else ""))
 
 
+def _build_display_lines(
+    target2,
+    cursor_index: int = 0,
+    show_brackets: bool = False,
+    repr_func: Callable | None = None,
+    preamble: str = "",
+):
+    """Builds a list of display lines for the given target2, cursor_index, show_brackets, repr_func, and preamble."""
+    display_lines = []
+    if preamble:
+        display_lines.extend(preamble.split("\n"))
+
+    for index, item in enumerate(target2):
+        # skip brackets if not showing them
+        if not show_brackets and not item[2] and str(item[0]) in "]}[{":
+            continue
+
+        if repr_func:
+            display = repr_func(item)
+        else:
+            display = f"{item[0]}"
+
+        indent = "  " * int(item[1] + 1)
+
+        style = "[white]"
+        if index == cursor_index:
+            indent = indent[:-1] + ">"
+            indent = indent.replace(" ", "-")
+            if item[2]:
+                style = "[green]"
+            else:
+                style = "[red]"
+
+        display_lines.append(rf"{indent}{style}{display}")
+
+    display_lines.append("")
+    display_lines.append("[green]Press h for editing controls.")
+    return display_lines
+
+
 def edit_object(
     target: list[Any] | dict[Any, Any],
     preamble: str = "",
-    repr_func=None,
+    repr_func: Callable | None = None,
     show_brackets: bool = True,
     edit_keys: bool = True,
-    dict_inline: bool = False,
 ) -> list[Any] | dict[Any, Any]:
+    """Interactive inline editor for nested lists/dicts."""
+
+    # complex list/dict converted to a list of tuples
+    # each tuple contains the element, the depth, and the type
+    # type None means the element is a bracket
+    original_target = target.copy()
+
     target2 = linearize_complex_object(target)
 
-    cursor_index = 0
+    cursor_index = -1
+    display_index = -1
 
+    # initialize index to first editable item
     while True:
         cursor_index = (cursor_index + 1) % len(target2)
+        display_index += 1
         if not target2[cursor_index][2]:  # [2] is element's type ("brackets" have no type)
+            if not show_brackets:
+                display_index -= 1
             continue
         if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":  # [0] is contents
+            if not show_brackets:
+                display_index -= 1
             continue
         break
 
-    # rich.print(
-    #     "\n[green]Move cursor with up/down. Press right or tab to edit. Press Enter to confirm and commit."
-    # )
-    # rich.print(preamble)
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
+    display_index = display_index % len(display_lines)
 
-    long_contents = max(len(str(elem)) for elem in target2) > shutil.get_terminal_size().columns
-    end = ""
+    print("\n" * (len(display_lines)))
 
-    if not long_contents:
-        print("\n" * len(target2) * 2, end="\n\n\n\n")
-        print((_CLEAR_LINE + _MOVE_UP) * len(target2))
-    # print("\n" * (len(target2) + 1))
     while True:
-        if long_contents or not edit_keys:
-            print("\033[2J")  # clear screen
-        else:
-            print((_MOVE_UP + _CLEAR_LINE) * (len(target2) + 5))
+        print((_MOVE_UP + _CLEAR_LINE) * (len(display_lines)), end="")
 
-        print(preamble)
-        display_string = ""
-        for index, item in enumerate(target2):
-            if not show_brackets and not item[2] and str(item[0]) in "]}[{":
-                continue
-            if repr_func:
-                display = repr_func(item)
-            else:
-                display = f"{item[0]}"
+        display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
 
-            if dict_inline:
-                # index ON ':'
-                if item[0] == ":" and str(target2[(index + 1) % len(target2)][0]) not in "{}[]":
-                    indent = ""
-                    end = " "
-
-                # index AFTER ':'
-                elif str(target2[(index - 1) % len(target2)][0]) in ":":
-                    indent = ""
-                    end = "\n"
-
-                # index BEFORE ':'
-                elif (
-                    target2[(index + 1) % len(target2)][0] == ":"
-                    or str(target2[(index - 1) % len(target2)][0]) == "{"
-                ):
-                    indent = "  " * int(item[1] + 1)
-                    # indent = ""
-                    end = ""
-                else:
-                    indent = "  " * int(item[1] + 1)
-                    end = "\n"
-            else:
-                indent = "  " * int(item[1] + 1)
-                end = "\n"
-
-            style = "[white]"
-            if index == cursor_index:
-                if item[2]:
-                    style = "[green]"
-                else:
-                    style = "[red]"
-
-            display_string += rf"{style}{indent}{display}{end}"
-            # rich.print(rf"{style}{indent}{display}{end}", end="")
-
-        rich.print(display_string, end="")
-        rich.print("\n[green]Press Enter, right, or tab to edit.\nCtrl+Enter or 'q' to save and quit.")
+        rich.print("\n" + "\n".join(display_lines), end="")
         try:
             choice = readchar.readkey()
         except KeyboardInterrupt:
-            print("")
             rich.print("[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
 
@@ -434,148 +436,94 @@ def edit_object(
             case "\t" | "d" | "l" | ">" | readchar.key.RIGHT | "\r":
                 if not target2[cursor_index][2]:
                     continue
-                if target2[cursor_index][2] is datetime.datetime:
-                    while True:
-                        rich.print(f"[yellow]{target2[cursor_index][0].date()!s}[/yellow]")
-                        choice = readchar.readkey()
-                        match choice:
-                            case "\r":
-                                break
-                            case "k" | readchar.key.UP:
-                                target2[cursor_index] = (
-                                    target2[cursor_index][0] + datetime.timedelta(days=1),
-                                    target2[cursor_index][1],
-                                    target2[cursor_index][2],
-                                )
-                            case "j" | readchar.key.DOWN:
-                                target2[cursor_index] = (
-                                    target2[cursor_index][0] - datetime.timedelta(days=1),
-                                    target2[cursor_index][1],
-                                    target2[cursor_index][2],
-                                )
+
+                if target2[cursor_index][2] == datetime.datetime:
+                    print(_SAVE_CURSOR, end="")
+                    handle_datetime(
+                        target2=target2,
+                        cursor_index=cursor_index,
+                        show_brackets=show_brackets,
+                        repr_func=repr_func,
+                        preamble=preamble,
+                        display_index=display_index,
+                    )
+                    print(_RESTORE_CURSOR, end="")
+                    # print(_MOVE_DOWN * (len(display_lines) + 1), end="")
+                    # print(_MOVE_DOWN * (abs(display_index - len(display_lines)) + 1), end="")
+                    # print(_MOVE_DOWN * (len(display_lines) + 1), end="")
+
+                    continue
+                elif target2[cursor_index][2] == int:  # noqa: E721
+                    handle_integer(target2, cursor_index, show_brackets, repr_func, preamble, display_index)
+                    print(_MOVE_DOWN * (len(display_lines) + 1), end="")
                     continue
 
-                modified_text = ""
-                if long_contents or not edit_keys:
-                    print("\033[2J")
                 else:
-                    print((_MOVE_UP + _CLEAR_LINE) * (len(target2) + 5))
-                display_string = ""
-                print(preamble)
-                for index, item in enumerate(target2):
-                    if not show_brackets and not item[2] and str(item[0]) in "]}[{":
-                        continue
-                    if repr_func:
-                        display = repr_func(item)
-                    else:
-                        display = f"{item[0]}"
+                    handle_string(
+                        target2=target2,
+                        cursor_index=cursor_index,
+                        show_brackets=show_brackets,
+                        repr_func=repr_func,
+                        preamble=preamble,
+                        display_index=display_index,
+                    )
 
-                    if dict_inline:
-                        # index ON ':'
-                        if item[0] == ":" and str(target2[(index + 1) % len(target2)][0]) not in "{}[]":
-                            indent = ""
-                            end = " "
+                # modified_text = ""
+                # # print((_MOVE_UP + _CLEAR_LINE) * len(display_lines))
 
-                        # index AFTER ':'
-                        elif str(target2[(index - 1) % len(target2)][0]) in ":":
-                            indent = ""
-                            end = "\n"
+                # display_lines = _build_display_lines(
+                #     target2=target2,
+                #     cursor_index=cursor_index,
+                #     show_brackets=show_brackets,
+                #     preamble=preamble,
+                #     repr_func=repr_func,
+                # )
+                # rich.print("\n".join(display_lines), end="")
+                # print(_MOVE_UP * (len(display_lines) + 3), end="")
 
-                        # index BEFORE ':'
-                        elif (
-                            target2[(index + 1) % len(target2)][0] == ":"
-                            or str(target2[(index - 1) % len(target2)][0]) == "{"
-                        ):
-                            indent = "  " * int(item[1] + 1)
-                            # indent = ""
-                            end = ""
-                        else:
-                            indent = "  " * int(item[1] + 1)
-                            end = "\n"
-                    else:
-                        indent = "  " * int(item[1] + 1)
-                        end = "\n"
+                # modified_text = "[yellow]" + str(target2[cursor_index][0])
 
-                    style = "[white]"
-                    if index == cursor_index:
-                        edit_prefix = display_string.split("\n")[-1]
-                        edit_line = display_string.count("\n")
-                        if item[2]:
-                            style = "[green]"
-                        else:
-                            style = "[red]"
+                # # Move cursor to start of target2 data
+                # print(_MOVE_LEFT * len(modified_text), end="")
+                # print(modified_text, end="")
+                # print(_MOVE_LEFT * len(modified_text), end="")
+                # print(_CLEAR_RIGHT, end="")
 
-                    display_string += rf"{style}{indent}{display}{end}"
-                    # rich.print(rf"{style}{indent}{display}{end}", end="")
+                # replace = input("  " * int(target2[cursor_index][1] + 1))
 
-                rich.print(display_string, end="")
-                rich.print("\n[green]Press enter right or tab to edit.\nCtrl+Enter to save and quit.")
+                # if replace:
+                #     target2[cursor_index] = (replace, target2[cursor_index][1], target2[cursor_index][2])
 
-                display_height = display_string.count("\n")
-                # Move cursor to target2 line
-                # 3 lines for the preamble
-                # plus 1 line for each line of the display_string
-                print(_MOVE_UP * 3 + _MOVE_UP * (abs(edit_line - display_height)), end="")
-
-                modified_text = "[yellow]" + str(target2[cursor_index][0])
-
-                # Clear target2 line and rewrite
-                # print(_CLEAR_RIGHT+ "  "*int(target2[cursor_index][1]+1)+modified_text, end="")
-
-                # Move cursor to start of target2 data
-                print(_MOVE_LEFT * len(modified_text), end="")
-                print(modified_text, end="")
-                print(_MOVE_LEFT * len(modified_text), end="")
-                print(_CLEAR_RIGHT, end="")
-
-                if dict_inline:
-                    rich.print(f"[yellow]{edit_prefix}", end="")
-                    replace = input()
-
-                else:
-                    replace = input("  " * int(target2[cursor_index][1] + 1))
-
-                if replace:
-                    target2[cursor_index] = (replace, target2[cursor_index][1], target2[cursor_index][2])
-
-                # This line moves the cursor down to its original position after editing, so the display remains consistent.
-                print(_MOVE_DOWN * (len(target2) - cursor_index + 1))
+                # # This line moves the cursor down to its original position after editing, so the display remains consistent.
+                # print(_MOVE_DOWN * (len(display_lines) - cursor_index + 1))
 
             case "s" | "j" | readchar.key.DOWN:
                 while True:
                     cursor_index = (cursor_index + 1) % len(target2)
+                    display_index = (display_index + 1) % len(display_lines)
                     if not target2[cursor_index][2]:
                         continue
                     if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":
                         continue
                     break
-                # while not target2[cursor_index][2] and True if edit_keys else target2[(cursor_index + 2) % len(target2)][0] != ':':
-                #     cursor_index = (cursor_index + 1) % len(target2)
-
-                # cursor_index = cursor_index % len(target2)
 
             case "w" | "k" | readchar.key.UP:
                 while True:
                     cursor_index = (cursor_index - 1) % len(target2)
+                    display_index = (display_index - 1) % len(display_lines)
                     if not target2[cursor_index][2]:
                         continue
                     if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":
                         continue
                     break
 
-                # cursor_index = (cursor_index - 1) % len(target2)
-                # while not target2[cursor_index][2]:
-                #     cursor_index = (cursor_index - 1) % len(target2)
-
-                # cursor_index = cursor_index % len(target2)
-
-            case "q" | readchar.key.CTRL_J | "\r":
-                print("")
+            case "q" | readchar.key.CTRL_J | "\r" | "\n":
                 break
 
             case "\x1b":
+                target = original_target
                 rich.print("[red]Terminated.", end="")
-                exit(1)
+                exit(0)
 
     return reconstitute_object(target2)
 
@@ -723,45 +671,28 @@ def integer(
             exit(1)
 
         match choice:
-            case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
-                input_number += choice
+            case "-":
+                target = -target
+            case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | readchar.key.BACKSPACE:
+                if choice == readchar.key.BACKSPACE:
+                    if len(str(target).replace("-", "")) > 1:
+                        target = int(str(target)[:-1])
+                    else:
+                        target = 0
+                else:
+                    target = int(str(target) + choice)
             case "\r":
                 continue
             case "k" | readchar.key.UP:
                 target = target + 1
-                if maximum is not None and target > maximum:
-                    if minimum is not None:
-                        target = minimum
-                    else:
-                        target = maximum
-                    # target = max(target + 1, maximum)
-                input_number = ""
             case "j" | readchar.key.DOWN:
                 target = target - 1
-                if minimum is not None and target < minimum:
-                    if maximum is not None:
-                        target = maximum
-                    else:
-                        target = minimum
-                input_number = ""
-
             case readchar.key.CTRL_J | "\r":
                 break
-            case "\x08":
-                if input_number:
-                    input_number = input_number[:-1]
-                else:
-                    input_number = ""
-            case "\x1b":
-                rich.print("[red]Terminated.", end="")
-                exit(1)
-    if input_number:
-        target = int(input_number)
-        if maximum is not None and target > maximum:
+        if target > maximum:
             target = maximum
-        elif minimum is not None and target < minimum:
+        elif target < minimum:
             target = minimum
-
     return int(target)
 
 
@@ -779,8 +710,280 @@ def confirm(default: bool = False):
 
 
 def form_from_dict(target: dict[str, str | int | float | bool], preamble: str = ""):
-    return edit_object(
-        target=target, show_brackets=False, edit_keys=False, dict_inline=True, preamble=preamble
+    return edit_object(target=target, show_brackets=False, edit_keys=False, preamble=preamble)
+
+
+def handle_string(
+    target2: list[tuple[Any, int, type]],
+    cursor_index: int,
+    show_brackets: bool = True,
+    repr_func: Callable | None = None,
+    preamble: str = "",
+    display_index: int = 0,
+):
+    """Handle editing of string objects in place."""
+
+    indent = "  " * int(target2[cursor_index][1] + 1)
+    indent = indent[:-1] + ">"
+    indent = indent.replace(" ", "-")
+    original_value = target2[cursor_index][0]
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
+
+    while True:
+        print(_MOVE_UP * (abs(display_index - len(display_lines) + 1)), end="")
+        print(_MOVE_LEFT * 200 + _CLEAR_LINE, end="")
+        rich.print(f"{indent}[yellow]{target2[cursor_index][0]}[/yellow]", end="")
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+        match choice:
+            case "\r":
+                print(_MOVE_DOWN * (abs(display_index - len(display_lines)) - 1), end="")
+                return
+            case "\x1b":
+                target2[cursor_index] = (original_value, target2[cursor_index][1], target2[cursor_index][2])
+                return
+            case readchar.key.BACKSPACE:
+                if target2[cursor_index][0] is None:
+                    target2[cursor_index] = ("", target2[cursor_index][1], str)
+                elif len(target2[cursor_index][0]) > 1:
+                    target2[cursor_index] = (
+                        target2[cursor_index][0][:-1],
+                        target2[cursor_index][1],
+                        target2[cursor_index][2],
+                    )
+                else:
+                    target2[cursor_index] = ("", target2[cursor_index][1], str)
+                print(_MOVE_UP, end="")
+            case _:
+                target2[cursor_index] = (
+                    f"{target2[cursor_index][0]}{choice}",
+                    target2[cursor_index][1],
+                    target2[cursor_index][2],
+                )
+                print(_MOVE_UP, end="")
+        print(_MOVE_DOWN * abs(display_index - len(display_lines)), end="")
+
+
+def handle_datetime(
+    target2: list[tuple[Any, int, type]],
+    cursor_index: int,
+    show_brackets: bool = True,
+    repr_func: Callable | None = None,
+    preamble: str = "",
+    display_index: int = 0,
+):
+    """Handle editing of datetime objects in place."""
+
+    interval = "day"
+    indent = "  " * int(target2[cursor_index][1] + 1)
+    indent = indent[:-1] + ">"
+    indent = indent.replace(" ", "-")
+    original_value = target2[cursor_index][0]
+
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
+
+    # print(_MOVE_UP * (len(display_lines) - cursor_index + 3) + indent, end="")
+    print(_MOVE_UP * (len(display_lines) - display_index))
+
+    while True:
+        date_str = str(target2[cursor_index][0].date())
+        (year, month, day) = date_str.split("-")
+        print(_MOVE_LEFT * (2 + len(date_str) + len(indent)), end="")
+        if interval == "day":
+            day = f"[yellow]{day}[/yellow]"
+        elif interval == "month":
+            month = f"[yellow]{month}[/yellow]"
+        elif interval == "year":
+            year = f"[yellow]{year}[/yellow]"
+        rich.print(f"{indent}{year}-{month}-{day}", end="")
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+
+        match choice:
+            case "\r":
+                break
+            case "k" | readchar.key.UP:
+                match interval:
+                    case "day":
+                        datetime.datetime
+                        target2[cursor_index] = (
+                            _adjust_datetime(target2[cursor_index][0], day=1),
+                            target2[cursor_index][1],
+                            target2[cursor_index][2],
+                        )
+                    case "month":
+                        target2[cursor_index] = (
+                            _adjust_datetime(target2[cursor_index][0], month=1),
+                            target2[cursor_index][1],
+                            target2[cursor_index][2],
+                        )
+                    case "year":
+                        target2[cursor_index] = (
+                            _adjust_datetime(target2[cursor_index][0], year=1),
+                            target2[cursor_index][1],
+                            target2[cursor_index][2],
+                        )
+            case "j" | readchar.key.DOWN:
+                match interval:
+                    case "day":
+                        target2[cursor_index] = (
+                            _adjust_datetime(target2[cursor_index][0], day=-1),
+                            target2[cursor_index][1],
+                            target2[cursor_index][2],
+                        )
+                    case "month":
+                        target2[cursor_index] = (
+                            _adjust_datetime(target2[cursor_index][0], month=-1),
+                            target2[cursor_index][1],
+                            target2[cursor_index][2],
+                        )
+                    case "year":
+                        target2[cursor_index] = (
+                            _adjust_datetime(target2[cursor_index][0], year=-1),
+                            target2[cursor_index][1],
+                            target2[cursor_index][2],
+                        )
+            case "h" | readchar.key.LEFT:
+                if interval == "day":
+                    interval = "month"
+                elif interval == "month":
+                    interval = "year"
+            case "l" | readchar.key.RIGHT:
+                if interval == "year":
+                    interval = "month"
+                elif interval == "month":
+                    interval = "day"
+            case "\x1b":
+                target2[cursor_index] = (original_value, target2[cursor_index][1], target2[cursor_index][2])
+                return
+
+    print(_MOVE_UP * abs(display_index - len(display_lines) + 2), end="")
+
+
+def handle_integer(
+    target2: list[tuple[Any, int, type]],
+    cursor_index: int,
+    show_brackets: bool = True,
+    repr_func: Callable | None = None,
+    preamble: str = "",
+    display_index: int = 0,
+):
+    """Handle editing of integer objects in place."""
+    indent = "  " * int(target2[cursor_index][1] + 1)
+    indent = indent[:-1] + ">"
+    indent = indent.replace(" ", "-")
+    original_value = target2[cursor_index][0]
+
+    # print(_MOVE_UP * (len(target2) - cursor_index + 3) + indent, end="")
+
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
+
+    while True:
+        print(_MOVE_UP * abs(display_index - len(display_lines) + 1), end="")
+        print(_MOVE_LEFT * 200 + _CLEAR_LINE, end="")
+        # print(_MOVE_UP * (len(display_lines) + display_index))
+        # print(_MOVE_UP * (len(display_lines) - display_index))
+
+        rich.print(f"{indent}[yellow]{target2[cursor_index][0]}[/yellow]", end="")
+
+        # print(_MOVE_LEFT * (2 + len(str(target2[cursor_index][0])) + len(indent)), end="")
+        # rich.print(
+        #     f"{indent}[yellow]{target2[cursor_index][0]}[/yellow]",
+        #     end="",
+        # )
+        # rich.print(f"{indent}{target2[cursor_index][0]:>{base_length}}", end="")
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+        match choice:
+            case "\r":
+                print(_MOVE_UP * (abs(display_index - len(display_lines))), end="")
+                break
+            case readchar.key.BACKSPACE:
+                if len(str(target2[cursor_index][0]).replace("-", "")) > 1:
+                    target2[cursor_index] = (
+                        int(f"{target2[cursor_index][0]}"[:-1]),
+                        target2[cursor_index][1],
+                        target2[cursor_index][2],
+                    )
+                    print(_MOVE_LEFT + _CLEAR_RIGHT, end="")
+                else:
+                    target2[cursor_index] = (0, target2[cursor_index][1], target2[cursor_index][2])
+
+                    print(_MOVE_LEFT + _CLEAR_RIGHT, end="")
+            case "-":
+                target2[cursor_index] = (
+                    -target2[cursor_index][0],
+                    target2[cursor_index][1],
+                    target2[cursor_index][2],
+                )
+                if target2[cursor_index][0] > 0:
+                    print(_MOVE_LEFT + _CLEAR_RIGHT, end="")
+
+            case "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | readchar.key.BACKSPACE:
+                target2[cursor_index] = (
+                    int(f"{target2[cursor_index][0]}{choice}"),
+                    target2[cursor_index][1],
+                    target2[cursor_index][2],
+                )
+            case "k" | readchar.key.UP:
+                target2[cursor_index] = (
+                    target2[cursor_index][0] + 1,
+                    target2[cursor_index][1],
+                    target2[cursor_index][2],
+                )
+                if target2[cursor_index][0] == 0:
+                    print(_MOVE_LEFT + _CLEAR_RIGHT, end="")
+            case "j" | readchar.key.DOWN:
+                target2[cursor_index] = (
+                    target2[cursor_index][0] - 1,
+                    target2[cursor_index][1],
+                    target2[cursor_index][2],
+                )
+            case "\x1b":
+                target2[cursor_index] = (original_value, target2[cursor_index][1], target2[cursor_index][2])
+                return
+        print(_MOVE_DOWN * (abs(display_index - len(display_lines)) - 1), end="")
+
+
+def _adjust_datetime(target: datetime.datetime, day: int = 0, month: int = 0, year: int = 0):
+    start_year = target.year
+    start_month = target.month
+    start_day = target.day
+    target_year = start_year + year
+    target_month = start_month + month
+    if target_month > 12:
+        target_month = 12
+    if target_month < 1:
+        target_month = 1
+    target_day = start_day + day
+    if target_day > 28:
+        if target_month == 2:
+            target_day = 28
+
+    if target_day > 30:
+        if target_month == 4 or target_month == 6 or target_month == 9 or target_month == 11:
+            target_day = 30
+        else:
+            target_day = 31
+    if target_day > 31:
+        target_day = 31
+    if target_day < 1:
+        target_day = 1
+
+    return datetime.datetime(
+        target_year, target_month, target_day, target.hour, target.minute, target.second, target.microsecond
     )
 
 
