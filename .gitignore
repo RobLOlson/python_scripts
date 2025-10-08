@@ -1,8 +1,7 @@
-!rob/data/word_list.txt
 rob/db
 rob/dist
 rob/__pycache__
-rob/data/*
+rob/data/books/*
 dist
 .tmp*
 __pycache__

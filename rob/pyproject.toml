@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "robolson"
-version = "0.3.99"
+version = "0.3.102"
 description = "My collection of utilty scripts"
 authors = ["Rob L Olson <rob.louis@gmail.com>"]
 include = ["config/clean.toml", "config/english/latex_templates.toml", "config/english/config.toml", "config/algebra/config.toml", "config/english/latex_templates.toml", "pyproject.toml", "data/word_list.txt"]
@@ -30,6 +30,7 @@ sympy = "^1.12"
 survey = "^4.5.4"
 google-generativeai = "^0.8.3"
 jinja2 = "^3.1.5"
+readchar = "^4.2.1"
 pymultidictionary = "^1.3.2"
 
 [tool.poetry.dev-dependencies]
