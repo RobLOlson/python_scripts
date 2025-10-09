@@ -1,0 +1,37 @@
+# Build artifacts
+dist/
+rob/dist/
+**/*.egg-info/
+
+# Caches and compiled files
+**/__pycache__/
+**/*.py[cod]
+**/*.pyd
+**/*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+coverage.xml
+
+# Local/temporary/editor files
+.vscode/
+.tmp*
+.TMP
+*.streamlit
+*.autoenv
+*.autoenv.leave
+
+# Project data and binaries (keep small curated data)
+rob/db/
+rob/db/*.db.*
+rob/deprecated/
+
+# Large text/media archives not needed for code assistance
+media/
+misc/
+rob/data/books/
+
+# Dists within subpackages (if any)
+rob/**/dist/
