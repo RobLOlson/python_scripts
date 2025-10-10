@@ -121,12 +121,8 @@ class TestLinearizeComplexObject:
         result = linearize_complex_object(complex_object)
         assert isinstance(result, list)
         # Check for proper nesting indicators
-        assert sum(1 for item in result if item[0] == "{") == sum(
-            1 for item in result if item[0] == "}"
-        )
-        assert sum(1 for item in result if item[0] == "[") == sum(
-            1 for item in result if item[0] == "]"
-        )
+        assert sum(1 for item in result if item[0] == "{") == sum(1 for item in result if item[0] == "}")
+        assert sum(1 for item in result if item[0] == "[") == sum(1 for item in result if item[0] == "]")
 
 
 class TestReconstituteObject:
@@ -152,7 +148,7 @@ class TestReconstituteObject:
         assert result == complex_object
 
 
-@patch("readchar.readkey")
+@patch("robo.rob.utilities.interdict.readkey")
 class TestFormFromDict:
     def test_simple_form(self, mock_readkey):
         # Simulate pressing Ctrl+Enter (commit) to accept defaults

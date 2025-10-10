@@ -3,7 +3,8 @@ import datetime as _dt
 import re
 import shutil
 import sys
-import textwrap
+
+# import textwrap
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
@@ -13,6 +14,10 @@ from readchar import readkey
 # -----------------------------
 # Atom and KeyRef data classes
 # -----------------------------
+
+_CLEAR_LINE = "\x1b[K"
+_CLEAR_SCREEN = "\x1b[2J"
+_MOVE_UP_AND_CLEAR_SCREEN = "\x1b[A\x1b[K"
 
 
 @dataclass
@@ -157,6 +162,10 @@ class FloatEditor(BaseEditor):
         if len(ch) == 1 and (ch.isdigit() or ch in ".-+"):
             # Single dot only
             if ch == "." and "." in self._buffer:
+                return EditorResult("continue")
+            if ch == "-":
+                v = self._current() * -1
+                self.start(v)
                 return EditorResult("continue")
             self._buffer += ch
             return EditorResult("continue")
@@ -436,11 +445,11 @@ class Renderer:
 
 
 # -----------------------------
-# InteractiveDict implementation
+# InterDict implementation
 # -----------------------------
 
 
-class InteractiveDict:
+class InterDict:
     def __init__(self, target: dict, show_brackets: bool = True, editable_keys: bool = False):
         self._original = target
         self._working = copy.deepcopy(target)
@@ -453,9 +462,7 @@ class InteractiveDict:
         self._serialize_root()
 
     @classmethod
-    def from_dict(
-        cls, d: dict, *, show_brackets: bool = True, editable_keys: bool = False
-    ) -> "InteractiveDict":
+    def from_dict(cls, d: dict, *, show_brackets: bool = True, editable_keys: bool = False) -> "InterDict":
         return cls(d, show_brackets=show_brackets, editable_keys=editable_keys)
 
     # -------------------------
@@ -671,13 +678,9 @@ class InteractiveDict:
             is_current = i == cursor_index
             lines.append(self._line_for_atom(atom, is_current, editing_current=editing and is_current))
         # footer
-        term_width = shutil.get_terminal_size(fallback=(80, 24)).columns
-        footer_text = (
-            footer or "Enter: edit  |  j/k or arrows: navigate  |  Ctrl+S: save & exit  |  Esc: cancel edit"
-        )
-        footer_text = textwrap.wrap(footer_text, width=term_width)[0]
-        if editing_hint:
-            footer_text += f"  |  {editing_hint}"
+
+        footer_text = footer or "Press '?' to display keyboard controls."
+        lines.append("")
         lines.append(footer_text)
         return lines
 
@@ -743,6 +746,42 @@ class InteractiveDict:
                     # if target reference isn't dict, just replace variable semantics are limited here
                     pass
                 return self._original
+            # Show keyboard controls overlay on '?'
+            if ch == "?":
+                help_lines = [
+                    "Controls:",
+                    "  j / Down : Move down",
+                    "  k / Up   : Move up",
+                    "  Enter    : Edit current",
+                    "  Esc      : Cancel current edit",
+                    "  Ctrl+S   : Save all and exit",
+                    "  Int: digits/backspace; k/UP +1, j/DOWN -1",
+                    "  Float: digits, '.', '-', '+'; k/UP +1.0, j/DOWN -1.0",
+                    "  Bool: space/j/k toggles",
+                    "  Date: h/LEFT,l/RIGHT select; k/UP,j/DOWN change",
+                    "  DateTime: same as Date (date-part only)",
+                    "Press any key to continue...",
+                ]
+                cols = self._renderer._get_cols()
+                # Wrap each line to terminal width
+                wrapped: List[str] = []
+                for line in help_lines:
+                    wrapped.append(line[0:cols])
+                    # wrapped.extend(textwrap.wrap(line, width=cols) or [""])
+                # Allocate space and render the overlay
+                self._renderer._alloc_space(len(wrapped))
+                # self._renderer._move_to_top()
+                print(_MOVE_UP_AND_CLEAR_SCREEN * len(wrapped), end="")
+                for idx, line in enumerate(wrapped):
+                    sys.stdout.write(f"{CSI}2K\r{line}")
+                    if idx < len(wrapped) - 1:
+                        sys.stdout.write("\n")
+                sys.stdout.flush()
+                # Wait for any key, then continue main loop which re-renders UI
+                readkey()
+                print(_CLEAR_SCREEN)
+                print("\n" * len(wrapped))
+                continue
             if ch in (k.DOWN, "j"):
                 cursor = self._next_editable_index(cursor)
                 continue

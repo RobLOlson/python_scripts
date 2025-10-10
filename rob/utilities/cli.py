@@ -34,7 +34,7 @@ from typing import Any, Callable, Dict
 import rich
 from appdirs import user_config_dir, user_data_dir
 
-from rob.utilities import query
+from . import query
 
 try:
     from tomlconfig import TomlConfig
