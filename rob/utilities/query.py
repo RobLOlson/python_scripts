@@ -745,10 +745,11 @@ def integer(
                 target = target - 1
             case readchar.key.CTRL_J | "\r":
                 break
-        if target > maximum:
-            target = maximum
-        elif target < minimum:
-            target = minimum
+        if maximum is not None:
+            target = maximum if target > maximum else target
+        if minimum is not None:
+            target = minimum if target < minimum else target
+
     return int(target)
 
 
