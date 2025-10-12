@@ -14,9 +14,7 @@ def get_sympy():
     return sympy
 
 
-def random_factor(
-    var, min_coef: int = 1, max_coef: int = 9, min_order: int = 1, max_order: int = 1
-):
+def random_factor(var, min_coef: int = 1, max_coef: int = 9, min_order: int = 1, max_order: int = 1):
     return random.randint(min_coef, max_coef) * (var ** random.randint(min_order, max_order))
 
 
@@ -25,15 +23,15 @@ def random_factor(
 # * return a 2-tuple of strings ('TeX problem', 'TeX answer')
 # * the last line of the doc string should name the problem type
 
+
 def generate_numerical_expression_to_ones(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate numerical expression to ones problems.
     Problem Description:
     Using Ones in Numerical Expressions"""
-    
+
     if difficulty is None:
         difficulty = int(3 - math.log(freq_weight + 1, 10))
-    
-                
+
     base_1: int = random.randint(1, 4)
     base_2: int = random.randint(1, 4)
     power_1: int = random.randint(1, 3) if difficulty > 2 else 1
@@ -41,8 +39,8 @@ def generate_numerical_expression_to_ones(freq_weight: int = 1000, difficulty: i
     operation: str = random.choice(["+", "-", r"\cdot", r"\over"] if difficulty > 2 else ["+", "-"])
 
     expression = f"{{{base_1}{'^' + str(power_1) if power_1 > 1 else ''} {operation} {base_2}{'^' + str(power_2) if power_2 > 1 else ''} }}"
-    answer = f"{{ (1 {'+1' * (base_1-1)}) ^ {{(1{'+1' * (power_1-1)})}} {operation} (1{'+1' * (base_2-1)}) ^ {{(1{'+1' * (power_2-1)})}} }}"
-    
+    answer = f"{{ (1 {'+1' * (base_1 - 1)}) ^ {{(1{'+1' * (power_1 - 1)})}} {operation} (1{'+1' * (base_2 - 1)}) ^ {{(1{'+1' * (power_2 - 1)})}} }}"
+
     problem_statement = rf"Replace all numbers with ones without changing the value. Fewer ones are better. \\For example, \({expression}={answer}\)."
 
     base_1: int = random.randint(1, 4)
@@ -52,12 +50,13 @@ def generate_numerical_expression_to_ones(freq_weight: int = 1000, difficulty: i
     operation: str = random.choice(["+", "-", r"\cdot", r"\over"])
 
     expression = f"{{{base_1}{'^' + str(power_1) if power_1 > 1 else ''} {operation} {base_2}{'^' + str(power_2) if power_2 > 1 else ''} }}"
-    answer = rf"{{ (1 {'+1' * (base_1-1)}) ^ {{(1{'+1' * (power_1-1)})}} {operation} (1{'+1' * (base_2-1)}) ^ {{(1{'+1' * (power_2-1)})}} }}"
-    
+    answer = rf"{{ (1 {'+1' * (base_1 - 1)}) ^ {{(1{'+1' * (power_1 - 1)})}} {operation} (1{'+1' * (base_2 - 1)}) ^ {{(1{'+1' * (power_2 - 1)})}} }}"
+
     return (
         rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({answer}\)",
     )
+
 
 def generate_fraction_addition(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate fraction addition problems.
@@ -119,14 +118,16 @@ def generate_fraction_addition(freq_weight: int = 1000, difficulty: int = None) 
     frac2 = Fraction(num2, denom2)
 
     result = frac1 + frac2
-    
+
     if difficulty > 2:
         frac3 = Fraction(num3, denom3)
         result += frac3
 
     # Create the problem
     if difficulty > 2:
-        problem = f"\\frac{{{num1}}}{{{denom1}}} + \\frac{{{num2}}}{{{denom2}}} + \\frac{{{num3}}}{{{denom3}}}"
+        problem = (
+            f"\\frac{{{num1}}}{{{denom1}}} + \\frac{{{num2}}}{{{denom2}}} + \\frac{{{num3}}}{{{denom3}}}"
+        )
     else:
         problem = f"\\frac{{{num1}}}{{{denom1}}} + \\frac{{{num2}}}{{{denom2}}}"
 
@@ -139,7 +140,7 @@ def generate_fraction_addition(freq_weight: int = 1000, difficulty: int = None) 
         rf"{problem_statement} \\ \\ \({problem}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({answer}\)",
     )
-    
+
 
 def generate_integer_factorization(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate integer factorization.
@@ -284,8 +285,8 @@ def generate_simple_x_equation(freq_weight: int = 1000, difficulty: int = None) 
         coef = random.randint(-2, 4)
         coef = coef if coef else 1
 
-    left_string = f"{coef} * ({random.randint(1,4)} * {var} + {random.randint(1,9)})"
-    right_string = f"{random.randint(1,7)} * {var} + {random.randint(1,9)}"
+    left_string = f"{coef} * ({random.randint(1, 4)} * {var} + {random.randint(1, 9)})"
+    right_string = f"{random.randint(1, 7)} * {var} + {random.randint(1, 9)}"
 
     left_latex = sympy.latex(sympy.sympify(left_string, evaluate=False), mul_symbol="dot")
     right_latex = sympy.latex(sympy.sympify(right_string, evaluate=False), mul_symbol="dot")
@@ -329,7 +330,9 @@ def generate_decimal_x_equation(freq_weight: int = 1000, difficulty: int = None)
     else:
         denom = random.randint(2, 5)
 
-    left_string = f"({random.randint(1, 4)} / {denom}) * ({random.randint(1, 4)} * {var} + {random.randint(-4, 4)})"
+    left_string = (
+        f"({random.randint(1, 4)} / {denom}) * ({random.randint(1, 4)} * {var} + {random.randint(-4, 4)})"
+    )
     right_string = f"{random.randint(1, 7)} * {var} + {random.randint(-9, 9)} / {denom}"
 
     left_latex = sympy.latex(sympy.sympify(left_string, evaluate=False), mul_symbol="dot")
@@ -363,19 +366,19 @@ def generate_variable_isolation(freq_weight: int = 1000, difficulty: int = None)
 
     term_count = random.randint(1, 3)
     terms = [
-        f"{random.choice([-1,-2,-3,1,2,3])}x",
-        f"{random.choice([-1,-2,-3,1,2,3])}y",
+        f"{random.choice([-1, -2, -3, 1, 2, 3])}x",
+        f"{random.choice([-1, -2, -3, 1, 2, 3])}y",
     ]
 
     for term in range(term_count):
         choice = random.choice(["variable", "unknown", "constant"])
         match choice:
             case "variable":
-                terms.append(f"{random.choice([-1,-2,-3,1,2,3])}x")
+                terms.append(f"{random.choice([-1, -2, -3, 1, 2, 3])}x")
             case "unknown":
-                terms.append(f"{random.choice([-1,-2,-3,1,2,3])}y")
+                terms.append(f"{random.choice([-1, -2, -3, 1, 2, 3])}y")
             case "constant":
-                terms.append(f"{random.choice([-1,-2,-3,1,2,3])}")
+                terms.append(f"{random.choice([-1, -2, -3, 1, 2, 3])}")
 
     left = []
     right = []
@@ -481,7 +484,7 @@ def generate_arithmetic_sequence(freq_weight: int = 1000, difficulty: int = None
 
     return (
         rf"{problem_statement} \\ \\ {sequence} \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
-        f"{init+4*step}",
+        f"{init + 4 * step}",
     )
 
 
@@ -532,8 +535,7 @@ def generate_geometric_sequence(freq_weight: int = 1000, difficulty: int = None)
     if difficulty > 1:
         denom_step = random.choice(list({2, 3, 4, 5} - {step}))
         sequence = [
-            sympy.latex(sympy.sympify(f"{init}*({step}/{denom_step})**{count}"))
-            for count in range(0, 5)
+            sympy.latex(sympy.sympify(f"{init}*({step}/{denom_step})**{count}")) for count in range(0, 5)
         ]
 
     if random.random() > 0.5:
@@ -553,7 +555,9 @@ def generate_geometric_sequence(freq_weight: int = 1000, difficulty: int = None)
     )
 
 
-def generate_geometric_sequence_evaluation(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+def generate_geometric_sequence_evaluation(
+    freq_weight: int = 1000, difficulty: int = None
+) -> tuple[str, str]:
     """Generate geometric sequence formula evaluation.
     Problem Description:
     Evaluate Geometric Sequence Formula"""
@@ -583,7 +587,7 @@ def generate_geometric_sequence_evaluation(freq_weight: int = 1000, difficulty: 
     if difficulty > 2:
         denom_step = random.choice(list({2, 3, 4, 5} - {step}))
         formula = f"f(n)={init} \\cdot (\\frac{{{step}}}{{{denom_step}}})^{{n-1}}"
-        answer = sympy.sympify(f"{init} * ({step} / {denom_step}) ** {n-1}")
+        answer = sympy.sympify(f"{init} * ({step} / {denom_step}) ** {n - 1}")
 
     problem_statement = f"What is the {evaluate_at} term in the sequence?"
 
@@ -620,7 +624,9 @@ def generate_power_expression(freq_weight: int = 1000, difficulty: int = None) -
     )
 
 
-def generate_radical_simplification_with_vars(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+def generate_radical_simplification_with_vars(
+    freq_weight: int = 1000, difficulty: int = None
+) -> tuple[str, str]:
     """Generate variable radical simplification.
     Problem Description:
     Simplify Radicals With Variables"""
@@ -651,17 +657,13 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000, difficult
     if perfect_part == 1:
         perfect_part = ""
 
-    expression = (
-        f"\\sqrt{{{sole_factor * perfect_square * perfect_square}{glyph}^{{{glyph_power}}}}}"
-    )
+    expression = f"\\sqrt{{{sole_factor * perfect_square * perfect_square}{glyph}^{{{glyph_power}}}}}"
 
     answer = f"{perfect_square}{glyph if perfect_part else ''}^{{{perfect_part}}}\\sqrt{{{sole_factor}{glyph if radical_part else ''}^{{{radical_part}}}}}"
 
     if difficulty > 2:
         glyph_power = random.choice(range(1, 8))
-        expression_1 = (
-            f"sqrt({sole_factor * perfect_square * perfect_square} * {glyph} ** {glyph_power})"
-        )
+        expression_1 = f"sqrt({sole_factor * perfect_square * perfect_square} * {glyph} ** {glyph_power})"
 
         latex_1 = sympy.latex(sympy.sympify(expression_1, evaluate=False))
 
@@ -670,7 +672,9 @@ def generate_radical_simplification_with_vars(freq_weight: int = 1000, difficult
         glyph_power_2 = random.choice(range(1, 8))
         perfect_square_2 = random.choice(list(leftover_primes_2))
 
-        expression_2 = f"sqrt({sole_factor_2 * perfect_square_2 * perfect_square_2} * {glyph} ** {glyph_power_2})"
+        expression_2 = (
+            f"sqrt({sole_factor_2 * perfect_square_2 * perfect_square_2} * {glyph} ** {glyph_power_2})"
+        )
         latex_2 = sympy.latex(sympy.sympify(expression_2, evaluate=False))
         expression = f"{latex_1} {latex_2}"
         simplified_expr, val = sympy.posify(sympy.sympify(f"{expression_1} * {expression_2}"))
@@ -735,7 +739,9 @@ def generate_binomial_product_expansion(freq_weight: int = 1000, difficulty: int
     )
 
 
-def generate_multiply_difference_of_squares(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+def generate_multiply_difference_of_squares(
+    freq_weight: int = 1000, difficulty: int = None
+) -> tuple[str, str]:
     """Generate multiply difference of squares binomial.
     Problem Description:
     Multiply Difference of Squares Binomial"""
@@ -770,7 +776,9 @@ def generate_multiply_difference_of_squares(freq_weight: int = 1000, difficulty:
     )
 
 
-def generate_multiply_squares_of_binomials(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+def generate_multiply_squares_of_binomials(
+    freq_weight: int = 1000, difficulty: int = None
+) -> tuple[str, str]:
     """Generate multiply squares of binomials.
     Problem Description:
     Multiply Squares of Binomials"""
@@ -814,3 +822,325 @@ def generate_multiply_squares_of_binomials(freq_weight: int = 1000, difficulty: 
     )
 
 
+def generate_average_rate_of_change_of_polynomial(
+    freq_weight: int = 1000, difficulty: int = None
+) -> tuple[str, str]:
+    """Generate average rate of change of a polynomial.
+    Problem Description:
+    Average Rate of Change of a Polynomial"""
+
+    sympy = get_sympy()
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    # Difficulty controls degree and number complexity
+    match difficulty:
+        case d if d <= 1:
+            deg = 1
+            coef_range = (1, 3)
+        case 2:
+            deg = 2
+            coef_range = (1, 5)
+        case _:
+            deg = 3
+            coef_range = (1, 7)
+
+    x = sympy.Symbol(random.choice(_VARIABLES))
+    # Generate random coefficients for a degree-1/2/3 polynomial
+    coeffs = [random.randint(coef_range[0], coef_range[1])]
+    for i in range(deg):
+        # Allow negatives for non-leading coefficients, and prevent leading zero
+        min_coef = -coef_range[1] if i < deg else 1
+        max_coef = coef_range[1]
+        coeffs.append(random.randint(min_coef, max_coef))
+    # Compose polynomial
+    polynomial = sum(coeff * x**power for power, coeff in enumerate(reversed(coeffs)))
+
+    # Pick interval [a, b], a != b, from -5 to 5
+    a, b = random.sample(range(-5, 6), 2)
+    if a > b:
+        a, b = b, a
+
+    # Prepare TeX for the polynomial and interval
+    poly_tex = sympy.latex(polynomial)
+    interval_tex = rf"[{a},\,{b}]"
+
+    # Compute average rate of change
+    fa, fb = polynomial.subs(x, a), polynomial.subs(x, b)
+    rate_num = fb - fa
+    rate_den = b - a
+    # Reduce fraction where possible
+    rate = sympy.simplify(rate_num / rate_den)
+    answer_tex = sympy.latex(rate)
+
+    problem_statement = rf"What is the average rate of change of \( f(x) = {poly_tex} \) over the interval \( {interval_tex} \)?"
+
+    return (
+        rf"{problem_statement}",
+        rf"\({answer_tex}\)",
+    )
+
+
+def generate_adding_polynomials(freq_weight: int = 1000):
+    """
+    Generate a problem asking for the difference P - Q, where P and Q are random quadratic polynomials,
+    and the answer is expected in standard form.
+
+    Adding/subtracting polynomials."""
+
+    # Difficulty: choose coefficient size by freq_weight (lower freq_weight == harder)
+    import random
+
+    import sympy
+
+    difficulty = int(3 - (0 if freq_weight < 10 else int(freq_weight // 400)))
+    coef_ranges = {
+        1: (-3, 3),
+        2: (-7, 7),
+        3: (-11, 11),
+    }
+    coef_range = coef_ranges.get(max(1, min(difficulty, 3)), (-3, 3))
+
+    var = sympy.Symbol(random.choice(["x", "b", "y"]))
+
+    # Helper to generate a random quadratic (degree-2) polynomial
+    def rand_quadratic():
+        # Leading coefficient: avoid 0. Can be negative.
+        a = random.choice([i for i in range(coef_range[0], coef_range[1] + 1) if i != 0])
+        b_ = random.randint(coef_range[0], coef_range[1])
+        c = random.randint(coef_range[0], coef_range[1])
+        return a * var**2 + b_ * var + c, (a, b_, c)
+
+    P, (a1, b1, c1) = rand_quadratic()
+    Q, (a2, b2, c2) = rand_quadratic()
+
+    # Sometimes ensure some sign/variety
+    if random.random() < 0.5:
+        Q = -Q
+        a2, b2, c2 = -a2, -b2, -c2
+
+    # Render as TeX
+    def poly_tex(expr):
+        return sympy.latex(sympy.expand(expr))
+
+    problem_statement = (
+        rf"\( P = {poly_tex(P)} \)"
+        r"<br>"
+        rf"\( Q = {poly_tex(Q)} \)"
+        r"<br>"
+        rf"\( P - Q =\;\;\) ?"
+        r"<br>"
+        r"Your answer should be a polynomial in standard form."
+    )
+
+    answer_poly = sympy.expand(P - Q)
+    answer_tex = poly_tex(answer_poly)
+
+    # Remove <br> for output since not all render HTML; just show as lines
+    problem_statement = problem_statement.replace("<br>", r"\\")
+
+    return (
+        problem_statement,
+        rf"\({answer_tex}\)",
+    )
+
+
+def generate_monomial_multiplication(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate multiplication of two monomials sharing a base variable.
+    Problem Description:
+    Multiplying Monomials"""
+
+    global _VARIABLES
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    var = random.choice(_VARIABLES)
+
+    # Coefficient ranges scale with difficulty
+    if difficulty <= 1:
+        coef_min, coef_max = 1, 6
+        allow_negative = False
+        exp_max = 3
+    elif difficulty == 2:
+        coef_min, coef_max = 1, 8
+        allow_negative = True
+        exp_max = 4
+    else:
+        coef_min, coef_max = 1, 9
+        allow_negative = True
+        exp_max = 5
+
+    def rand_coef() -> int:
+        c = random.randint(coef_min, coef_max)
+        if allow_negative and random.random() < 0.5:
+            c = -c
+        return c
+
+    def rand_exp() -> int:
+        e = random.randint(1, exp_max)
+        # Rarely include a negative exponent for hardest difficulty
+        if difficulty > 2 and random.random() < 0.2:
+            e = -random.randint(1, max(2, exp_max - 1))
+        return e
+
+    c1, c2 = rand_coef(), rand_coef()
+    e1, e2 = rand_exp(), rand_exp()
+
+    expr = f"({c1}*{var}**{e1})*({c2}*{var}**{e2})"
+
+    problem_latex = sympy.latex(sympy.sympify(expr, evaluate=False))
+    answer_latex = sympy.latex(sympy.simplify(sympy.sympify(expr)))
+
+    prompt = "Multiply. Your answer should be a monomial in standard form."
+
+    return (
+        rf"{prompt} \\ \\ \({problem_latex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer_latex}\)",
+    )
+
+
+def generate_rectangle_area_monomial_times_polynomial(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate rectangle area from height (monomial) and width (polynomial).
+    Problem Description:
+    Area as Monomial Times Polynomial"""
+
+    global _VARIABLES
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    x = random.choice(_VARIABLES)
+
+    # Determine scales
+    if difficulty <= 1:
+        coef_range = (1, 5)
+        deg_base = random.randint(2, 3)
+        allow_negative = False
+    elif difficulty == 2:
+        coef_range = (1, 7)
+        deg_base = random.randint(3, 4)
+        allow_negative = True
+    else:
+        coef_range = (1, 9)
+        deg_base = random.randint(3, 5)
+        allow_negative = True
+
+    def rc() -> int:
+        c = random.randint(*coef_range)
+        if allow_negative and random.random() < 0.4:
+            c = -c
+        return c
+
+    def _term(coef: int, var: str, exp: int) -> str:
+        if exp == 0:
+            return f"{coef}"
+        if exp == 1:
+            return f"{coef}*{var}"
+        return f"{coef}*{var}**{exp}"
+
+    height_expr = f"{random.randint(*coef_range)}*{x}**{deg_base}"
+
+    a, b, c = rc(), rc(), rc()
+    # Ensure leading coefficient nonzero and positive for nicer shapes
+    if a == 0:
+        a = 1
+    if not allow_negative and a < 0:
+        a = abs(a)
+
+    width_expr = " + ".join(
+        [
+            _term(a, x, deg_base),
+            _term(b, x, deg_base - 1),
+            _term(c, x, deg_base - 2),
+        ]
+    )
+
+    area_expr = f"({height_expr})*({width_expr})"
+
+    height_tex = sympy.latex(sympy.sympify(height_expr, evaluate=False))
+    width_tex = sympy.latex(sympy.sympify(width_expr, evaluate=False))
+    answer_tex = sympy.latex(sympy.expand(sympy.sympify(area_expr)))
+
+    statement = (
+        rf"A rectangle has a height of \({height_tex}\) and a width of \({width_tex}\). "
+        r"Express the area of the entire rectangle. Your answer should be a polynomial in standard form."
+    )
+
+    return (
+        rf"{statement}\\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer_tex}\)",
+    )
+
+
+def generate_expand_monomial_times_trinomial(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate expansion of a monomial times a trinomial.
+    Problem Description:
+    Expand Monomial Times Trinomial"""
+
+    global _VARIABLES
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    v = random.choice(_VARIABLES)
+
+    if difficulty <= 1:
+        coef_range = (1, 6)
+        allow_negative = False
+        base_deg = random.randint(2, 3)
+    elif difficulty == 2:
+        coef_range = (1, 8)
+        allow_negative = True
+        base_deg = random.randint(3, 4)
+    else:
+        coef_range = (1, 9)
+        allow_negative = True
+        base_deg = random.randint(3, 5)
+
+    def rc() -> int:
+        c = random.randint(*coef_range)
+        if allow_negative and random.random() < 0.5:
+            c = -c
+        return c
+
+    def _term(coef: int, var: str, exp: int) -> str:
+        if exp == 0:
+            return f"{coef}"
+        if exp == 1:
+            return f"{coef}*{var}"
+        return f"{coef}*{var}**{exp}"
+
+    monomial = f"{random.randint(*coef_range)}*{v}**{base_deg}"
+    a, b, c = rc(), rc(), rc()
+    trinomial = " + ".join(
+        [
+            _term(a, v, base_deg),
+            _term(b, v, base_deg - 1),
+            _term(c, v, base_deg - 2),
+        ]
+    )
+
+    expr = f"({monomial})*({trinomial})"
+
+    problem_tex = sympy.latex(sympy.sympify(expr, evaluate=False))
+    answer_tex = sympy.latex(sympy.expand(sympy.sympify(expr)))
+
+    prompt = "Expand. Your answer should be a polynomial in standard form."
+
+    return (
+        rf"{prompt} \\ \\ \({problem_tex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\",
+        rf"\({answer_tex}\)",
+    )
