@@ -148,11 +148,11 @@ class TestReconstituteObject:
         assert result == complex_object
 
 
-@patch("robo.rob.utilities.interdict.readkey")
+@patch("robo.rob.utilities.query.readchar.readkey")
 class TestFormFromDict:
     def test_simple_form(self, mock_readkey):
         # Simulate pressing Ctrl+Enter (commit) to accept defaults
-        mock_readkey.side_effect = ["\n"]
+        mock_readkey.side_effect = ["\r", "\r", "q"]
         test_dict = {"name": "John", "age": 30}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)
@@ -160,7 +160,7 @@ class TestFormFromDict:
 
     def test_nested_form(self, mock_readkey):
         # Simulate pressing Ctrl+Enter (commit) to accept defaults
-        mock_readkey.side_effect = ["\n"]
+        mock_readkey.side_effect = ["\r", "\r", "q"]
         test_dict = {"personal": {"name": "John", "age": 30}, "settings": {"dark_mode": True}}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)

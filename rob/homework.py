@@ -291,14 +291,19 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
         user = user.lower()
 
     form["start_date"] = datetime.datetime.today()
+    form["user"] = user
     form["assignment_count"] = 5
     form["problem count"] = {}
     for subject in approved_subjects:
         form["problem count"][f"{subject}"] = 3
 
     data = query.form_from_dict(form)
+    # data = query.edit_object(form, show_brackets=False, edit_keys=False)
+
     start_date = data["start_date"]
     assignment_count = data["assignment_count"]
+    user = data["user"]
+
     # for subject in approved_subjects:
     #     problem_count[subject] = data["problem count"][f"{subject}"]
 
