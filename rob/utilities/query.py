@@ -3,14 +3,13 @@ import shutil
 from textwrap import wrap
 from typing import Any, Callable
 
-try:
-    from . import interdict
-except (ImportError, ModuleNotFoundError):
-    import rob.utilities.interdict as interdict
-
 import readchar
 import rich
 
+from . import interdict
+
+# _SAVE_CURSOR = "\033[s"
+# _RESTORE_CURSOR = "\033[u"
 _CLEAR_LINE = "\033[2K"
 _MOVE_UP = "\033[1A"
 _MOVE_DOWN = "\033[1B"
@@ -351,56 +350,23 @@ def _build_display_lines(
     show_brackets: bool = False,
     repr_func: Callable | None = None,
     preamble: str = "",
-    dict_inline: bool = False,
 ):
     """Builds a list of display lines for the given target2, cursor_index, show_brackets, repr_func, and preamble."""
-    display_lines2: tuple[str, str] = []
     display_lines = []
     if preamble:
         display_lines.extend(preamble.split("\n"))
 
-    inline_value = False
-
     for index, item in enumerate(target2):
         # skip brackets if not showing them
-
-        indent = "  " * int(item[1] + 1)
-
-        if inline_value:
-            if item[2] is None and target2[index - 1][0] in "]}[{:":
-                inline_value = False
-            else:
-                if index == cursor_index:
-                    space_count = 0
-                    for char in display_lines[-1]:
-                        if char == " ":
-                            space_count += 1
-                        else:
-                            break
-                    display_lines2[-1] = (
-                        f"{'-' * (space_count - 1)}>{display_lines2[-1][1].lstrip()}: ",
-                        item[0],
-                    )
-                    display_lines[-1] = (
-                        f"{'-' * (space_count - 1)}>{display_lines[-1].lstrip()}:[green] {item[0]}"
-                    )
-                else:
-                    display_lines2[-1] = (f"{indent}{display_lines2[-1][1]}: ", item[0])
-                    display_lines[-1] = f"{display_lines[-1]}: {item[0]}"
-                inline_value = False
-                continue
-
         if not show_brackets and not item[2] and str(item[0]) in "]}[{":
-            continue
-
-        if dict_inline and item[0] == ":" and item[2] is None:
-            inline_value = True
             continue
 
         if repr_func:
             display = repr_func(item)
         else:
             display = f"{item[0]}"
+
+        indent = "  " * int(item[1] + 1)
 
         style = "[white]"
         if index == cursor_index:
@@ -410,15 +376,12 @@ def _build_display_lines(
                 style = "[green]"
             else:
                 style = "[red]"
-        display_lines2.append((indent, display))
+
         display_lines.append(rf"{indent}{style}{display}")
 
-    display_lines2.append(("", ""))
     display_lines.append("")
-    display_lines2.append(("", "[green]Press h for editing controls."))
     display_lines.append("[green]Press h for editing controls.")
-
-    return display_lines2
+    return display_lines
 
 
 def edit_object(
@@ -427,7 +390,6 @@ def edit_object(
     repr_func: Callable | None = None,
     show_brackets: bool = True,
     edit_keys: bool = True,
-    dict_inline: bool = False,
 ) -> list[Any] | dict[Any, Any]:
     """Interactive inline editor for nested lists/dicts."""
 
@@ -441,9 +403,6 @@ def edit_object(
     cursor_index = -1
     display_index = -1
 
-    if dict_inline and edit_keys:
-        raise ValueError("dict_inline and edit_keys cannot both be True")
-
     # initialize index to first editable item
     while True:
         cursor_index = (cursor_index + 1) % len(target2)
@@ -453,33 +412,22 @@ def edit_object(
                 display_index -= 1
             continue
         if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":  # [0] is contents
-            display_index -= 1
             if not show_brackets:
                 display_index -= 1
             continue
         break
 
-    display_lines2 = _build_display_lines(
-        target2, cursor_index, show_brackets, repr_func, preamble, dict_inline
-    )
-    display_index = display_index % len(display_lines2)
-    display_index = 0
-    for i in range(len(display_lines2)):
-        pass
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
+    display_index = display_index % len(display_lines)
 
-    print("\n" * (len(display_lines2)))
+    print("\n" * (len(display_lines)))
 
     while True:
-        print((_MOVE_UP + _CLEAR_LINE) * (len(display_lines2)), end="")
+        print((_MOVE_UP + _CLEAR_LINE) * (len(display_lines)), end="")
 
-        display_lines2 = _build_display_lines(
-            target2, cursor_index, show_brackets, repr_func, preamble, dict_inline
-        )
-        breakpoint()
-        for i, line in enumerate(display_lines2):
-            style = "[white]" if i != cursor_index else "[green]"
-            rich.print(f"{line[0]}{style}{line[1]}", end="\n")
-        # rich.print("\n" + "\n".join(display_lines), end="")
+        display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
+
+        rich.print("\n" + "\n".join(display_lines), end="")
         try:
             choice = readchar.readkey()
         except KeyboardInterrupt:
@@ -500,7 +448,6 @@ def edit_object(
                         repr_func=repr_func,
                         preamble=preamble,
                         display_index=display_index,
-                        dict_inline=dict_inline,
                     )
                     print(_RESTORE_CURSOR, end="")
                     # print(_MOVE_DOWN * (len(display_lines) + 1), end="")
@@ -510,7 +457,7 @@ def edit_object(
                     continue
                 elif target2[cursor_index][2] == int:  # noqa: E721
                     handle_integer(target2, cursor_index, show_brackets, repr_func, preamble, display_index)
-                    print(_MOVE_DOWN * (len(display_lines2) + 1), end="")
+                    print(_MOVE_DOWN * (len(display_lines) + 1), end="")
                     continue
 
                 else:
@@ -521,7 +468,6 @@ def edit_object(
                         repr_func=repr_func,
                         preamble=preamble,
                         display_index=display_index,
-                        dict_inline=dict_inline,
                     )
 
                 # modified_text = ""
@@ -556,7 +502,7 @@ def edit_object(
             case "s" | "j" | readchar.key.DOWN:
                 while True:
                     cursor_index = (cursor_index + 1) % len(target2)
-                    display_index = (display_index + 1) % len(display_lines2)
+                    display_index = (display_index + 1) % len(display_lines)
                     if not target2[cursor_index][2]:
                         continue
                     if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":
@@ -566,7 +512,7 @@ def edit_object(
             case "w" | "k" | readchar.key.UP:
                 while True:
                     cursor_index = (cursor_index - 1) % len(target2)
-                    display_index = (display_index - 1) % len(display_lines2)
+                    display_index = (display_index - 1) % len(display_lines)
                     if not target2[cursor_index][2]:
                         continue
                     if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":
@@ -745,11 +691,10 @@ def integer(
                 target = target - 1
             case readchar.key.CTRL_J | "\r":
                 break
-        if maximum is not None:
-            target = maximum if target > maximum else target
-        if minimum is not None:
-            target = minimum if target < minimum else target
-
+        if target > maximum:
+            target = maximum
+        elif target < minimum:
+            target = minimum
     return int(target)
 
 
@@ -780,7 +725,6 @@ def handle_string(
     repr_func: Callable | None = None,
     preamble: str = "",
     display_index: int = 0,
-    dict_inline: bool = False,
 ):
     """Handle editing of string objects in place."""
 
@@ -788,9 +732,7 @@ def handle_string(
     indent = indent[:-1] + ">"
     indent = indent.replace(" ", "-")
     original_value = target2[cursor_index][0]
-    display_lines = _build_display_lines(
-        target2, cursor_index, show_brackets, repr_func, preamble, dict_inline
-    )
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
 
     while True:
         print(_MOVE_UP * (abs(display_index - len(display_lines) + 1)), end="")
@@ -838,7 +780,6 @@ def handle_datetime(
     repr_func: Callable | None = None,
     preamble: str = "",
     display_index: int = 0,
-    dict_inline: bool = False,
 ):
     """Handle editing of datetime objects in place."""
 
@@ -848,9 +789,7 @@ def handle_datetime(
     indent = indent.replace(" ", "-")
     original_value = target2[cursor_index][0]
 
-    display_lines = _build_display_lines(
-        target2, cursor_index, show_brackets, repr_func, preamble, dict_inline
-    )
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
 
     # print(_MOVE_UP * (len(display_lines) - cursor_index + 3) + indent, end="")
     print(_MOVE_UP * (len(display_lines) - display_index))
@@ -941,7 +880,6 @@ def handle_integer(
     repr_func: Callable | None = None,
     preamble: str = "",
     display_index: int = 0,
-    dict_inline: bool = False,
 ):
     """Handle editing of integer objects in place."""
     indent = "  " * int(target2[cursor_index][1] + 1)
@@ -951,9 +889,7 @@ def handle_integer(
 
     # print(_MOVE_UP * (len(target2) - cursor_index + 3) + indent, end="")
 
-    display_lines = _build_display_lines(
-        target2, cursor_index, show_brackets, repr_func, preamble, dict_inline
-    )
+    display_lines = _build_display_lines(target2, cursor_index, show_brackets, repr_func, preamble)
 
     while True:
         print(_MOVE_UP * abs(display_index - len(display_lines) + 1), end="")
