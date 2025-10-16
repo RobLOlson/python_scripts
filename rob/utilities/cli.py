@@ -77,7 +77,9 @@ def wrapped(text: str, indent: int = 0, indent_2: int = 18, sep: str = " ") -> s
     return final_string
 
 
-def _print_usage(func: Callable[[], None] | None = None, passed_command: list[str] | None = None) -> None:
+def _print_usage(
+    func: Callable[[], None] | None = None, passed_command: list[str] | None = None
+) -> None:
     main_file = Path(sys.modules["__main__"].__file__)
     help_lines: list[str] = []
 
@@ -160,7 +162,9 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         if option not in _HIDDEN_OPTIONS
     ]
 
-    wrapped_string = wrapped(f"Global options: {' '.join(opt_strs)}", indent=2, indent_2=18, sep=" ")
+    wrapped_string = wrapped(
+        f"Global options: {' '.join(opt_strs)}", indent=2, indent_2=18, sep=" "
+    )
     rich.print(wrapped_string)
 
 
@@ -317,7 +321,9 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
                 func.cli_options.remove(option)
 
         func.cli_required_params: list[str] = [
-            token[1:-1] for token in shlex.split(cli_interface) if token[0] == "<" and token[-1] == ">"
+            token[1:-1]
+            for token in shlex.split(cli_interface)
+            if token[0] == "<" and token[-1] == ">"
         ]
 
         func.py_signature = get_function_signature(func)
@@ -336,7 +342,8 @@ def cli(interface: str | None = None) -> Callable[[Callable[..., None]], Callabl
             param
             for param in params
             if param.default is inspect.Parameter.empty
-            and param.kind in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.POSITIONAL_ONLY)
+            and param.kind
+            in (inspect.Parameter.POSITIONAL_OR_KEYWORD, inspect.Parameter.POSITIONAL_ONLY)
         ]
         func.py_required_params = py_required_params
 
@@ -391,15 +398,15 @@ def parse_and_invoke(
             default_config_file = main_file.parent / "cli config" / f"{main_file.stem}_config.toml"
             default_config_file.parent.mkdir(parents=True, exist_ok=True)
             default_config_file.touch(exist_ok=True)
-            with TomlConfig(user_toml_file=default_config_file, default_toml_file=None) as config_writer:
+            with TomlConfig(
+                user_toml_file=default_config_file, default_toml_file=None
+            ) as config_writer:
                 config_writer["options"] = {}
                 config_writer["options"].update(_HARDCODED_OPTIONS)
                 config_writer["hidden_options"] = _HIDDEN_OPTIONS
 
     if use_configs and user_config_file is None:
-        great_grandparent = (
-            f"{main_file.parent.parent.parent.name if main_file.parent.parent.parent.name else 'drive'}"
-        )
+        great_grandparent = f"{main_file.parent.parent.parent.name if main_file.parent.parent.parent.name else 'drive'}"
         grandparent = f"{main_file.parent.parent.name if main_file.parent.parent.name else ''}"
 
         user_config_file = (
@@ -479,13 +486,17 @@ def parse_and_invoke(
             proposed_config_file = main_file.parent / "cli config" / f"{main_file.stem}_config.toml"
             rich.print(f"  Create one at [yellow]{proposed_config_file}[/yellow]?")
             if query.confirm():
-                with TomlConfig(user_toml_file=proposed_config_file, default_toml_file=None) as config_writer:
+                with TomlConfig(
+                    user_toml_file=proposed_config_file, default_toml_file=None
+                ) as config_writer:
                     config_writer["options"] = {}
                     config_writer["options"].update(_HARDCODED_OPTIONS)
                     config_writer["hidden_options"] = _HIDDEN_OPTIONS
                 default_config_file = proposed_config_file
             sys.exit(1)
-        with TomlConfig(user_toml_file=default_config_file, default_toml_file=None) as config_writer:
+        with TomlConfig(
+            user_toml_file=default_config_file, default_toml_file=None
+        ) as config_writer:
             config_writer.open_with_editor()
         sys.exit(0)
 
@@ -505,7 +516,9 @@ def parse_and_invoke(
 
     if len(passed_positionals) > len(func.py_required_params):
         if passed_command != ["<no command>"]:
-            excess_params = passed_positionals[: len(passed_positionals) - len(func.py_required_params)]
+            excess_params = passed_positionals[
+                : len(passed_positionals) - len(func.py_required_params)
+            ]
             rich.print(
                 f"[red]Too many positional arguments: {', '.join(excess_param.name for excess_param in excess_params)}[/red]\n"
             )

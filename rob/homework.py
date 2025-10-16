@@ -195,6 +195,11 @@ def algebra_default(
     if start_date is None:
         start_date = datetime.datetime.today()
 
+    if user:
+        user = user.lower()
+    else:
+        user = _USERNAME
+
     db = tomlconfig.TomlConfig(_SAVE_FILE)
 
     all_problems = [p for p in dir(problems) if p.startswith("generate_")]
@@ -202,19 +207,19 @@ def algebra_default(
 
     for problem in all_problems:
         try:
-            db[_USERNAME]["algebra"]["weights"][problem.__name__]
+            db[user]["algebra"]["weights"][problem.__name__]
         except KeyError:
-            db[_USERNAME] = db.get(_USERNAME, {})
-            db[_USERNAME]["algebra"] = db.get(_USERNAME, {}).get("algebra", {})
-            db[_USERNAME]["algebra"]["weights"] = db.get(_USERNAME, {}).get("algebra", {}).get("weights", {})
-            db[_USERNAME]["algebra"]["weights"][problem.__name__] = 1000
+            db[user] = db.get(user, {})
+            db[user]["algebra"] = db.get(user, {}).get("algebra", {})
+            db[user]["algebra"]["weights"] = db.get(user, {}).get("algebra", {}).get("weights", {})
+            db[user]["algebra"]["weights"][problem.__name__] = 1000
     db.sync()
 
     if interact:
         approved_problems = query.approve_list(
             all_problems,
             repr_func=lambda p: p.__doc__.split("\n")[-1].strip()
-            + f" ({db.get(_USERNAME, {}).get('algebra', {}).get('weights', {}).get(p.__name__, 1000)})",
+            + f" ({db.get(user, {}).get('algebra', {}).get('weights', {}).get(p.__name__, 1000)})",
         )
 
         start_date = survey.routines.datetime(
@@ -299,6 +304,9 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
     approved_subjects = query.approve_list(all_subjects)
 
     form = {}
+
+    if user:
+        user = user.lower()
 
     form["start_date"] = datetime.datetime.today()
     form["assignment_count"] = 5

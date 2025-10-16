@@ -1144,3 +1144,77 @@ def generate_expand_monomial_times_trinomial(
         rf"{prompt} \\ \\ \({problem_tex}\) \\ \\ \\ \\ \\ \\ \\ \\ \\",
         rf"\({answer_tex}\)",
     )
+
+
+def generate_imaginary_radical(freq_weight: int = 1000, difficulty: int | None = None) -> tuple[str, str]:
+    """Generate imaginary radical problems.
+    Problem Description:
+    Imaginary Radicals"""
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    # Square-free options for the remaining factor under the radical
+    square_free_choices = [1, 2, 3, 5, 6, 7, 10, 11, 13]
+
+    if difficulty <= 1:
+        # Easy: negative perfect square only
+        outside = random.randint(2, 12)
+        s_factor = 1
+    elif difficulty == 2:
+        # Medium: one square factor times a square-free factor (not 1)
+        outside = random.randint(2, 12)
+        s_factor = random.choice(square_free_choices[1:])
+    else:
+        # Hard: product of two square factors times optional square-free factor (may be 1)
+        a = random.randint(2, 9)
+        b = random.randint(2, 9)
+        outside = a * b
+        s_factor = random.choice(square_free_choices)
+
+    radicand = -1 * (outside**2) * s_factor
+
+    # Build the simplified answer ± outside * i * sqrt(s)
+    answer_parts: list[str] = []
+    if outside != 1:
+        answer_parts.append(str(outside))
+    answer_parts.append("i")
+    if s_factor != 1:
+        answer_parts.append(rf"\sqrt{{{s_factor}}}")
+    answer_core = " ".join(answer_parts)
+
+    prompt = "Express the radical using the imaginary unit, \\(i\\). Express your answer in simplified form."
+
+    expression = rf"\pm \sqrt{{{radicand}}}"
+
+    return (
+        rf"{prompt} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\ \\  ",
+        rf"\(\pm {answer_core}\)",
+    )
+
+
+def generate_power_of_i(freq_weight: int = 1000, difficulty: int | None = None) -> tuple[str, str]:
+    """Generate powers of i simplification problems.
+    Problem Description:
+    Powers of i"""
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    if difficulty <= 1:
+        n = random.randint(0, 20)
+    elif difficulty == 2:
+        n = random.randint(21, 1000)
+    else:
+        n = random.randint(-1000, -1)
+
+    k = n % 4
+    value_map = {0: "1", 1: "i", 2: "-1", 3: "-i"}
+    simplified = value_map[k]
+
+    prompt = "Simplify the expression. Your answer should be one of \\(1, -1, i, -i\\)."
+
+    return (
+        rf"{prompt} \\ \\ \(i^{{{n}}}\) \\ \\ \\ \\ \\ \\ \\ \\  ",
+        rf"\({simplified}\)",
+    )
