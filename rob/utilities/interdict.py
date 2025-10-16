@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 
+import rich
 from readchar import key as k
 from readchar import readkey
 
@@ -735,7 +736,12 @@ class InterDict:
         while True:
             screen = self._build_screen(cursor)
             renderer.render(screen)
-            ch = readkey()
+            try:
+                ch = readkey()
+            except KeyboardInterrupt:
+                print("")
+                rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+                exit(1)
             # Ctrl+S to save all changes and exit
             if ch in (k.CTRL_S, "\x13", "\n"):
                 # persist working copy back into original reference
@@ -778,7 +784,12 @@ class InterDict:
                         sys.stdout.write("\n")
                 sys.stdout.flush()
                 # Wait for any key, then continue main loop which re-renders UI
-                readkey()
+                try:
+                    readkey()
+                except KeyboardInterrupt:
+                    print("")
+                    rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+                    exit(1)
                 print(_CLEAR_SCREEN)
                 print("\n" * len(wrapped))
                 continue
@@ -805,7 +816,12 @@ class InterDict:
                         atom.value = preview_value if isinstance(preview_value, str) else preview_value
                         screen = self._build_screen(cursor, editing_hint=hint, editing=True)
                         renderer.render(screen)
-                        ch2 = readkey()
+                        try:
+                            ch2 = readkey()
+                        except KeyboardInterrupt:
+                            print("")
+                            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+                            exit(1)
                         if ch2 in (k.ESC,):
                             break
                         result = editor.process_key(ch2)

@@ -5,63 +5,50 @@ import random
 import sys
 
 import appdirs
+import PyMultiDictionary
 import rich
 import survey
 import toml
 
-try:
-    from .utilities import cli, query
-except (ImportError, ModuleNotFoundError):
-    from utilities import cli, query
-
-try:
-    from .utilities import tomlconfig
-except (ImportError, ModuleNotFoundError):
-    from utilities import tomlconfig
-
-try:
-    from .algebra import problems
-except (ImportError, ModuleNotFoundError):
-    from algebra import problems
-
-import PyMultiDictionary
+from .problems import algebra
+from .utilities import cli, query, tomlconfig
 
 _DEBUG = False
 
 
-class ProblemCategory:
-    """Represents a category of algebra problem.
-    Must supply the logic for generating a problem statement as a valid function.
-    Function must include a description of the problem type as the last line of its docstring.
-    """
+# class ProblemCategory:
+#     """Represents a category of algebra problem.
+#     Must supply the logic for generating a problem statement as a valid function.
+#     Function must include a description of the problem type as the last line of its docstring.
+#     """
 
-    def __init__(self, logic, weight: int):
-        self.name = logic.__name__
-        self.weight: int = weight
-        self.logic = logic
-        if logic.__doc__:
-            self.description = logic.__doc__.split("\n")[-1].strip()
-        else:
-            print(f"Problem generator requires docstring: {logic.__name__}")
-            exit(0)
-        self.long_description = f"{self.description} ({self.weight})"
+#     def __init__(self, logic, weight: int):
+#         self.name = logic.__name__
+#         self.weight: int = weight
+#         self.logic = logic
+#         if logic.__doc__:
+#             self.description = logic.__doc__.split("\n")[-1].strip()
+#         else:
+#             print(f"Problem generator requires docstring: {logic.__name__}")
+#             exit(0)
+#         self.long_description = f"{self.description} ({self.weight})"
 
-    def generate(self):
-        """Return a Problem object"""
+#     def generate(self):
+#         """Return a Problem object"""
 
-        # return self.logic(self.weight)
+#         # return self.logic(self.weight)
 
-        problem, solution = self.logic(self.weight)
-        return Problem(problem, solution, self.name)
+#         problem, solution = self.logic(self.weight)
+#         return Problem(problem, solution, self.name)
 
 
-class Problem:
-    """Represents a homework problem and its solution."""
+# class Problem:
+#     """Represents a homework problem and its solution."""
 
-    def __init__(self, problem: str, solution: str, name: str):
-        self.problem = rf"\item {problem}"
-        self.solution = solution
-        self.name = name
+#     def __init__(self, problem: str, solution: str, name: str):
+#         self.problem = rf"\item {problem}"
+#         self.solution = solution
+#         self.name = name
 
 
 def render_latex(
@@ -185,13 +172,6 @@ def algebra_default(
 
     # prepare_globals(user=user)
 
-    try:
-        from .algebra import problems
-    except ImportError:
-        from algebra import problems
-
-        # prepare_globals(user=user)
-
     if start_date is None:
         start_date = datetime.datetime.today()
 
@@ -202,8 +182,10 @@ def algebra_default(
 
     db = tomlconfig.TomlConfig(_SAVE_FILE)
 
-    all_problems = [p for p in dir(problems) if p.startswith("generate_")]
-    all_problems = [getattr(problems, p) for p in all_problems]
+    # Preserve definition order by iterating over the module dict (insertion-ordered)
+    all_problems = [
+        obj for name, obj in algebra.__dict__.items() if name.startswith("generate_") and callable(obj)
+    ]
 
     for problem in all_problems:
         try:
