@@ -22,6 +22,7 @@ from .utilities import cli
 log_dir = Path(user_data_dir()) / "robolson" / "nightlight" / "logs"
 log_dir.mkdir(parents=True, exist_ok=True)
 log_file = log_dir / "nighlight_schedule.log"
+log_file.touch(exist_ok=True)
 
 logger = logging.getLogger()
 
@@ -36,9 +37,7 @@ logger.addHandler(handler)
 # logging.basicConfig(filename=log_file, format="%(asctime)s %(levelname)s %(message)s")
 
 
-logger.addHandler(handler)
-
-if log_file.stat().st_size > 2 * 1024 * 1024:
+if log_file.exists() and log_file.stat().st_size > 2 * 1024 * 1024:
     with open(log_file, "r") as fp:
         half_log = fp.readlines()
         half_log = half_log[int(len(half_log) / 2) :]
@@ -192,7 +191,12 @@ def main(once: bool = False, always_on: bool = False):
 @cli.cli("log_file")
 def logs():
     """Open the log file with your $env.EDITOR."""
-    os.startfile(log_file)
+    try:
+        os.startfile(log_file)
+    except Exception as e:
+        logger.error(f"Error opening log file: {e}")
+        exit(1)
+    exit(0)
 
 
 if __name__ == "__main__":
