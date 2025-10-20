@@ -1,4 +1,6 @@
-hidden_options=["edit_cli_config", "open_base_config", "capture_output", "h"]
+# Used by: rob.homework via rob.utilities.cli
+
+hidden_options = [ "edit_cli_config", "open_base_config", "capture_output", "h", "show_python_signature"]
 
 [options]
 help = false
@@ -7,3 +9,4 @@ capture_output = false
 edit_cli_config = false
 open_cli_config = false
 open_base_config = false
+show_python_signature = false

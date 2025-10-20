@@ -27,18 +27,16 @@ from jinja2 import Environment, FileSystemLoader
 from typing_extensions import Annotated
 
 try:
-    from utilities import query
+    from utilities import query, tomlconfig
 
     # from utilities import tomlshelve
     from utilities.tomldict import TomlDict
-    from utilities import tomlconfig
 
 except ModuleNotFoundError:
-    from .utilities import query
+    from .utilities import query, tomlconfig
 
     # from .utilities import tomlshelve
     from .utilities.tomldict import TomlDict
-    from .utilities import tomlconfig
 
 DEBUG = True
 

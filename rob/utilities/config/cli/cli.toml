@@ -1,3 +1,7 @@
+# Used by: rob.utilities.cli
+
+hidden_options = ["show_python_signature", "h", "help", "open_cli_config"]
 [options]
 log_output = false
 debug = false
+show_python_signature = true

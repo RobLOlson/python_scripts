@@ -118,5 +118,5 @@ class TomlConfig:
             raise PermissionError("Cannot edit config: TomlConfig is in readonly mode.")
             return
 
-        self.config.data = query.edit_object(dict(self.config))
+        self.config.data = query.edit_object(dict(self.config), edit_keys=False)
         self.config.sync()

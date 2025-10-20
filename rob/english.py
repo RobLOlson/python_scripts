@@ -70,18 +70,10 @@ _file_io_start = time.perf_counter()
 
 _THIS_FILE = Path(__file__)
 
-_BOOKS_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "books.toml"
-)
-_PROGRESS_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "progress.toml"
-)
-_REVIEW_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "review.toml"
-)
-_SAVE_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "save.toml"
-)
+_BOOKS_FILE = Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "books.toml"
+_PROGRESS_FILE = Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "progress.toml"
+_REVIEW_FILE = Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "review.toml"
+_SAVE_FILE = Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "data" / "save.toml"
 
 
 _BOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -98,11 +90,7 @@ _SAVE_FILE.touch(exist_ok=True)
 
 _LATEX_DEFAULT_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "latex_templates.toml"
 _LATEX_FILE = (
-    Path(appdirs.user_data_dir(roaming=True))
-    / "robolson"
-    / "english"
-    / "config"
-    / "latex_templates.toml"
+    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "config" / "latex_templates.toml"
 )
 _LATEX_FILE.parent.mkdir(exist_ok=True, parents=True)
 
@@ -118,9 +106,7 @@ _LATEX_DOC_HEADER = _LATEX_TEMPLATES["doc_header"]
 _LATEX_ADDENDUM = _LATEX_TEMPLATES["addendum"]
 
 _CONFIG_DEFAULT_FILE = Path(_THIS_FILE.parent) / "config" / "english" / "config.toml"
-_CONFIG_FILE = (
-    Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "config" / "config.toml"
-)
+_CONFIG_FILE = Path(appdirs.user_data_dir(roaming=True)) / "robolson" / "english" / "config" / "config.toml"
 _CONFIG_FILE.parent.mkdir(exist_ok=True, parents=True)
 
 if not _CONFIG_FILE.exists():
@@ -200,9 +186,7 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
 
     text = "\n".join(lines[2:])
 
-    chapter_pattern = re.compile(
-        r"^ *((CHAPTER|BOOK|ACT) (\d+) ?(.*))", re.IGNORECASE + re.MULTILINE
-    )
+    chapter_pattern = re.compile(r"^ *((CHAPTER|BOOK|ACT) (\d+) ?(.*))", re.IGNORECASE + re.MULTILINE)
     section_pattern = re.compile(r"\n([^a-z\n\.\?\]\)]+\??) *\n")
 
     book = []
@@ -211,7 +195,9 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         chapter_type = chapter[1]
         chapter_number = int(chapter[2])
         chapter_name = chapter[3]
-        full_chapter = f"{chapter_type.title()} {chapter_number}{f': {chapter_name.title()}' if chapter_name else ''}"
+        full_chapter = (
+            f"{chapter_type.title()} {chapter_number}{f': {chapter_name.title()}' if chapter_name else ''}"
+        )
         split = text.split(str(chapter[0]))  # chapter[0] is the full match
         chapter_text = split[1]
         chapter_text = chapter_pattern.split(chapter_text)[0]
@@ -221,9 +207,7 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
         section_titles = [f"{full_chapter} \\newline {e.strip().title()}" for e in section_titles]
 
         section_titles.insert(0, full_chapter)
-        section_texts = section_pattern.sub(r"SPLIT_CHAPTER_HERE", chapter_text).split(
-            "SPLIT_CHAPTER_HERE"
-        )
+        section_texts = section_pattern.sub(r"SPLIT_CHAPTER_HERE", chapter_text).split("SPLIT_CHAPTER_HERE")
 
         for i, section_title in enumerate(section_titles):
             subsections.append({"title": section_title, "text": section_texts[i].rstrip()})
@@ -262,9 +246,7 @@ def ingest_text_file(target: str, chars_per_page: int = 5_000, debug: bool = Fal
                 book.append(section)
 
     if not debug:
-        with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
-            str(_SAVE_FILE)
-        ) as save_db:
+        with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(str(_SAVE_FILE)) as save_db:
             book_db[target] = {"book": book, "author": author, "title": title}
             try:
                 save_db["books"].append(target)
@@ -277,9 +259,11 @@ def remove_book(target: str = None):
     """Remove book from database."""
 
     if target:
-        with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
-            str(_PROGRESS_FILE)
-        ) as progress_db, tomlshelve.open(str(_SAVE_FILE)) as save_db:
+        with (
+            tomlshelve.open(str(_BOOKS_FILE)) as book_db,
+            tomlshelve.open(str(_PROGRESS_FILE)) as progress_db,
+            tomlshelve.open(str(_SAVE_FILE)) as save_db,
+        ):
             if target not in book_db.keys():
                 print(f"'{target}' not found in database.")
                 return
@@ -387,7 +371,7 @@ def fetch_LLM_output(model: str, system_instruction: str, prompt: str) -> list[d
             success = False
             while attempts < 5 and not success:
                 try:
-                    attempt_text = f" ({attempts+1}/5 attempts)" if attempts else ""
+                    attempt_text = f" ({attempts + 1}/5 attempts)" if attempts else ""
                     print(f"Querying Google's LLM ({model}) {attempt_text}")
                     response = _GOOGLE_LLM.generate_content(
                         f"{system_instruction}\n\n{prompt}",
@@ -477,16 +461,10 @@ def generate_pages(
     mytext = _LATEX_DOC_HEADER
     # start = datetime.datetime.today()
     days = [start_date + datetime.timedelta(days=i) for i in range(30)]
-    dates = [
-        f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days
-    ]
-
-
+    dates = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days]
 
     # with shelve.open(_BOOKS_FILE.name) as db:
-    with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(
-        str(_REVIEW_FILE)
-    ) as review_db:
+    with tomlshelve.open(str(_BOOKS_FILE)) as book_db, tomlshelve.open(str(_REVIEW_FILE)) as review_db:
         try:
             reviews = review_db["reviews"][target]
         except KeyError:
@@ -536,7 +514,7 @@ def generate_pages(
                     )
 
                     excerpt_start_index = raw_text.find(f"paragraph{{{excerpt_index}}}")
-                    excerpt_stop_index = raw_text.find(f"paragraph{{{excerpt_index+2}}}")
+                    excerpt_stop_index = raw_text.find(f"paragraph{{{excerpt_index + 2}}}")
 
                     excerpt = raw_text[excerpt_start_index - 1 : excerpt_stop_index - 1]
                     question["paragraph_index"] = excerpt
@@ -549,7 +527,7 @@ def generate_pages(
                 for i, question in enumerate(questions):
                     question_latex += f"{i + 1}. {question['question']}"
                     answer_latex += f"""
-{i + 1}. {question['answer']}\\newline """
+{i + 1}. {question["answer"]}\\newline """
                     if question["type"] in ["broad"]:
                         question_latex += _ANSWER_LINES
                     else:
@@ -588,8 +566,8 @@ def generate_pages(
 
             for i in review_indeces:
                 hspace = r"\hspace{24pt}"
-                review_latex += f"{reviews[i]['paragraph_index']} \\paragraph{{}} {i+1}.) {reviews[i]['question']} {_ANSWER_LINES if reviews[i]['type']!='vocabulary' else hspace}"
-                answer_latex += f"Review \\#{i+1}: {reviews[i]['answer']}"
+                review_latex += f"{reviews[i]['paragraph_index']} \\paragraph{{}} {i + 1}.) {reviews[i]['question']} {_ANSWER_LINES if reviews[i]['type'] != 'vocabulary' else hspace}"
+                answer_latex += f"Review \\#{i + 1}: {reviews[i]['answer']}"
 
         if not debug:
             review_db["reviews"][target].extend(new_reviews)
@@ -774,6 +752,7 @@ def config(ctx: typer.Context):
 def config_english():
     """Configuration function for English module."""
     config(ctx=None)
+
 
 @app.callback(invoke_without_command=True)
 def english_default(ctx: typer.Context):

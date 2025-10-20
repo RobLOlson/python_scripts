@@ -1,3 +1,4 @@
+# Used by: rob.english (LaTeX templates)
 # This contains snippets of LaTeX to be used in compiling an algebra homework document
 
 doc_header = """\\documentclass[12pt]{article}

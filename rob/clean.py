@@ -79,13 +79,13 @@ else:
     _USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
     _USER_CONFIG_FILE.touch(exist_ok=True)
     with open(_USER_CONFIG_FILE, "w") as fp:
+        # Prepend header identifying the dependent script
+        fp.write("# Used by: rob.clean\n\n")
         toml.dump(_SETTINGS, fp)
 
 
 _CROWDED_FOLDER = _SETTINGS["CROWDED_FOLDER"]  # number of files that is 'crowded'
-_FILE_TYPES: dict[str, list[str]] = _SETTINGS[
-    "FILE_TYPES"
-]  # dictionary of (folder, file-types) pairs
+_FILE_TYPES: dict[str, list[str]] = _SETTINGS["FILE_TYPES"]  # dictionary of (folder, file-types) pairs
 ARCHIVE_FOLDERS = list(_FILE_TYPES.keys())
 _EXTENSIONS = [extensions for extensions in _FILE_TYPES.values()]
 _EXTENSIONS = [item for sublist in _EXTENSIONS for item in sublist]
@@ -110,9 +110,7 @@ def generate_extension_handler(file_types: dict[str, list[str]]) -> dict[str, st
 _EXTENSION_HANDLER = generate_extension_handler(_FILE_TYPES)
 
 
-def isolate_crowded_folders(
-    folders: list[Path], crowded_threshold: int = _CROWDED_FOLDER
-) -> list[Path]:
+def isolate_crowded_folders(folders: list[Path], crowded_threshold: int = _CROWDED_FOLDER) -> list[Path]:
     """Return a list of directories with many files inside.
     post: True"""
 
@@ -140,8 +138,7 @@ def uncrowd_folder(folder: Path, yes_all: bool = False) -> dict[Path, Path]:
         f_year = last_modified.year
 
         target_folder = (
-            Path(f"{file.parent}")
-            / f"{file.parent.parent.name} {last_modified.month} ({f_month}) {f_year}"
+            Path(f"{file.parent}") / f"{file.parent.parent.name} {last_modified.month} ({f_month}) {f_year}"
         )
 
         file_targets[file] = target_folder / file.name
@@ -195,9 +192,7 @@ def associate_files(
 
         # if target folder has sub-folders from previous uncrowding, follow the uncrowded naming protocol
         if any(uncrowded_pattern.match(folder.name) for folder in sub_folders):
-            target_folder = (
-                target_folder / f"{file_type_folder} {last_modified.month} ({f_month}) {f_year}"
-            )
+            target_folder = target_folder / f"{file_type_folder} {last_modified.month} ({f_month}) {f_year}"
 
         file_targets[file] = target_folder / file.name
 
@@ -291,9 +286,7 @@ def preview_mvs(renames: dict[Path, Path], absolute: bool = False) -> Callable:
     post: True"""
     for source, dest in renames.items():
         if source.suffix in _EXTENSIONS:
-            rich.print(
-                f"mv [green]{source.absolute() if absolute else source.name} [red]{dest.absolute()}"
-            )
+            rich.print(f"mv [green]{source.absolute() if absolute else source.name} [red]{dest.absolute()}")
 
 
 def execute_move_commands(commands: dict[Path, Path], target: Path = Path("."), yes_all=False):
@@ -466,16 +459,16 @@ def identify_large_files(
         choice = "y"
     else:
         rich.print(
-            f"Archived files average:\n\n{float(avg_file_size/1_000_000):_.2f} Mbs +/- {float(standard_deviation/1_000_000):_.2} Mbs\n\n{_PROMPT_STYLE}Isolate large files (default: >150 Mbs)? Y/N?\n(Enter an integer to specify large file treshold.)",
+            f"Archived files average:\n\n{float(avg_file_size / 1_000_000):_.2f} Mbs +/- {float(standard_deviation / 1_000_000):_.2} Mbs\n\n{_PROMPT_STYLE}Isolate large files (default: >150 Mbs)? Y/N?\n(Enter an integer to specify large file treshold.)",
         )
         choice = input(f"{_PROMPT}")
 
     large: int = 0
 
     match choice:
-        case ("y" | "Y" | "yes"):
+        case "y" | "Y" | "yes":
             large = 150_000_000
-        case ("n" | "N" | "no"):
+        case "n" | "N" | "no":
             large = 150_000_000_000_000_000
         case x if re.match(r"\d+mbs?", x, re.IGNORECASE):
             large = int(re.match(r"([\d_]+) ?mbs?", x, re.IGNORECASE).group(1))
@@ -505,9 +498,7 @@ def identify_large_files(
             repr_func=show_file_size,
         )
     if approved_files:
-        large_mvs = associate_files(
-            approved_files, default_folder=Path("large_files"), yes_all=yes_all
-        )
+        large_mvs = associate_files(approved_files, default_folder=Path("large_files"), yes_all=yes_all)
 
         execute_move_commands(large_mvs)
 
@@ -516,9 +507,7 @@ def identify_large_files(
 def identify_crowded_archives(
     target: Path = typer.Option(default=Path("."), help="target path"),
     threshold: int = typer.Option(default=20, help="number of files to qualify as crowded"),
-    yes_all: bool = typer.Option(
-        default=False, help="always apply all routines to all valid files"
-    ),
+    yes_all: bool = typer.Option(default=False, help="always apply all routines to all valid files"),
 ) -> None:
     """Archives with file count exceeding threshold is sub-divided by month folders."""
 
@@ -555,9 +544,7 @@ def identify_crowded_archives(
 
 
 @main_app.callback(invoke_without_command=True)
-def main(
-    ctx: typer.Context, target: Path = Path("."), recurse: bool = False, yes_all: bool = False
-):
+def main(ctx: typer.Context, target: Path = Path("."), recurse: bool = False, yes_all: bool = False):
     if ctx.invoked_subcommand:
         return
 

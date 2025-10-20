@@ -1,0 +1,12 @@
+# Used by: rob.night via rob.utilities.cli
+
+hidden_options = ["show_python_signature"]
+
+[options]
+help = false
+h = false
+capture_output = true
+edit_cli_config = false
+open_cli_config = false
+open_base_config = false
+show_python_signature = false

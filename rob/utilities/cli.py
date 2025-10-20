@@ -51,10 +51,13 @@ _HARDCODED_OPTIONS: Dict[str, Any] = {
     "edit_cli_config": False,
     "open_cli_config": False,
     "open_base_config": False,
+    # Controls whether Python function signatures are shown in help output
+    "show_python_signature": True,
 }
 _HIDDEN_OPTIONS: list[str] = [
     "edit_cli_config",
     "open_base_config",
+    "show_python_signature",
     "h",
 ]
 
@@ -123,9 +126,11 @@ def _print_usage(func: Callable[[], None] | None = None, passed_command: list[st
         description = wrapped(description, indent=4, indent_2=5, sep=" ")
         description = "\n" + description if len(target_commands) < 15 else ""
 
-        py_signature = f"`{getattr(target_func, 'py_signature', f'{target_func.__name__}(...)')}`"
-        py_signature = wrapped(py_signature, indent=6, indent_2=7, sep=" ")
-        py_signature = "\n" + py_signature if len(target_commands) < 10 else ""
+        py_signature = ""
+        if OPTIONS.get("show_python_signature", _HARDCODED_OPTIONS.get("show_python_signature", True)):
+            py_signature = f"`{getattr(target_func, 'py_signature', f'{target_func.__name__}(...)')}`"
+            py_signature = wrapped(py_signature, indent=6, indent_2=7, sep=" ")
+            py_signature = "\n" + py_signature if len(target_commands) < 10 else ""
         help_lines.append(f"{command_example}{underline}{description}{py_signature}\n")
     if len(passed_command) > 1:
         command = passed_command[0]
@@ -217,28 +222,6 @@ def _parse_options(raw_args: list[str]) -> Dict[str, str | bool]:
 _REGISTERED_COMMANDS: Dict[str, Callable[[], None]] = {}
 _PASSED_OPTIONS: Dict[str, Any] = _parse_options(sys.argv[1:])  # unvalidated options
 OPTIONS.update(_PASSED_OPTIONS)
-
-# def _update_options():
-#     global OPTIONS
-
-# for option, value in _PASSED_OPTIONS.items():
-#     if option in OPTIONS:
-#         OPTIONS[option] = value
-#     elif option in _HARDCODED_OPTIONS.keys():
-#         OPTIONS[option] = value
-# else:
-#     rich.print(f"[red]Unknown option: {option}[/red]\n")
-#     _print_usage()
-#     sys.exit(1)
-# else:
-#     if option not in _HARDCODED_OPTIONS.keys():
-#         rich.print(f"[red]Unknown option: {option}[/red]\n")
-#         _print_usage()
-#         sys.exit(1)
-#     else:
-#         _CONFIG["options"].get(option, _HARDCODED_OPTIONS[option]) = value
-
-# OPTIONS.update(_PASSED_OPTIONS)
 
 
 cli_log_dir = Path(user_data_dir()) / "robolson" / "cli" / "logs"
@@ -393,6 +376,19 @@ def parse_and_invoke(
             default_config_file.parent.mkdir(parents=True, exist_ok=True)
             default_config_file.touch(exist_ok=True)
             with TomlConfig(user_toml_file=default_config_file, default_toml_file=None) as config_writer:
+                # Ensure header comment appears in default CLI config
+                try:
+                    with open(default_config_file, "r+", encoding="utf-8") as fp:
+                        content = fp.read()
+                        fp.seek(0)
+                        header = f"# Used by: {main_file.stem} via rob.utilities.cli\n\n"
+                        if not content.startswith("# Used by:"):
+                            fp.write(header + content)
+                        else:
+                            fp.write(content)
+                        fp.truncate()
+                except Exception:
+                    pass
                 config_writer["options"] = {}
                 config_writer["options"].update(_HARDCODED_OPTIONS)
                 config_writer["hidden_options"] = _HIDDEN_OPTIONS
@@ -426,6 +422,23 @@ def parse_and_invoke(
             with TomlConfig(
                 user_toml_file=user_config_file, default_toml_file=default_config_file
             ) as config_writer:
+                # Header for user-specific CLI config
+                try:
+                    user_config_file.parent.mkdir(parents=True, exist_ok=True)
+                    user_config_file.touch(exist_ok=True)
+                    with open(user_config_file, "r+", encoding="utf-8") as fp:
+                        content = fp.read()
+                        fp.seek(0)
+                        header = (
+                            f"# Used by: {main_file.parent.name}.{main_file.stem} via rob.utilities.cli\n\n"
+                        )
+                        if not content.startswith("# Used by:"):
+                            fp.write(header + content)
+                        else:
+                            fp.write(content)
+                        fp.truncate()
+                except Exception:
+                    pass
                 config_writer["options"] = {}
                 config_writer["options"].update(_HARDCODED_OPTIONS)
                 config_writer["options"].update(_CONFIG.get("options", {}))
@@ -467,7 +480,13 @@ def parse_and_invoke(
             _print_usage()
             sys.exit(1)
 
-    if OPTIONS.get("help", False) or OPTIONS.get("h", False):
+    # Respect help flags from this invocation (even when use_configs=False)
+    if (
+        passed_options.get("help", False)
+        or passed_options.get("h", False)
+        or OPTIONS.get("help", False)
+        or OPTIONS.get("h", False)
+    ):
         if passed_command != ["<no command>"]:
             _print_usage(func, passed_command)
         else:
@@ -476,16 +495,21 @@ def parse_and_invoke(
 
     if use_configs and OPTIONS.get("open_base_config", False):
         if default_config_file is None:
-            rich.print("\n[red]  No default config file found.[/red]\n")
             proposed_config_file = main_file.parent / "cli config" / f"{main_file.stem}_config.toml"
-            rich.print(f"  Create one at [yellow]{proposed_config_file}[/yellow]?")
-            if query.confirm():
-                with TomlConfig(user_toml_file=proposed_config_file, default_toml_file=None) as config_writer:
-                    config_writer["options"] = {}
-                    config_writer["options"].update(_HARDCODED_OPTIONS)
-                    config_writer["hidden_options"] = _HIDDEN_OPTIONS
+            if not proposed_config_file.exists():
+                rich.print("\n[red]  No default config file found.[/red]\n")
+                rich.print(f"  Create one at [yellow]{proposed_config_file}[/yellow]?")
+                if query.confirm():
+                    with TomlConfig(
+                        user_toml_file=proposed_config_file, default_toml_file=None
+                    ) as config_writer:
+                        config_writer["options"] = {}
+                        config_writer["options"].update(_HARDCODED_OPTIONS)
+                        config_writer["hidden_options"] = _HIDDEN_OPTIONS
+                    default_config_file = proposed_config_file
+                sys.exit(1)
+            else:
                 default_config_file = proposed_config_file
-            sys.exit(1)
         with TomlConfig(user_toml_file=default_config_file, default_toml_file=None) as config_writer:
             config_writer.open_with_editor()
         sys.exit(0)

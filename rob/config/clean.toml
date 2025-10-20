@@ -1,3 +1,5 @@
+# Used by: rob.clean
+
 DEBUG = false
 
 # Unrecognized file types will be filed under 'misc', else ignored
