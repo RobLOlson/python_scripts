@@ -6,8 +6,6 @@ from typing import Any, Callable
 import readchar
 import rich
 
-from . import interdict
-
 # _SAVE_CURSOR = "\033[s"
 # _RESTORE_CURSOR = "\033[u"
 _CLEAR_LINE = "\033[2K"
@@ -86,6 +84,7 @@ def approve_list(
 
     print("\n" * (len(target)))
     while True:
+        term_width = shutil.get_terminal_size().columns
         if long_contents:
             print(_CLEAR_SCREEN)
         else:
@@ -111,7 +110,8 @@ def approve_list(
                 else:
                     prefix = "  "
 
-            rich.print(rf"{style}{prefix}{display}")
+            display_line = rf"{style}{prefix}{display}".replace("\n", " // ")
+            rich.print(f"{display_line:<{term_width}}")
 
         try:
             choice = readchar.readkey()
@@ -229,6 +229,7 @@ Press Enter to continue."""
 
     print("\n" * (len(target)))
     while True:
+        term_width = shutil.get_terminal_size().columns
         print((_MOVE_UP + _CLEAR_LINE) * (len(target) + 1))
         for index, item in enumerate(target):
             style = "[green]" if approved_targets.count(index + 1) else "[red]"
@@ -241,7 +242,11 @@ Press Enter to continue."""
                 display = f"{item} [white] -> {style}{target[item]}"
 
             print(f"[{'x' if approved_targets.count(index + 1) else ' '}]", end="")
-            rich.print(rf" {style}{index + 1:02}.) {display}")
+            display_line = rf" {style}{index + 1:02}.) {display}".replace("\n", "")
+            if len(display_line) > term_width:
+                # breakpoint()
+                display_line = rf" {style}{index + 1:02}.) {item}[white] -> [/white] {style}...{str(target[item])[term_width - len(display_line) - len(item.name) :]}"
+            rich.print(f"{display_line}")
 
         try:
             choice = readchar.readkey()
@@ -398,10 +403,8 @@ def _build_display_lines(
             # indent = indent.replace(" ", "-")
             if item[2]:
                 style = "[green]"
-                end_style = "[/green]"
             else:
                 style = "[red]"
-                end_style = "[/red]"
 
         display_lines.append((rf"[white]{indent}{style}{display}", index, indent))
 
@@ -1055,7 +1058,6 @@ def handle_float(
                 print(_MOVE_UP * (abs(display_index - len(display_lines))), end="")
                 break
             case readchar.key.BACKSPACE:
-                # breakpoint()
                 if len(str(target2[cursor_index][0]).replace("-", "")) > 0:
                     target2[cursor_index] = (
                         f"{target2[cursor_index][0]}"[:-1],
