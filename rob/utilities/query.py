@@ -127,7 +127,7 @@ def approve_list(
                     prefix = "  "
 
             display_line = rf"{style}{prefix}{display}".replace("\n", " // ")
-            rich.print(f"{display_line:<{term_width}}")
+            rich.print(f"{display_line[:term_width]}")
 
         if len(pages) > 1:
             rich.print(f"[green]Page {current_page + 1} of {len(pages)}[/green]", end="")
@@ -293,7 +293,7 @@ Press Enter to continue."""
             print(f"[{'x' if approved_targets.count(index + 1 + display_index) else ' '}]", end="")
             display_line = rf" {style}{display_index + index + 1:02}.) {display}".replace("\n", " // ")
             if len(display_line) - len(style) > term_width:
-                display_line = rf" {style}{display_index + index + 1:02}.) {item}[white] -> [/white] {style}...{str(target[item])[len(item.name) + 10 : -len(item.name)]}"
+                display_line = rf" {style}{display_index + index + 1:02}.) {item}[white] -> [/white] {style}...{str(target[item])[len(str(item)) + 10 : -len(str(item))]}"
             if len(display_line) - len(style) - 12 > term_width:
                 rich.print(f"{display_line[: term_width - 3]}...")
             else:
