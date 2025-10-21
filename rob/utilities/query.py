@@ -67,6 +67,20 @@ def approve_list(
 
     cursor_index = 0
 
+    # Pagination setup based on terminal height
+    term_height = shutil.get_terminal_size().lines - 2
+    pages: list[list[Any]] = []
+    if len(target) > term_height:
+        buffer: list[Any] = []
+        for index, item in enumerate(target):
+            if index % term_height == 0 and index != 0:
+                pages.append(buffer)
+                buffer = []
+            buffer.append(item)
+        pages.append(buffer)
+    else:
+        pages = [target]
+
     if repr_func:
         long_contents = (
             max([len(repr_func(elem)) + 8 for elem in target]) > shutil.get_terminal_size().columns
@@ -82,28 +96,30 @@ def approve_list(
   Press Enter to continue."""
         )
 
-    print("\n" * (len(target)))
+    print("\n" * (len(pages[0])))
+    current_page = 0
+    display_index = 0
     while True:
         term_width = shutil.get_terminal_size().columns
         if long_contents:
             print(_CLEAR_SCREEN)
         else:
-            print((_MOVE_UP + _CLEAR_LINE) * (len(target) + 1))
-        for index, item in enumerate(target):
+            print((_MOVE_UP + _CLEAR_LINE) * (len(pages[current_page]) + 1))
+        for index, item in enumerate(pages[current_page]):
             if repr_func:
                 display = repr_func(item)
             else:
                 display = item
 
-            style = "[green]" if approved_targets.count(index + 1) else "[red]"
+            style = "[green]" if approved_targets.count(index + 1 + display_index) else "[red]"
             if maximum and maximum == 1:
                 style = "[white]"
             if index == cursor_index:
                 style = "[yellow]"
 
             if not maximum or maximum > 1:
-                print(f"[{'x' if approved_targets.count(index + 1) else ' '}]", end="")
-                prefix = f"{index + 1:02}.) "
+                print(f"[{'x' if approved_targets.count(index + 1 + display_index) else ' '}]", end="")
+                prefix = f"{display_index + index + 1:02}.) "
             else:
                 if index == cursor_index:
                     prefix = " >"
@@ -112,6 +128,9 @@ def approve_list(
 
             display_line = rf"{style}{prefix}{display}".replace("\n", " // ")
             rich.print(f"{display_line:<{term_width}}")
+
+        if len(pages) > 1:
+            rich.print(f"[green]Page {current_page + 1} of {len(pages)}[/green]", end="")
 
         try:
             choice = readchar.readkey()
@@ -123,13 +142,13 @@ def approve_list(
         match choice:
             case "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
                 i = int(choice)
-                if i > len(target):
+                if i > len(pages[current_page]):
                     continue
 
-                if i in approved_targets:
-                    approved_targets.remove(i)
+                if i + display_index in approved_targets:
+                    approved_targets.remove(i + display_index)
                 else:
-                    approved_targets.append(i)
+                    approved_targets.append(i + display_index)
 
                 if maximum and len(approved_targets) > maximum:
                     approved_targets.pop(0)
@@ -137,16 +156,20 @@ def approve_list(
             case "d" | "l" | ">" | readchar.key.RIGHT:
                 i = cursor_index + 1
 
-                if i not in approved_targets:
-                    approved_targets.append(i)
+                if i + display_index not in approved_targets:
+                    approved_targets.append(i + display_index)
                 else:
                     approved_targets = []
                     if maximum:
                         approved_targets = [
-                            (i + cursor_index) % len(target) + 1 for i in range(len(target)) if i < maximum
+                            (i + cursor_index + display_index) % len(pages[current_page]) + display_index + 1
+                            for i in range(len(pages[current_page]))
+                            if i < maximum
                         ]
                     else:
-                        approved_targets = list(range(1, len(target) + 1))
+                        approved_targets = list(
+                            range(display_index + 1, display_index + len(pages[current_page]) + 1)
+                        )
                     # for i, elem in enumerate(target):
                     #     approved_targets.append(i+1)
 
@@ -156,29 +179,40 @@ def approve_list(
             case "a" | "h" | "<" | readchar.key.LEFT:
                 i = cursor_index + 1
                 try:
-                    approved_targets.remove(i)
+                    approved_targets.remove(i + display_index)
 
                 except ValueError:
                     approved_targets = []
 
             case "s" | "j" | readchar.key.DOWN:
                 cursor_index += 1
-                cursor_index = cursor_index % len(target)
+                cursor_index = cursor_index % len(pages[current_page])
 
             case "w" | "k" | readchar.key.UP:
                 cursor_index -= 1
-                cursor_index = cursor_index % len(target)
+                cursor_index = cursor_index % len(pages[current_page])
 
             case "q" | "\r":
                 print("")
                 if maximum and maximum == 1:
-                    approved_targets = [cursor_index + 1]
-
+                    approved_targets = [cursor_index + 1 + display_index]
+                    print("")
+                    break
                 print("")
-                break
+                if current_page < len(pages) - 1:
+                    display_index += len(pages[current_page])
+                    current_page += 1
+                    print(_CLEAR_SCREEN)
+                else:
+                    current_page = 0
+                    break
             case "\x1b":  # ESC
-                rich.print("[red]Terminated.", end="")
-                exit(1)
+                if current_page > 0:
+                    current_page -= 1
+                    display_index -= len(pages[current_page])
+                    print(_CLEAR_SCREEN)
+                # rich.print("[red]Terminated.", end="")
+                # exit(1)
 
     return [elem for i, elem in enumerate(target) if approved_targets.count(i + 1)]
 
@@ -217,6 +251,19 @@ def approve_dict(
 
     approved_targets = []
 
+    term_height = shutil.get_terminal_size().lines - 2
+    pages = []
+    if len(target) > term_height:
+        buffer = {}
+        for index, item in enumerate(target.items()):
+            if index % term_height == 0 and index != 0:
+                pages.append(buffer)
+                buffer = {}
+            buffer[item[0]] = item[1]
+        pages.append(buffer)
+    else:
+        pages = [target]
+
     cursor_index = 0
     rich.print(
         """\n[green]Toggle approval with number keys.
@@ -227,27 +274,32 @@ Press Enter to continue."""
     if preamble:
         rich.print("\n" + preamble)
 
-    print("\n" * (len(target)))
+    print("\n" * (len(pages[0])))
+    current_page = 0
+    display_index = 0
     while True:
         term_width = shutil.get_terminal_size().columns
-        print((_MOVE_UP + _CLEAR_LINE) * (len(target) + 1))
-        for index, item in enumerate(target):
-            style = "[green]" if approved_targets.count(index + 1) else "[red]"
+        print((_MOVE_UP + _CLEAR_LINE) * (len(pages[current_page]) + 1))
+        for index, item in enumerate(pages[current_page]):
+            style = "[green]" if approved_targets.count(index + 1 + display_index) else "[red]"
             if index == cursor_index:
                 style = "[yellow]"
 
             if repr_func:
                 display = repr_func(item, target[item])
             else:
-                display = f"{item} [white] -> {style}{target[item]}"
+                display = f"{item} [white] -> [/white] {style}{target[item]}"
 
-            print(f"[{'x' if approved_targets.count(index + 1) else ' '}]", end="")
-            display_line = rf" {style}{index + 1:02}.) {display}".replace("\n", "")
-            if len(display_line) > term_width:
-                # breakpoint()
-                display_line = rf" {style}{index + 1:02}.) {item}[white] -> [/white] {style}...{str(target[item])[term_width - len(display_line) - len(item.name) :]}"
-            rich.print(f"{display_line}")
-
+            print(f"[{'x' if approved_targets.count(index + 1 + display_index) else ' '}]", end="")
+            display_line = rf" {style}{display_index + index + 1:02}.) {display}".replace("\n", " // ")
+            if len(display_line) - len(style) > term_width:
+                display_line = rf" {style}{display_index + index + 1:02}.) {item}[white] -> [/white] {style}...{str(target[item])[len(item.name) + 10 : -len(item.name)]}"
+            if len(display_line) - len(style) - 12 > term_width:
+                rich.print(f"{display_line[: term_width - 3]}...")
+            else:
+                rich.print(f"{display_line}")
+        if len(pages) > 1:
+            rich.print(f"[green]Page {current_page + 1} of {len(pages)}[/green]", end="")
         try:
             choice = readchar.readkey()
         except KeyboardInterrupt:
@@ -258,7 +310,7 @@ Press Enter to continue."""
         match choice:
             case "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9":
                 i = int(choice)
-                if i > len(target):
+                if i > len(pages[current_page]):
                     continue
 
                 if i in approved_targets:
@@ -272,15 +324,19 @@ Press Enter to continue."""
             case "d" | "l" | ">" | readchar.key.RIGHT:
                 i = cursor_index + 1
 
-                if i not in approved_targets:
-                    approved_targets.append(i)
+                if i + display_index not in approved_targets:
+                    approved_targets.append(i + display_index)
                 else:
                     if maximum:
                         approved_targets = [
-                            (i + cursor_index) % len(target) + 1 for i in range(len(target)) if i < maximum
+                            (i + cursor_index + display_index) % len(pages[current_page]) + display_index + 1
+                            for i in range(len(pages[current_page]))
+                            if i < maximum
                         ]
                     else:
-                        approved_targets = list(range(1, len(target) + 1))
+                        approved_targets = list(
+                            range(display_index + 1, display_index + len(pages[current_page]) + 1)
+                        )
 
                 if maximum and len(approved_targets) > maximum:
                     approved_targets.pop(0)
@@ -298,20 +354,32 @@ Press Enter to continue."""
 
             case "s" | "j" | readchar.key.DOWN:
                 cursor_index += 1
-                cursor_index = cursor_index % len(target)
+                cursor_index = cursor_index % len(pages[current_page])
 
             case "w" | "k" | readchar.key.UP:
                 cursor_index -= 1
-                cursor_index = cursor_index % len(target)
+                cursor_index = cursor_index % len(pages[current_page])
 
             case "q" | "\r":
                 print("")
-                break
+                if current_page < len(pages) - 1:
+                    display_index += len(pages[current_page])
+                    current_page += 1
+                    print(_CLEAR_SCREEN)
+                else:
+                    current_page = 0
+                    break
 
+            # ESC
             case "\x1b":
-                rich.print("[red]Terminated.", end="")
-                exit(1)
+                if current_page > 0:
+                    current_page -= 1
+                    display_index -= len(pages[current_page])
+                    print(_CLEAR_SCREEN)
+                # rich.print("[red]Terminated.", end="")
+                # exit(1)
 
+            # Ctrl+C
             case "\x03":
                 rich.print("[red]Terminated.", end="")
                 exit(1)
