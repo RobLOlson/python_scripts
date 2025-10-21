@@ -413,10 +413,23 @@ def clean_files(
 
         def repr_func(key, value):
             global _EXTENSIONS
+            term_width = shutil.get_terminal_size().columns
             if key.suffix in _EXTENSIONS:
-                return f"{key} [white] -> [/white]{value}"
+                key_display = f"{key}"
+                value_display = f"{value.parent}"
+                display_line = f"{key_display} -> {value_display}"
+                if len(display_line) > term_width - 10:
+                    extra = term_width - len(key_display) - 7
+                    # breakpoint()
+                    return f"{key_display} -> ...{value_display[-extra:][14:extra]}"[: term_width - 14]
+                else:
+                    breakpoint()
+                    return f"{key_display} -> {value_display}"
             else:
-                return f"{key}"
+                if len(str(key)) > term_width - 10:
+                    return f"{str(key)[: term_width - 16]}..."
+                else:
+                    return f"{key}"
 
         print(f"Targeting '{target.absolute()}' for clean up.\n\nSelect files to archive:")
         approved_mvs = query.approve_dict(target_mvs, repr_func=repr_func)
