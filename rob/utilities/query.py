@@ -755,6 +755,79 @@ def reconstitute_object(linearized_object):
     return reconstitute_object(composite)
 
 
+def date(
+    preamble: str = "",
+    target: datetime.datetime | None = None,
+) -> datetime.datetime:
+    """Query for a datetime value."""
+    if target is None:
+        target = datetime.datetime.today()
+
+    term_width = shutil.get_terminal_size().columns
+    interval = "day"
+
+    rich.print(f"[green]{'\n'.join(preamble.split('\n'))}[/green]"[:term_width], end="")
+    print(_SAVE_CURSOR, end="")
+    while True:
+        term_width = shutil.get_terminal_size().columns
+        # print(_MOVE_UP, end="")
+        print(_CLEAR_RIGHT, end="")
+        print(_RESTORE_CURSOR, end="")
+
+        date_str = str(target.date())
+
+        (year, month, day) = date_str.split("-")
+        if interval == "day":
+            day = f"[yellow]{day}[/yellow]"
+        elif interval == "month":
+            month = f"[yellow]{month}[/yellow]"
+        elif interval == "year":
+            year = f"[yellow]{year}[/yellow]"
+        rich.print(f"{year}-{month}-{day}", end="")
+        # rich.print(f"[yellow]{date_str}[/yellow]"[:term_width], end="")
+
+        try:
+            choice = readchar.readkey()
+        except KeyboardInterrupt:
+            print("")
+            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            exit(1)
+        match choice:
+            case "k" | readchar.key.UP:
+                match interval:
+                    case "day":
+                        datetime.datetime
+                        target = _adjust_datetime(target, day=1)
+                    case "month":
+                        target = _adjust_datetime(target, month=1)
+                    case "year":
+                        target = _adjust_datetime(target, year=1)
+            case "j" | readchar.key.DOWN:
+                match interval:
+                    case "day":
+                        target = _adjust_datetime(target, day=-1)
+                    case "month":
+                        target = _adjust_datetime(target, month=-1)
+                    case "year":
+                        target = _adjust_datetime(target, year=-1)
+            case "h" | readchar.key.LEFT:
+                if interval == "day":
+                    interval = "month"
+                elif interval == "month":
+                    interval = "year"
+            case "l" | readchar.key.RIGHT:
+                if interval == "year":
+                    interval = "month"
+                elif interval == "month":
+                    interval = "day"
+            # Ctrl+Enter to confirm and commit
+            case readchar.key.CTRL_J | "\r":
+                return target
+            case "\x1b":
+                rich.print("[red]Terminated.", end="")
+                exit(0)
+
+
 def integer(
     preamble: str = "",
     default: int | None = None,
@@ -1239,7 +1312,10 @@ def _adjust_datetime(target: datetime.datetime, day: int = 0, month: int = 0, ye
     target_day = start_day + day
     if target_day > 28:
         if target_month == 2:
-            target_day = 28
+            if target_year % 4 == 0 and target_year % 100 != 0 or target_year % 400 == 0:
+                target_day = 29
+            else:
+                target_day = 28
 
     if target_day > 30:
         if target_month == 4 or target_month == 6 or target_month == 9 or target_month == 11:
