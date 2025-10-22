@@ -873,7 +873,7 @@ def generate_average_rate_of_change_of_polynomial(
     rate = sympy.simplify(rate_num / rate_den)
     answer_tex = sympy.latex(rate)
 
-    problem_statement = rf"What is the average rate of change of \( f(x) = {poly_tex} \) over the interval \( {interval_tex} \)?"
+    problem_statement = rf"What is the average rate of change of \( f({str(x)}) = {poly_tex} \) over the interval \( {interval_tex} \)?"
 
     return (
         rf"{problem_statement}",

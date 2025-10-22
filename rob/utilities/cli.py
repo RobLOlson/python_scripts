@@ -532,7 +532,7 @@ def parse_and_invoke(
         if passed_command != ["<no command>"]:
             excess_params = passed_positionals[: len(passed_positionals) - len(func.py_required_params)]
             rich.print(
-                f"[red]Too many positional arguments: {', '.join(excess_param.name for excess_param in excess_params)}[/red]\n"
+                f"[red]Too many positional arguments: {', '.join(str(excess_param) for excess_param in excess_params)}[/red]\n"
             )
             _print_usage(func, passed_command)
         else:

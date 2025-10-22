@@ -3,6 +3,7 @@ import os
 import pathlib
 import random
 import sys
+from typing import Callable
 
 import appdirs
 import PyMultiDictionary
@@ -14,41 +15,6 @@ from .problems import algebra
 from .utilities import cli, query, tomlconfig
 
 _DEBUG = False
-
-
-# class ProblemCategory:
-#     """Represents a category of algebra problem.
-#     Must supply the logic for generating a problem statement as a valid function.
-#     Function must include a description of the problem type as the last line of its docstring.
-#     """
-
-#     def __init__(self, logic, weight: int):
-#         self.name = logic.__name__
-#         self.weight: int = weight
-#         self.logic = logic
-#         if logic.__doc__:
-#             self.description = logic.__doc__.split("\n")[-1].strip()
-#         else:
-#             print(f"Problem generator requires docstring: {logic.__name__}")
-#             exit(0)
-#         self.long_description = f"{self.description} ({self.weight})"
-
-#     def generate(self):
-#         """Return a Problem object"""
-
-#         # return self.logic(self.weight)
-
-#         problem, solution = self.logic(self.weight)
-#         return Problem(problem, solution, self.name)
-
-
-# class Problem:
-#     """Represents a homework problem and its solution."""
-
-#     def __init__(self, problem: str, solution: str, name: str):
-#         self.problem = rf"\item {problem}"
-#         self.solution = solution
-#         self.name = name
 
 
 def render_latex(
@@ -80,17 +46,11 @@ def render_latex(
         page_header = _LATEX_TEMPLATES["page_header"]
         parts = page_header.split("INSERT_DATE_HERE")
 
-        # page_header = _DATES[i].join(parts)
         date = start_date + datetime.timedelta(days=i)
         date = f"{_WEEKDAYS[date.weekday()]} {_MONTHS[date.month]} {date.day}, {date.year}"
         page_header = parts[0] + date + parts[1]
         parts = page_header.split("INSERT_STUDENT_HERE")
         page_header = user.capitalize().join(parts)
-
-        # if _USERNAME is not None and _USERNAME != "default":
-        #     page_header = _USERNAME.capitalize().join(parts)
-        # else:
-        #     page_header = parts[0] + parts[1]
 
         parts = page_header.split("INSERT_SUBJECT_HERE")
         page_header = subject_name.title().join(parts)
@@ -155,7 +115,22 @@ def config_default(user: str | None = None):
     os.startfile(_SAVE_FILE.absolute())
 
 
-# @algebra_app.callback(invoke_without_command=True)
+def _approve_algebra_problems(user: str | None = None) -> list[Callable]:
+    db = tomlconfig.TomlConfig(_SAVE_FILE, readonly=True)
+
+    all_problems: list[Callable] = [
+        obj for name, obj in algebra.__dict__.items() if name.startswith("generate_") and callable(obj)
+    ]
+
+    approved_problems = query.approve_list(
+        all_problems,
+        repr_func=lambda p: p.__doc__.split("\n")[-1].strip()
+        + f" ({db.get(user, {}).get('algebra', {}).get('weights', {}).get(p.__name__, 1000)})",
+    )
+
+    return approved_problems
+
+
 @cli.cli("algebra")
 def algebra_default(
     user: str | None = None,
@@ -165,6 +140,7 @@ def algebra_default(
     stdout: bool = False,
     interact: bool = True,
     render: bool = True,
+    approved_problems: list[Callable] | None = None,
 ) -> list[tuple[str, str]]:
     """Generate algebra homework assignments.
 
@@ -183,7 +159,7 @@ def algebra_default(
     db = tomlconfig.TomlConfig(_SAVE_FILE)
 
     # Preserve definition order by iterating over the module dict (insertion-ordered)
-    all_problems = [
+    all_problems: list[Callable[..., tuple[str, str]]] = [
         obj for name, obj in algebra.__dict__.items() if name.startswith("generate_") and callable(obj)
     ]
 
@@ -195,14 +171,12 @@ def algebra_default(
             db[user]["algebra"] = db.get(user, {}).get("algebra", {})
             db[user]["algebra"]["weights"] = db.get(user, {}).get("algebra", {}).get("weights", {})
             db[user]["algebra"]["weights"][problem.__name__] = 1000
+
     db.sync()
 
     if interact:
-        approved_problems = query.approve_list(
-            all_problems,
-            repr_func=lambda p: p.__doc__.split("\n")[-1].strip()
-            + f" ({db.get(user, {}).get('algebra', {}).get('weights', {}).get(p.__name__, 1000)})",
-        )
+        if approved_problems is None:
+            approved_problems = _approve_algebra_problems(user)
 
         start_date = survey.routines.datetime(
             "Select assignment start date: ",
@@ -217,7 +191,8 @@ def algebra_default(
             "How many problems per assignment? ", default=problem_count, minimum=1, maximum=100
         )
     else:
-        approved_problems = all_problems
+        if approved_problems is None or len(approved_problems) == 0:
+            approved_problems = all_problems
         start_date = datetime.datetime.today()
 
     days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
@@ -259,7 +234,7 @@ def algebra_default(
                 approved_weights[approved_problems.index(chosen_problem)] * 0.8
             )
 
-    problem_set = []
+    problem_set: list[tuple[str, str]] = []
     for problem in problem_list:
         problem_set.append(problem(freq_weight=approved_weights[approved_problems.index(problem)]))
 
@@ -275,6 +250,7 @@ def algebra_default(
             user=user,
             stdout=stdout,
         )
+
     return problem_set
 
 
@@ -285,48 +261,56 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
     all_subjects = ["algebra", "vocabulary"]
     approved_subjects = query.approve_list(all_subjects)
 
-    form = {}
+    if interact:
+        form = {}
 
-    if user:
-        user = user.lower()
+        if user:
+            user = user.lower()
 
-    form["start_date"] = datetime.datetime.today()
-    form["user"] = user
-    form["assignment_count"] = 5
-    form["problem count"] = {}
-    for subject in approved_subjects:
-        form["problem count"][f"{subject}"] = 3
+        form["start_date"] = datetime.datetime.today()
+        form["user"] = user
+        form["assignment_count"] = 5
+        form["problem count"] = {}
+        for subject in approved_subjects:
+            form["problem count"][f"{subject}"] = 3
 
-    data = query.form_from_dict(form)
-    # data = query.edit_object(form, show_brackets=False, edit_keys=False)
+        data = query.form_from_dict(form)
+        # data = query.edit_object(form, show_brackets=False, edit_keys=False)
 
-    start_date = data["start_date"]
-    assignment_count = data["assignment_count"]
-    user = data["user"]
+        start_date = data["start_date"]
+        assignment_count = data["assignment_count"]
+        user = data["user"]
 
-    # for subject in approved_subjects:
-    #     problem_count[subject] = data["problem count"][f"{subject}"]
+    problem_set: list[tuple[str, str]] = []
 
-    # assignment_count = query.integer("How many assignments to generate? ", default=5)
-
-    problem_set = []
     for subject in approved_subjects:
         problem_count = data["problem count"].get(f"{subject}", 3)
         match subject:
             case "algebra":
-                # problem_count = query.integer("How many algebra problems per assignment? ", default=4)
-                problem_set.extend(
-                    algebra_default(
+                if interact:
+                    approved_problems = _approve_algebra_problems(user)
+
+                    algebra_problems = algebra_default(
                         user=user,
                         start_date=start_date,
                         assignment_count=assignment_count,
                         problem_count=problem_count,
                         render=False,
                         interact=False,
+                        approved_problems=approved_problems,
                     )
-                )
+                else:
+                    algebra_problems = algebra_default(
+                        user=user,
+                        start_date=start_date,
+                        assignment_count=assignment_count,
+                        problem_count=problem_count,
+                        render=False,
+                        interact=False,
+                        approved_problems=None,
+                    )
+                problem_set.extend(algebra_problems)
             case "vocabulary":
-                # problem_count = query.integer("How many vocabulary problems per assignment? ", default=2)
                 problem_set.extend(
                     vocabulary_default(
                         user=user,
@@ -491,6 +475,9 @@ def vocab_problem(
 @cli.cli("")
 def homework(user: str | None = None):
     """Launch TUI for homework generation."""
+
+    multiple_default(user=user)
+    exit(0)
 
     available_apps = ["multiple", "algebra", "vocabulary"]
 
