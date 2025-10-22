@@ -1,3 +1,51 @@
+"""
+Interactive terminal query utilities.
+
+This module provides interactive, TTY-friendly primitives for asking users
+questions, reviewing and approving items, and inline-editing nested Python
+objects. It uses ANSI cursor control sequences along with `readchar` and
+`rich` to render responsive prompts in the terminal.
+
+Summary of features
+- approve_list / approve_dict: Review a list or dict and approve selections
+  with the keyboard (supports pagination and selection limits).
+- select: Convenience wrapper that returns a single approved item.
+- edit_object: Inline editor for nested lists/dicts with type-aware editors
+  for str, int, float, bool, and datetime values.
+- date and integer: Focused prompts for choosing a date or an integer using
+  arrow keys and typing; commit with Ctrl+Enter.
+- confirm: Yes/No prompt with optional default.
+- form_from_dict: Simple form-like editing for flat dicts (keys locked).
+- linearize_complex_object / reconstitute_object: Convert nested structures to
+  and from a linear representation used by the editor internals.
+- print_linearized_object: Debug helper to visualize the linearized form.
+
+Common keyboard controls (may vary slightly by prompt)
+- j / k or Down / Up: Move the cursor
+- h / l or Left / Right: Change field/interval or toggle selection
+- 1-9: Toggle the corresponding numbered item (where applicable)
+- Enter: Accept current value or advance
+- Ctrl+Enter: Commit in single-value prompts (e.g., date, integer)
+- Esc: Cancel the current operation; Ctrl+C aborts
+
+Usage examples
+    from rob.utilities import query
+
+    # Select a single item
+    color = query.select(["red", "green", "blue"])
+
+    # Approve up to two items from a list
+    picks = query.approve_list(["a", "b", "c"], maximum=2)
+
+    # Edit a nested object in-place
+    updated = query.edit_object({"name": "Ada", "age": 37, "flags": [True, False]})
+
+Notes
+- These utilities are designed for interactive TTYs; ANSI-styled output may
+  not render correctly in non-interactive environments.
+- All prompts are blocking and wait for user input.
+"""
+
 import datetime
 import shutil
 from textwrap import wrap
@@ -11,8 +59,8 @@ import rich
 _CLEAR_LINE = "\033[2K"
 _MOVE_UP = "\033[1A"
 _MOVE_DOWN = "\033[1B"
-_MOVE_LEFT = "\033[1D"
 _MOVE_RIGHT = "\033[1C"
+_MOVE_LEFT = "\033[1D"
 _CLEAR_RIGHT = "\033[K"
 _CLEAR_LEFT = "\033[1K"
 _CLEAR_SCREEN = "\033[2J"
@@ -159,17 +207,23 @@ def approve_list(
                 if i + display_index not in approved_targets:
                     approved_targets.append(i + display_index)
                 else:
-                    approved_targets = []
+                    # approved_targets = []
                     if maximum:
                         approved_targets = [
-                            (i + cursor_index + display_index) % len(pages[current_page]) + display_index + 1
-                            for i in range(len(pages[current_page]))
-                            if i < maximum
+                            i for i in range(0, sum(len(page) for page in pages) + 1) if i < maximum
                         ]
+                        approved_targets = list(set(approved_targets))
+                        # approved_targets = [
+                        #     (i + cursor_index + display_index) % len(pages[current_page]) + display_index + 1
+                        #     for i in range(len(pages[current_page]))
+                        #     if i < maximum
+                        # ]
                     else:
-                        approved_targets = list(
-                            range(display_index + 1, display_index + len(pages[current_page]) + 1)
-                        )
+                        approved_targets = [i for i in range(0, sum(len(page) for page in pages) + 1)]
+
+                        # approved_targets = list(
+                        #     range(display_index + 1, display_index + len(pages[current_page]) + 1)
+                        # )
                     # for i, elem in enumerate(target):
                     #     approved_targets.append(i+1)
 
@@ -185,12 +239,26 @@ def approve_list(
                     approved_targets = []
 
             case "s" | "j" | readchar.key.DOWN:
-                cursor_index += 1
-                cursor_index = cursor_index % len(pages[current_page])
+                if cursor_index == len(pages[current_page]) - 1:
+                    if current_page == len(pages) - 1:
+                        continue
+                    else:
+                        cursor_index = 0
+                        display_index += len(pages[current_page])
+                        current_page += 1
+                else:
+                    cursor_index += 1
+                    cursor_index = cursor_index % len(pages[current_page])
 
             case "w" | "k" | readchar.key.UP:
-                cursor_index -= 1
-                cursor_index = cursor_index % len(pages[current_page])
+                if cursor_index == 0:
+                    if current_page > 0:
+                        current_page -= 1
+                        display_index -= len(pages[current_page])
+                        cursor_index = len(pages[current_page]) - 1
+                else:
+                    cursor_index -= 1
+                    cursor_index = cursor_index % len(pages[current_page])
 
             case "q" | "\r":
                 print("")
@@ -329,14 +397,12 @@ Press Enter to continue."""
                 else:
                     if maximum:
                         approved_targets = [
-                            (i + cursor_index + display_index) % len(pages[current_page]) + display_index + 1
-                            for i in range(len(pages[current_page]))
-                            if i < maximum
+                            i for i in range(0, sum(len(page) for page in pages) + 1) if i < maximum
                         ]
+                        approved_targets = list(set(approved_targets))
                     else:
-                        approved_targets = list(
-                            range(display_index + 1, display_index + len(pages[current_page]) + 1)
-                        )
+                        approved_targets = [i for i in range(0, sum(len(page) for page in pages) + 1)]
+                        approved_targets = list(set(approved_targets))
 
                 if maximum and len(approved_targets) > maximum:
                     approved_targets.pop(0)
@@ -353,12 +419,28 @@ Press Enter to continue."""
                     approved_targets = []
 
             case "s" | "j" | readchar.key.DOWN:
-                cursor_index += 1
-                cursor_index = cursor_index % len(pages[current_page])
+                if cursor_index == len(pages[current_page]) - 1:
+                    if current_page == len(pages) - 1:
+                        continue
+                    else:
+                        cursor_index = 0
+                        display_index += len(pages[current_page])
+                        current_page += 1
+                        print(_CLEAR_SCREEN)
+                else:
+                    cursor_index += 1
+                    cursor_index = cursor_index % len(pages[current_page])
 
             case "w" | "k" | readchar.key.UP:
-                cursor_index -= 1
-                cursor_index = cursor_index % len(pages[current_page])
+                if cursor_index == 0:
+                    if current_page > 0:
+                        current_page -= 1
+                        display_index -= len(pages[current_page])
+                        cursor_index = len(pages[current_page]) - 1
+                        print(_CLEAR_SCREEN)
+                else:
+                    cursor_index -= 1
+                    cursor_index = cursor_index % len(pages[current_page])
 
             case "q" | "\r":
                 print("")
@@ -958,9 +1040,9 @@ def handle_string(
             case readchar.key.BACKSPACE:
                 if target2[cursor_index][0] is None:
                     target2[cursor_index] = ("", target2[cursor_index][1], str)
-                elif len(target2[cursor_index][0]) > 1:
+                elif len(str(target2[cursor_index][0])) > 1:
                     target2[cursor_index] = (
-                        target2[cursor_index][0][:-1],
+                        str(target2[cursor_index][0])[:-1],
                         target2[cursor_index][1],
                         target2[cursor_index][2],
                     )

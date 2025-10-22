@@ -876,7 +876,7 @@ def generate_average_rate_of_change_of_polynomial(
     problem_statement = rf"What is the average rate of change of \( f(x) = {poly_tex} \) over the interval \( {interval_tex} \)?"
 
     return (
-        rf"{problem_statement}",
+        rf"{problem_statement} \\ \\ \\ \\ \\ \\ \\",
         rf"\({answer_tex}\)",
     )
 
@@ -940,7 +940,7 @@ def generate_adding_polynomials(freq_weight: int = 1000):
     problem_statement = problem_statement.replace("<br>", r"\\")
 
     return (
-        problem_statement,
+        rf"{problem_statement} \\ \\ \\ \\ \\ \\ \\",
         rf"\({answer_tex}\)",
     )
 
