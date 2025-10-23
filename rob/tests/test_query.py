@@ -152,7 +152,7 @@ class TestReconstituteObject:
 class TestFormFromDict:
     def test_simple_form(self, mock_readkey):
         # Simulate pressing Ctrl+Enter (commit) to accept defaults
-        mock_readkey.side_effect = ["\r", "\r", "q"]
+        mock_readkey.side_effect = ["\r", "\r", readchar.key.CTRL_J]
         test_dict = {"name": "John", "age": 30}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)
@@ -160,7 +160,7 @@ class TestFormFromDict:
 
     def test_nested_form(self, mock_readkey):
         # Simulate pressing Ctrl+Enter (commit) to accept defaults
-        mock_readkey.side_effect = ["\r", "\r", "q"]
+        mock_readkey.side_effect = ["\r", "\r", readchar.key.CTRL_J]
         test_dict = {"personal": {"name": "John", "age": 30}, "settings": {"dark_mode": True}}
         result = form_from_dict(test_dict)
         assert isinstance(result, dict)

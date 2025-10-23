@@ -15,6 +15,7 @@ from .problems import algebra
 from .utilities import cli, query, tomlconfig
 
 _DEBUG = False
+_PROMPT = "rob.homework> "
 
 
 def render_latex(
@@ -184,11 +185,17 @@ def algebra_default(
         )
 
         assignment_count = query.integerQ(
-            "How many algebra assignments to generate? ", default=assignment_count, minimum=1, maximum=100
+            "How many algebra assignments to generate?\n{_PROMPT}",
+            default=assignment_count,
+            minimum=1,
+            maximum=100,
         )
 
         problem_count = query.integerQ(
-            "How many problems per assignment? ", default=problem_count, minimum=1, maximum=100
+            "How many problems per assignment?\n{_PROMPT}",
+            default=problem_count,
+            minimum=1,
+            maximum=100,
         )
     else:
         if approved_problems is None or len(approved_problems) == 0:
@@ -275,7 +282,6 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
             form["problem count"][f"{subject}"] = 3
 
         data = query.form_from_dict(form)
-        # data = query.edit_object(form, show_brackets=False, edit_keys=False)
 
         start_date = data["start_date"]
         assignment_count = data["assignment_count"]
@@ -321,7 +327,6 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
                     )
                 )
 
-    # problem_count = query.integer("How many problems per assignment? ", default=6)
     # WARNING: got a sporadic ValueError here, sample larger than population
     try:
         problem_set = random.sample(problem_set, k=max(assignment_count * problem_count, len(problem_set)))
@@ -361,7 +366,7 @@ def vocabulary_default(
 
     if interact:
         start_date = query.dateQ(
-            preamble="Select assignment start date: ",
+            preamble=f"  Select assignment start date:\n{_PROMPT}",
             target=start_date,
         )
         # start_date = survey.routines.datetime(
@@ -478,7 +483,6 @@ def vocab_problem(
         return (target_word, problem, solution)
 
 
-# @app.callback(invoke_without_command=True)
 @cli.cli("")
 def homework(user: str | None = None):
     """Launch TUI for homework generation."""
@@ -486,20 +490,20 @@ def homework(user: str | None = None):
     multiple_default(user=user)
     exit(0)
 
-    available_apps = ["multiple", "algebra", "vocabulary"]
+    # available_apps = ["multiple", "algebra", "vocabulary"]
 
-    print("Which subject?")
-    choice = query.select(available_apps)
+    # print("Which subject?")
+    # choice = query.select(available_apps)
 
-    match choice:
-        case "multiple":
-            multiple_default(user=user)
+    # match choice:
+    #     case "multiple":
+    #         multiple_default(user=user)
 
-        case "algebra":
-            algebra_default(user=user)
+    #     case "algebra":
+    #         algebra_default(user=user)
 
-        case "vocabulary":
-            vocabulary_default(user=user)
+    #     case "vocabulary":
+    #         vocabulary_default(user=user)
 
 
 _OPTIONS = cli._parse_options(sys.argv[1:])

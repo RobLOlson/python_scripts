@@ -686,35 +686,6 @@ def edit_object(
                         display_index=display_index,
                     )
 
-                # modified_text = ""
-                # # print((_MOVE_UP + _CLEAR_LINE) * len(display_lines))
-
-                # display_lines = _build_display_lines(
-                #     target2=target2,
-                #     cursor_index=cursor_index,
-                #     show_brackets=show_brackets,
-                #     preamble=preamble,
-                #     repr_func=repr_func,
-                # )
-                # rich.print("\n".join(display_lines), end="")
-                # print(_MOVE_UP * (len(display_lines) + 3), end="")
-
-                # modified_text = "[yellow]" + str(target2[cursor_index][0])
-
-                # # Move cursor to start of target2 data
-                # print(_MOVE_LEFT * len(modified_text), end="")
-                # print(modified_text, end="")
-                # print(_MOVE_LEFT * len(modified_text), end="")
-                # print(_CLEAR_RIGHT, end="")
-
-                # replace = input("  " * int(target2[cursor_index][1] + 1))
-
-                # if replace:
-                #     target2[cursor_index] = (replace, target2[cursor_index][1], target2[cursor_index][2])
-
-                # # This line moves the cursor down to its original position after editing, so the display remains consistent.
-                # print(_MOVE_DOWN * (len(display_lines) - cursor_index + 1))
-
             case "s" | "j" | readchar.key.DOWN:
                 while True:
                     cursor_index = (cursor_index + 1) % len(target2)
@@ -734,15 +705,29 @@ def edit_object(
                     if not edit_keys and target2[(cursor_index + 1) % len(target2)][0] == ":":
                         continue
                     break
-
-            case "q" | readchar.key.CTRL_J | "\r" | "\n":
+            case "?":
+                print((_CLEAR_LINE + _MOVE_UP) * (max(len(display_lines), 8)))
+                rich.print("  [green]w / k[/green] : Move up")
+                rich.print("  [green]s / j[/green] : Move down")
+                rich.print("  [green]Enter[/green] : Edit Selected Item")
+                rich.print("  [green]Ctrl+Enter[/green] : Commit")
+                rich.print("  [green]Esc[/green] : Cancel Edit")
+                rich.print("  [green]q[/green] : Quit")
+                rich.print("\n[yellow]Press any key to continue...[/yellow]", end="")
+                try:
+                    readchar.readkey()
+                except KeyboardInterrupt:
+                    rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+                    exit(1)
+            case readchar.key.CTRL_J | "\r" | "\n":
                 break
-
-            case "\x1b":
-                target = original_target
+            case "q":
                 rich.print("[red]Terminated.", end="")
                 exit(0)
 
+            # ESC: Cancel Edit
+            case "\x1b":
+                continue
     return reconstitute_object(target2)
 
 
