@@ -183,11 +183,11 @@ def algebra_default(
             attrs=("month", "day", "year"),
         )
 
-        assignment_count = query.integer(
+        assignment_count = query.integerQ(
             "How many algebra assignments to generate? ", default=assignment_count, minimum=1, maximum=100
         )
 
-        problem_count = query.integer(
+        problem_count = query.integerQ(
             "How many problems per assignment? ", default=problem_count, minimum=1, maximum=100
         )
     else:
@@ -346,6 +346,7 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
 def vocabulary_default(
     user: str | None = None,
     assignment_count: int = 5,
+    start_date: datetime.datetime | None = None,
     problem_count: int = 3,
     stdout: bool = False,
     interact: bool = True,
@@ -355,19 +356,25 @@ def vocabulary_default(
     """Render a set of vocabulary problems.
 
     Returns a list of tuples of problem statements and solutions."""
+    if start_date is None:
+        start_date = datetime.datetime.today()
 
     if interact:
-        start_date = survey.routines.datetime(
-            "Select assignment start date: ",
-            attrs=("month", "day", "year"),
+        start_date = query.dateQ(
+            preamble="Select assignment start date: ",
+            target=start_date,
         )
-        assignment_count = query.integer(
+        # start_date = survey.routines.datetime(
+        #     "Select assignment start date: ",
+        #     attrs=("month", "day", "year"),
+        # )
+        assignment_count = query.integerQ(
             preamble="How many vocabulary assignments to generate? ",
             default=assignment_count,
             minimum=1,
             maximum=100,
         )
-        problem_count = query.integer(
+        problem_count = query.integerQ(
             preamble="How many problems per assignment? ", default=problem_count, minimum=1, maximum=100
         )
     else:

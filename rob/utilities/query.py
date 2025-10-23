@@ -837,7 +837,7 @@ def reconstitute_object(linearized_object):
     return reconstitute_object(composite)
 
 
-def date(
+def dateQ(
     preamble: str = "",
     target: datetime.datetime | None = None,
 ) -> datetime.datetime:
@@ -848,11 +848,11 @@ def date(
     term_width = shutil.get_terminal_size().columns
     interval = "day"
 
-    rich.print(f"[green]{'\n'.join(preamble.split('\n'))}[/green]"[:term_width], end="")
+    rich.print(f"{'\n'.join(preamble.split('\n'))}"[:term_width], end="")
     print(_SAVE_CURSOR, end="")
     while True:
         term_width = shutil.get_terminal_size().columns
-        # print(_MOVE_UP, end="")
+
         print(_CLEAR_RIGHT, end="")
         print(_RESTORE_CURSOR, end="")
 
@@ -910,7 +910,7 @@ def date(
                 exit(0)
 
 
-def integer(
+def integerQ(
     preamble: str = "",
     default: int | None = None,
     minimum: int | None = None,
@@ -1412,13 +1412,3 @@ def _adjust_datetime(target: datetime.datetime, day: int = 0, month: int = 0, ye
     return datetime.datetime(
         target_year, target_month, target_day, target.hour, target.minute, target.second, target.microsecond
     )
-
-
-# print(approve_list([1,2,3,4,5,6,7,8,9,10]))
-# print(approve_dict({'settings_1':True, 'settings_2':False, 'settings_3':False, 'settings_4':False, 'settings_5':False}))
-# print_linearized_object(linearize_complex_object({'a': [1, 2, {'x':'y', 'z':'w'}]}))
-# print_linearized_object(linearize_complex_object([{'settings_1':True, 'settings_2':False}]))
-# print(edit_object([reconstitute_object, 'uno', 'dos', {'aba': [1, 2, {'xeno':'y', 'z':'w'}, reconstitute_object]}], show_brackets=False, edit_keys=False, dict_inline=True))
-# print(form_from_dict({'a': {1:2, 2:4, 3:6}, 'b':{'option_1': True, 'option_2': False}}))
-
-# print(approve_list(edit_object([False, 'dos', {1:'one', 2:'two', 3:[3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9]}, ['quatro', 'cinco', [1,2,3.5]]])))
