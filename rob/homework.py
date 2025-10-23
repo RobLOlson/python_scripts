@@ -11,7 +11,7 @@ import rich
 import survey
 import toml
 
-from .problems import algebra
+from .problems import algebra, chemistry
 from .utilities import cli, query, tomlconfig
 
 _DEBUG = False
@@ -100,6 +100,23 @@ def reset_weights(user: str | None = None, debug: bool = True):
     if query.confirm():
         for key in _CONFIG[_USERNAME]["algebra"]["weights"].keys():
             _CONFIG[_USERNAME]["algebra"]["weights"][key] = _FALLBACK_CONFIG["default"]["algebra"][
+                "weights"
+            ].get(key, 1000)
+        _CONFIG.sync()
+
+    exit(0)
+
+
+# Chemistry reset mirroring algebra
+@cli.cli("reset chemistry")
+@cli.cli("chemistry reset")
+def reset_chemistry_weights(user: str | None = None, debug: bool = True):
+    """Reset chemistry problem frequency rates to default."""
+
+    rich.print(f"[red]Reset [yellow]{_USERNAME}'s[/yellow] chemistry weights to default (1000)?[/red]")
+    if query.confirm():
+        for key in _CONFIG[_USERNAME]["chemistry"]["weights"].keys():
+            _CONFIG[_USERNAME]["chemistry"]["weights"][key] = _FALLBACK_CONFIG["default"]["chemistry"][
                 "weights"
             ].get(key, 1000)
         _CONFIG.sync()
@@ -265,7 +282,7 @@ def algebra_default(
 def multiple_default(user: str | None = None, assignment_count: int | None = None, interact: bool = True):
     """Launch TUI for multiple subject generation."""
 
-    all_subjects = ["algebra", "vocabulary"]
+    all_subjects = ["algebra", "vocabulary", "chemistry"]
     approved_subjects = query.approve_list(all_subjects)
 
     if interact:
@@ -326,6 +343,16 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
                         interact=False,
                     )
                 )
+            case "chemistry":
+                problem_set.extend(
+                    chemistry_default(
+                        user=user,
+                        assignment_count=assignment_count,
+                        problem_count=problem_count,
+                        render=False,
+                        interact=False,
+                    )
+                )
 
     # WARNING: got a sporadic ValueError here, sample larger than population
     try:
@@ -345,6 +372,130 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
         subject_name="+".join(approved_subjects),
         user=user,
     )
+
+
+@cli.cli("chemistry")
+def chemistry_default(
+    user: str | None = None,
+    assignment_count: int = 5,
+    start_date: datetime.datetime | None = None,
+    problem_count: int = 1,
+    stdout: bool = False,
+    interact: bool = True,
+    debug: bool = True,
+    render: bool = True,
+) -> list[tuple[str, str]]:
+    """Render a set of chemistry problems.
+
+    Returns a list of tuples of problem statements and solutions."""
+    if start_date is None:
+        start_date = datetime.datetime.today()
+
+    # Normalize user similar to algebra_default
+    if user:
+        user = user.lower()
+    else:
+        user = _USERNAME
+
+    if interact:
+        start_date = query.dateQ(
+            preamble=f"  Select assignment start date:\n{_PROMPT}",
+            target=start_date,
+        )
+        assignment_count = query.integerQ(
+            preamble="How many chemistry assignments to generate? ",
+            default=assignment_count,
+            minimum=1,
+            maximum=100,
+        )
+        _ = query.integerQ(
+            preamble="How many problems per assignment? (fixed to 1) ",
+            default=problem_count,
+            minimum=1,
+            maximum=1,
+        )
+        problem_count = 1
+    else:
+        start_date = datetime.datetime.today()
+        problem_count = 1
+
+    days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
+
+    global _DATES
+    _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days]
+
+    # Mirror algebra: seed and persist weights, then perform weighted selection and decay
+    db = tomlconfig.TomlConfig(_SAVE_FILE)
+
+    all_problems: list[Callable[..., tuple[str, str]]] = [
+        obj for name, obj in chemistry.__dict__.items() if name.startswith("generate_") and callable(obj)
+    ]
+
+    # Seed missing weights for chemistry problems
+    for problem in all_problems:
+        try:
+            db[user]["chemistry"]["weights"][problem.__name__]
+        except KeyError:
+            db[user] = db.get(user, {})
+            db[user]["chemistry"] = db.get(user, {}).get("chemistry", {})
+            db[user]["chemistry"]["weights"] = db.get(user, {}).get("chemistry", {}).get("weights", {})
+            db[user]["chemistry"]["weights"][problem.__name__] = 1000
+
+    db.sync()
+
+    approved_problems = all_problems
+    approved_weights = [
+        db.get(_USERNAME, {}).get("chemistry", {}).get("weights", {}).get(p.__name__, 1000)
+        for p in approved_problems
+    ]
+
+    used_problems: list[Callable[..., tuple[str, str]]] = []
+    problem_list: list[Callable[..., tuple[str, str]]] = []
+    for _ in range(assignment_count * problem_count):
+        target_weight = random.randint(0, 1000)
+        cur_weight = 0
+        chosen_problem: Callable[..., tuple[str, str]] | None = None
+        for candidate in approved_problems:
+            if len(used_problems) == len(approved_problems):
+                used_problems = []
+
+            cur_weight += approved_weights[approved_problems.index(candidate)]
+            if cur_weight >= target_weight and candidate not in used_problems:
+                chosen_problem = candidate
+                break
+        if chosen_problem is None:
+            problem_list.append(random.choice(approved_problems))
+            used_problems.append(problem_list[-1])
+        else:
+            problem_list.append(chosen_problem)
+            used_problems.append(chosen_problem)
+            # Apply decay mirroring algebra
+            db[_USERNAME]["chemistry"]["weights"][chosen_problem.__name__] = int(
+                db[_USERNAME]["chemistry"]["weights"][chosen_problem.__name__] * 0.8
+            )
+            approved_weights[approved_problems.index(chosen_problem)] = int(
+                approved_weights[approved_problems.index(chosen_problem)] * 0.8
+            )
+
+    problem_set: list[tuple[str, str]] = []
+    for problem in problem_list:
+        problem_set.append(problem(freq_weight=approved_weights[approved_problems.index(problem)]))
+
+    db.sync()
+
+    if render:
+        render_latex(
+            assignment_count=assignment_count,
+            problem_count=problem_count,
+            start_date=start_date,
+            debug=debug,
+            problem_set=problem_set,
+            subject_name="Chemistry",
+            user=user,
+            stdout=stdout,
+        )
+
+    return problem_set
 
 
 @cli.cli("vocabulary")

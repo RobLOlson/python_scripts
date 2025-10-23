@@ -5,10 +5,10 @@ default_user = "default"
 [constants]
 weekdays = [ "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",]
 months = [ "N/a", "Jan", "Feb", "March", "April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec",]
-variables = [ "x", "y", "z", "a", "b", "c", "k", "m", "n", "i", "p", "q",]
+variables = [ "x", "y", "z", "a", "b", "c", "k", "m", "p", "q",]
 
 [default.algebra.weights]
-generate_numerical_expression_to_ones = 500
+generate_numerical_expression_to_ones = 200
 generate_fraction_addition = 1000
 generate_integer_factorization = 1000
 generate_radical_simplification = 1000
