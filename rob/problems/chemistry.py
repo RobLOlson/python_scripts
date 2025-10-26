@@ -265,3 +265,61 @@ def generate_isotope_notation_problem(
     solution = f"{atomic_number} protons, {mass_number - atomic_number} neutrons"
 
     return (problem, solution)
+
+
+def generate_valence_electron_count_problem(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate a valence-electron counting problem for a neutral atom.
+    Problem Description:
+    Valence Electron Count
+
+    Notes:
+    - Restricted to representative (main-group) elements for which
+      the simple group-number rule holds (noble gases are 8 except He=2).
+    """
+
+    # Map a small, classroom-friendly set of symbols to valence electrons
+    # (main-group convention). Helium is a special case with 2.
+    symbol_to_valence: dict[str, int] = {
+        "H": 1,
+        "He": 2,
+        "Li": 1,
+        "Be": 2,
+        "B": 3,
+        "C": 4,
+        "N": 5,
+        "O": 6,
+        "F": 7,
+        "Ne": 8,
+        "Na": 1,
+        "Mg": 2,
+        "Al": 3,
+        "Si": 4,
+        "P": 5,
+        "S": 6,
+        "Cl": 7,
+        "Ar": 8,
+        "K": 1,
+        "Ca": 2,
+    }
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    # Progressively widen the pool with difficulty
+    easy_pool = ["Li", "Be", "B", "C", "N", "O", "F", "Na", "Mg", "Al", "Si", "P", "S", "Cl"]
+    medium_pool = list(symbol_to_valence.keys())
+
+    if difficulty > 1:
+        candidate_symbols = easy_pool
+    else:
+        candidate_symbols = medium_pool
+
+    symbol = random.choice(candidate_symbols)
+    valence = symbol_to_valence[symbol]
+
+    # Prefer concise statement mirroring worksheet-style phrasing
+    problem = f"How many valence electrons does a neutral {symbol} atom have?"
+    solution = f"{valence}"
+    return (problem, solution)

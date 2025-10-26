@@ -171,6 +171,50 @@ def generate_integer_factorization(freq_weight: int = 1000, difficulty: int = No
     )
 
 
+def generate_compute_average_of_integers(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate computing the average of integers.
+    Problem Description:
+    Average of Integers"""
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    # Choose count and range based on difficulty
+    if difficulty > 2:
+        count = random.choice([3, 4])
+        low, high = 1, 20
+    elif difficulty == 1:
+        count = random.choice([4, 5, 6])
+        low, high = -20, 20
+    else:
+        count = random.choice([5, 6, 7])
+        low, high = -50, 50
+
+    numbers: list[int] = [random.randint(low, high) for _ in range(count)]
+    total = sum(numbers)
+    n = len(numbers)
+
+    # LaTeX for the list of integers: {a, b, c}
+    numbers_tex = ", ".join(str(x) for x in numbers)
+    expression = rf"\{{{numbers_tex}\}}"
+
+    # Compute simplified average
+    if total % n == 0:
+        answer_tex = f"{total // n}"
+    else:
+        frac = Fraction(total, n)
+        answer_tex = rf"\dfrac{{{frac.numerator}}}{{{frac.denominator}}}"
+
+    prompt = "Compute the average of the following integers:"
+
+    return (
+        rf"{prompt}\({expression}\) \\ \\ \\ \\ \\ \\  ",
+        rf"\({answer_tex}\)",
+    )
+
+
 def generate_radical_simplification(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate radical simplification.
     Problem Description:

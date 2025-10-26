@@ -115,6 +115,8 @@ def approve_list(
 
     cursor_index = 0
 
+    digits = len(str(len(target)))
+
     # Pagination setup based on terminal height
     term_height = shutil.get_terminal_size().lines - 2
     pages: list[list[Any]] = []
@@ -162,7 +164,7 @@ def approve_list(
 
             if not maximum or maximum > 1:
                 print(f"[{'x' if approved_targets.count(index + 1 + display_index) else ' '}]", end="")
-                prefix = f"{display_index + index + 1:02}.) "
+                prefix = f"{display_index + index + 1:0{digits}}.) "
             else:
                 if index == cursor_index:
                     prefix = " >"
@@ -340,6 +342,7 @@ def approve_dict(
         return {}
 
     approved_targets = []
+    digits = len(str(len(target)))
 
     term_height = shutil.get_terminal_size().lines - 2
     pages = []
@@ -376,9 +379,9 @@ def approve_dict(
                 display = f"{item} [white] -> [/white] {style}{target[item]}"
 
             print(f"[{'x' if approved_targets.count(index + 1 + display_index) else ' '}]", end="")
-            display_line = rf" {style}{display_index + index + 1:02}.) {display}".replace("\n", " // ")
+            display_line = rf" {style}{display_index + index + 1:0{digits}}.) {display}".replace("\n", " // ")
             if len(display_line) - len(style) > term_width:
-                display_line = rf" {style}{display_index + index + 1:02}.) {item}[white] -> [/white] {style}...{str(target[item])[len(str(item)) + 10 : -len(str(item))]}"
+                display_line = rf" {style}{display_index + index + 1:0{digits}}.) {item}[white] -> [/white] {style}...{str(target[item])[len(str(item)) + 10 : -len(str(item))]}"
             if len(display_line) - len(style) - 12 > term_width:
                 rich.print(f"{display_line[: term_width - 3]}...")
             else:
@@ -407,7 +410,13 @@ def approve_dict(
                 if maximum and len(approved_targets) > maximum:
                     approved_targets.pop(0)
 
-            case "d" | "l" | ">" | readchar.key.RIGHT | "\r":
+            case "\r":
+                if (cursor_index + 1 + display_index) not in approved_targets:
+                    approved_targets.append(cursor_index + 1 + display_index)
+                else:
+                    approved_targets.remove(cursor_index + 1 + display_index)
+
+            case "d" | "l" | ">" | readchar.key.RIGHT:
                 i = cursor_index + 1
 
                 if i + display_index not in approved_targets:
