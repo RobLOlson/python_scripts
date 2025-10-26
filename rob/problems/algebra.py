@@ -1262,3 +1262,97 @@ def generate_power_of_i(freq_weight: int = 1000, difficulty: int | None = None) 
         rf"{prompt} \\ \\ \(i^{{{n}}}\) \\ \\ \\ \\ \\ \\ \\ \\  ",
         rf"\({simplified}\)",
     )
+
+
+def generate_complex_addition_subtraction(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate complex addition/subtraction problems.
+    Problem Description:
+    Complex Number Addition/Subtraction"""
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    # Coefficient ranges widen with difficulty
+    if difficulty >= 2:
+        coef_low, coef_high = -9, 9
+    elif difficulty == 1:
+        coef_low, coef_high = -15, 15
+    else:
+        coef_low, coef_high = -25, 25
+
+    a = random.randint(coef_low, coef_high)
+    b = random.randint(coef_low, coef_high)
+    c = random.randint(coef_low, coef_high)
+    d = random.randint(coef_low, coef_high)
+
+    op = random.choice(["+", "-"])
+
+    expr_str_1 = f"({a} + ({b})*I)"
+    expr_str_2 = f"({c} + ({d})*I)"
+    expr_tex_1 = sympy.latex(sympy.sympify(expr_str_1, evaluate=False))
+    expr_tex_2 = sympy.latex(sympy.sympify(expr_str_2, evaluate=False))
+    answer_tex = sympy.latex(sympy.simplify(sympy.sympify(f"{expr_str_1} {op} {expr_str_2}")))
+
+    prompt = "Add or subtract. Express your answer in the form \\(a + bi\\)."
+
+    return (
+        rf"{prompt} \\ \\ \(({expr_tex_1})\)\({op}\)\(({expr_tex_2})\) \\ \\ \\ \\ \\ \\ ",
+        rf"\({answer_tex}\)",
+    )
+
+
+def generate_complex_multiplication_divison(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate complex multiplication/division problems.
+    Problem Description:
+    Complex Number Multiplication/Division"""
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    # Coefficient ranges widen with difficulty
+    if difficulty <= 1:
+        coef_low, coef_high = -6, 6
+    elif difficulty == 2:
+        coef_low, coef_high = -9, 9
+    else:
+        coef_low, coef_high = -12, 12
+
+    # Random integer helper
+    def rint():
+        return random.randint(coef_low, coef_high)
+
+    a, b, c, d = rint(), rint(), rint(), rint()
+    # Avoid zero denominator in division
+    if c == 0 and d == 0:
+        c = 1
+
+    # operation = random.choice(["multiply", "divide"])
+    operation = "multiply"
+
+    if operation == "multiply":
+        # Occasionally use a pure imaginary scalar times a binomial, e.g., 5i*(5+3i)
+        if random.random() < 0.5:
+            k = random.choice([n for n in range(coef_low, coef_high + 1) if n != 0])
+            expr_str = f"({k}*I) * ({a} + ({b})*I)"
+        else:
+            expr_str = f"({a} + ({b})*I) \\cdot ({c} + ({d})*I)"
+        prompt = "Multiply. Express your answer in the form \\(a + bi\\)."
+    else:
+        expr_str = f"({a} + ({b})*I) / ({c} + ({d})*I)"
+        prompt = "Divide. Express your answer in the form \\(a + bi\\)."
+
+    expr_tex = sympy.latex(sympy.sympify(expr_str, evaluate=False))
+    answer_tex = sympy.latex(sympy.simplify(sympy.sympify(expr_str)))
+
+    return (
+        rf"{prompt} \\ \\ \({expr_tex}\) \\ \\ \\ \\ \\ \\ ",
+        rf"\({answer_tex}\)",
+    )

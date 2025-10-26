@@ -44,28 +44,28 @@ class TestApproveList:
     def test_maximum_zero(self):
         assert approve_list([1, 2, 3], maximum=0) == []
 
-    @patch("readchar.readkey")
+    @patch("robo.rob.utilities.query.readchar.readkey")
     def test_select_single_item(self, mock_readkey):
         # Simulate pressing '1' then Enter
-        mock_readkey.side_effect = ["1", "\r"]
+        mock_readkey.side_effect = ["1", readchar.key.CTRL_J]
         result = approve_list([1, 2, 3])
         assert result == [1]
 
-    @patch("readchar.readkey")
+    @patch("robo.rob.utilities.query.readchar.readkey")
     def test_select_multiple_items(self, mock_readkey):
         # Simulate pressing '1', '2', then Enter
-        mock_readkey.side_effect = ["1", "2", "\r"]
+        mock_readkey.side_effect = ["1", "2", readchar.key.CTRL_J]
         result = approve_list([1, 2, 3])
         assert result == [1, 2]
 
-    @patch("readchar.readkey")
+    @patch("robo.rob.utilities.query.readchar.readkey")
     def test_maximum_limit(self, mock_readkey):
         # Simulate pressing '1', '2', '3' then Enter with maximum=2
-        mock_readkey.side_effect = ["1", "2", "3", "\r"]
+        mock_readkey.side_effect = ["1", "2", "3", readchar.key.CTRL_J]
         result = approve_list([1, 2, 3, 4], maximum=2)
         assert len(result) <= 2
 
-    @patch("readchar.readkey")
+    @patch("robo.rob.utilities.query.readchar.readkey")
     def test_navigation_keys(self, mock_readkey):
         # Test arrow key navigation and selection
         mock_readkey.side_effect = [
@@ -73,17 +73,17 @@ class TestApproveList:
             readchar.key.RIGHT,  # Select
             readchar.key.UP,  # Move up
             readchar.key.LEFT,  # Deselect
-            "\r",  # Confirm
+            readchar.key.CTRL_J,  # Confirm
         ]
         result = approve_list([1, 2, 3])
         assert isinstance(result, list)
 
 
 class TestSelect:
-    @patch("readchar.readkey")
+    @patch("robo.rob.utilities.query.readchar.readkey")
     def test_select_single_item(self, mock_readkey):
         # Simulate moving cursor and pressing Enter
-        mock_readkey.side_effect = ["\r"]
+        mock_readkey.side_effect = [readchar.key.CTRL_J]
         result = select([1, 2, 3])
         assert isinstance(result, type([1, 2, 3][0]))
 
@@ -95,10 +95,10 @@ class TestApproveDict:
     def test_maximum_zero(self):
         assert approve_dict({"a": 1}, maximum=0) == {}
 
-    @patch("readchar.readkey")
+    @patch("robo.rob.utilities.query.readchar.readkey")
     def test_select_single_entry(self, mock_readkey):
         # Simulate pressing '1' then Enter
-        mock_readkey.side_effect = ["1", "\r"]
+        mock_readkey.side_effect = ["1", readchar.key.CTRL_J]
         result = approve_dict({"a": 1, "b": 2})
         assert len(result) == 1
         assert list(result.keys())[0] in ["a", "b"]
