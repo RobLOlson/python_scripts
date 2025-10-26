@@ -137,12 +137,7 @@ def approve_list(
         long_contents = max([len(str(elem)) + 8 for elem in target]) > shutil.get_terminal_size().columns
 
     if preamble:
-        rich.print(
-            """\n[green]  Toggle approval with number keys.
-  Move cursor with up/down.
-  Add/remove approval with left/right.
-  Press Enter to continue."""
-        )
+        rich.print("\n[green]Press ? for keyboard controls.[/green]")
 
     print("\n" * (len(pages[0])))
     current_page = 0
@@ -200,6 +195,11 @@ def approve_list(
 
                 if maximum and len(approved_targets) > maximum:
                     approved_targets.pop(0)
+            case "\r":
+                if (cursor_index + 1 + display_index) not in approved_targets:
+                    approved_targets.append(cursor_index + 1 + display_index)
+                else:
+                    approved_targets.remove(cursor_index + 1 + display_index)
 
             case "d" | "l" | ">" | readchar.key.RIGHT:
                 i = cursor_index + 1
@@ -260,7 +260,31 @@ def approve_list(
                     cursor_index -= 1
                     cursor_index = cursor_index % len(pages[current_page])
 
-            case "q" | "\r":
+            case "q":
+                rich.print("[red]Terminated.", end="")
+                exit(0)
+
+            case "?":
+                print((_CLEAR_LINE + _MOVE_UP) * (min(len(pages[current_page]), 11)))
+                rich.print("")
+                rich.print("  [green]w / k[/green] : Move Up")
+                rich.print("  [green]s / j[/green] : Move Down")
+                rich.print("  [green]d / l[/green] : Accept One/All")
+                rich.print("  [green]a / h[/green] : Reject One/All")
+                rich.print("  [green]Enter[/green] : Toggle Approval")
+                rich.print("  [green]Ctrl+Enter[/green] : Next Page / Confirm")
+                rich.print("  [green]Esc[/green] : Previous Page / Cancel")
+                rich.print("  [green]q[/green] : Cancel and exit without approval")
+                rich.print("\n[yellow]Press any key to continue...[/yellow]", end="")
+                try:
+                    readchar.readkey()
+                    print(_CLEAR_LINE, end="")
+                except KeyboardInterrupt:
+                    rich.print("\n\n  [red]Interrupted by user (Ctrl+C).", end="")
+                    exit(1)
+
+            # Ctrl+Enter to commit and continue
+            case readchar.key.CTRL_J | "\r":
                 print("")
                 if maximum and maximum == 1:
                     approved_targets = [cursor_index + 1 + display_index]
@@ -279,8 +303,6 @@ def approve_list(
                     current_page -= 1
                     display_index -= len(pages[current_page])
                     print(_CLEAR_SCREEN)
-                # rich.print("[red]Terminated.", end="")
-                # exit(1)
 
     return [elem for i, elem in enumerate(target) if approved_targets.count(i + 1)]
 
@@ -333,12 +355,7 @@ def approve_dict(
         pages = [target]
 
     cursor_index = 0
-    rich.print(
-        """\n[green]Toggle approval with number keys.
-Move cursor with up/down.
-Add/remove approval with left/right.
-Press Enter to continue."""
-    )
+    rich.print("\n[green]Press ? for keyboard controls.[/green]")
     if preamble:
         rich.print("\n" + preamble)
 
@@ -368,6 +385,7 @@ Press Enter to continue."""
                 rich.print(f"{display_line}")
         if len(pages) > 1:
             rich.print(f"[green]Page {current_page + 1} of {len(pages)}[/green]", end="")
+            print(_CLEAR_RIGHT, end="")
         try:
             choice = readchar.readkey()
         except KeyboardInterrupt:
@@ -389,7 +407,7 @@ Press Enter to continue."""
                 if maximum and len(approved_targets) > maximum:
                     approved_targets.pop(0)
 
-            case "d" | "l" | ">" | readchar.key.RIGHT:
+            case "d" | "l" | ">" | readchar.key.RIGHT | "\r":
                 i = cursor_index + 1
 
                 if i + display_index not in approved_targets:
@@ -442,7 +460,31 @@ Press Enter to continue."""
                     cursor_index -= 1
                     cursor_index = cursor_index % len(pages[current_page])
 
-            case "q" | "\r":
+            case "q":
+                rich.print("\n\n  [red]Terminated.", end="")
+                exit(0)
+
+            case "?":
+                print((_CLEAR_LINE + _MOVE_UP) * (min(len(pages[current_page]), 11)))
+                rich.print("")
+                rich.print("  [green]w / k[/green] : Move Up")
+                rich.print("  [green]s / j[/green] : Move Down")
+                rich.print("  [green]d / l[/green] : Accept One/All")
+                rich.print("  [green]a / h[/green] : Reject One/All")
+                rich.print("  [green]Enter[/green] : Toggle Approval")
+                rich.print("  [green]Ctrl+Enter[/green] : Next Page / Confirm")
+                rich.print("  [green]Esc[/green] : Previous Page / Cancel")
+                rich.print("  [green]q[/green] : Cancel and exit without approval")
+                rich.print("\n[yellow]Press any key to continue...[/yellow]", end="")
+                try:
+                    readchar.readkey()
+                    print(_CLEAR_LINE, end="")
+                except KeyboardInterrupt:
+                    rich.print("\n\n  [red]Interrupted by user (Ctrl+C).", end="")
+                    exit(1)
+
+            # ctrl+enter
+            case readchar.key.CTRL_J | "\r":
                 print("")
                 if current_page < len(pages) - 1:
                     display_index += len(pages[current_page])
@@ -559,7 +601,7 @@ def _build_display_lines(
         display_lines.append((rf"[white]{indent}{style}{display}", index, indent))
 
     display_lines.append(("", -1, ""))
-    display_lines.append(("[green]Press ? for editing controls.[/green]", -1, ""))
+    display_lines.append(("[green]Press ? for keyboard controls.[/green]", -1, ""))
     return display_lines
 
 
@@ -915,29 +957,35 @@ def integerQ(
         target = default
 
     input_number = ""
+    term_width = shutil.get_terminal_size().columns
+    if minimum is None and maximum is None:
+        instruct1 = wrap("  Enter integer or use up/down keys to adjust.", term_width)
+    else:
+        instruct1 = wrap(
+            f"  Enter integer or use up/down keys to adjust. [{minimum if minimum is not None else '-inf'}, {maximum if maximum is not None else '+inf'}]",
+            term_width,
+        )
+    instruct2 = wrap("  Press Enter to submit.", term_width)
+    rich.print("\n\n  --------------------------------\n\n[green]" + "\n".join(instruct1) + "[/green]")
+    rich.print("[green]" + "\n".join(instruct2) + "[/green]")
     print("\n" * (4 + len(preamble.split("\n"))), end="")
+    print(_MOVE_UP * (4 + len(preamble.split("\n"))), end="")
+
+    if len(preamble) > term_width:
+        preamble_lines = wrap(preamble, term_width)
+    else:
+        preamble_lines = [preamble]
+
+    rich.print("\n".join(preamble_lines), end="")
+
+    print(_SAVE_CURSOR, end="")
     while True:
         term_width = shutil.get_terminal_size().columns
-        if len(preamble) > term_width:
-            preamble_lines = wrap(preamble, term_width)
-        else:
-            preamble_lines = [preamble]
-        if minimum is None and maximum is None:
-            instruct1 = wrap("  Enter integer or use up/down keys to adjust.", term_width)
-        else:
-            instruct1 = wrap(
-                f"  Enter integer or use up/down keys to adjust. [{minimum if minimum is not None else '-inf'}, {maximum if maximum is not None else '+inf'}]",
-                term_width,
-            )
-        instruct2 = wrap("  Press Ctrl+Enter to confirm and commit.", term_width)
-        print(_MOVE_UP * (1 + len(preamble_lines) + len(instruct1) + len(instruct2)) + _CLEAR_LINE, end="")
-        rich.print("\n".join(preamble_lines), end="")
+        print(_RESTORE_CURSOR + _CLEAR_RIGHT, end="")
         if input_number:
-            rich.print(f"[yellow]{input_number}[/yellow]")
+            rich.print(f"[yellow]{input_number}[/yellow]", end="")
         else:
-            rich.print(f"[yellow]{target}[/yellow]")
-        rich.print(f"\n[green]{'\n'.join(instruct1)}[/green]")
-        rich.print(f"[green]{'\n'.join(instruct2)}[/green]")
+            rich.print(f"[yellow]{target}[/yellow]", end="")
 
         try:
             choice = readchar.readkey()
@@ -958,13 +1006,11 @@ def integerQ(
                 else:
                     target = int(str(target) + choice)
             case "\r":
-                continue
+                break
             case "k" | readchar.key.UP:
                 target = target + 1
             case "j" | readchar.key.DOWN:
                 target = target - 1
-            case readchar.key.CTRL_J | "\r":
-                break
         if target > maximum:
             target = maximum
         elif target < minimum:

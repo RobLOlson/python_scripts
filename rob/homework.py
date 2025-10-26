@@ -64,7 +64,7 @@ def render_latex(
 
             # WARNING:got a sporadic IndexError here, k not in problem_set
             problem_statement += "\\item " + problem_set[k][0] + "\\\\"
-            solution_set += rf"{k + 1}: {problem_set[k][1]}\;\;"
+            solution_set += rf"{k + 1}.) {problem_set[k][1]}\;\;\;\;\;\;"
 
         problem_set = problem_set[k + 1 :]
         page_footer = r"\end{enumerate}"
@@ -73,7 +73,7 @@ def render_latex(
 
     doc_footer = r"\end{document}"
 
-    document = doc_header + r"\newpage".join(pages) + r"\newpage " + r"\\".join(solutions) + doc_footer
+    document = doc_header + r"\newpage".join(pages) + r"\newpage " + r"\\ \\".join(solutions) + doc_footer
 
     if stdout:
         print(document)
@@ -81,7 +81,7 @@ def render_latex(
 
     document_name = f"{subject_name} Homework {_MONTHS[datetime.datetime.now().month]} {datetime.datetime.now().day} {datetime.datetime.now().year}.tex"
 
-    print(f"Writing LaTeX document to '{document_name}")
+    print(f"\n\n  Writing LaTeX document to '{document_name}'")
 
     fp = open(document_name, "w")
     fp.write(document)
@@ -144,6 +144,22 @@ def _approve_algebra_problems(user: str | None = None) -> list[Callable]:
         all_problems,
         repr_func=lambda p: p.__doc__.split("\n")[-1].strip()
         + f" ({db.get(user, {}).get('algebra', {}).get('weights', {}).get(p.__name__, 1000)})",
+    )
+
+    return approved_problems
+
+
+def _approve_chemistry_problems(user: str | None = None) -> list[Callable]:
+    db = tomlconfig.TomlConfig(_SAVE_FILE, readonly=True)
+
+    all_problems: list[Callable] = [
+        obj for name, obj in chemistry.__dict__.items() if name.startswith("generate_") and callable(obj)
+    ]
+
+    approved_problems = query.approve_list(
+        all_problems,
+        repr_func=lambda p: p.__doc__.split("\n")[-1].strip()
+        + f" ({db.get(user, {}).get('chemistry', {}).get('weights', {}).get(p.__name__, 1000)})",
     )
 
     return approved_problems
@@ -361,8 +377,6 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
         problem_set = random.choices(problem_set, k=max(assignment_count * problem_count, len(problem_set)))
 
     problem_count = sum(data["problem count"].values())
-    if interact:
-        rich.print("Rendering LaTeX document...")
 
     render_latex(
         start_date=start_date,
@@ -384,6 +398,7 @@ def chemistry_default(
     interact: bool = True,
     debug: bool = True,
     render: bool = True,
+    approved_problems: list[Callable] | None = None,
 ) -> list[tuple[str, str]]:
     """Render a set of chemistry problems.
 
@@ -398,26 +413,28 @@ def chemistry_default(
         user = _USERNAME
 
     if interact:
+        if approved_problems is None:
+            approved_problems = _approve_chemistry_problems(user)
+
         start_date = query.dateQ(
-            preamble=f"  Select assignment start date:\n{_PROMPT}",
+            preamble=f"\n  Select assignment start date: ",
             target=start_date,
         )
         assignment_count = query.integerQ(
-            preamble="How many chemistry assignments to generate? ",
+            preamble="\n  How many chemistry assignments to generate? ",
             default=assignment_count,
             minimum=1,
             maximum=100,
         )
-        _ = query.integerQ(
-            preamble="How many problems per assignment? (fixed to 1) ",
+        problem_count = query.integerQ(
+            preamble="\n  How many problems per assignment? ",
             default=problem_count,
             minimum=1,
-            maximum=1,
+            maximum=100,
         )
-        problem_count = 1
+
     else:
         start_date = datetime.datetime.today()
-        problem_count = 1
 
     days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
 
@@ -531,7 +548,10 @@ def vocabulary_default(
             maximum=100,
         )
         problem_count = query.integerQ(
-            preamble="How many problems per assignment? ", default=problem_count, minimum=1, maximum=100
+            preamble="How many problems per assignment? ",
+            default=problem_count,
+            minimum=1,
+            maximum=100,
         )
     else:
         start_date = datetime.datetime.today()
@@ -571,7 +591,7 @@ def vocab_problem(
 ) -> tuple[str, str]:
     """Generate a vocabulary problem."""
 
-    dictionary = PyMultiDictionary.MultiDictionary()
+    # dictionary = PyMultiDictionary.MultiDictionary()
 
     if excludes is None:
         excludes = []
@@ -626,7 +646,8 @@ def vocab_problem(
     # _CONFIG.sync()
 
     problem = f"What is the definition of \\textit{{{target_word}}}?"
-    solution = f"{dictionary.meaning('en', target_word)[1].replace(f'The definition of {target_word} in the dictionary is', '')}".strip().capitalize()
+    solution = f"[definition of {target_word}]"
+    # solution = f"{dictionary.meaning('en', target_word)[1].replace(f'The definition of {target_word} in the dictionary is', '')}".strip().capitalize()
     # db.sync()
     if stdout:
         print(f"('{target_word}','{problem}', '{solution}')")
