@@ -1349,8 +1349,8 @@ def generate_complex_multiplication_divison(
         expr_str = f"({a} + ({b})*I) / ({c} + ({d})*I)"
         prompt = "Divide. Express your answer in the form \\(a + bi\\)."
 
-    expr_tex = sympy.latex(sympy.sympify(expr_str, evaluate=False))
-    answer_tex = sympy.latex(sympy.simplify(sympy.sympify(expr_str)))
+    expr_tex = sympy.latex(sympy.sympify(expr_str.replace("\\cdot", "*"), evaluate=False))
+    answer_tex = sympy.latex(sympy.simplify(sympy.sympify(expr_str.replace("\\cdot", "*"))))
 
     return (
         rf"{prompt} \\ \\ \({expr_tex}\) \\ \\ \\ \\ \\ \\ ",

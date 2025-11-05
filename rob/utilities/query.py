@@ -572,10 +572,22 @@ def _build_display_lines(
         # skip brackets if not showing them
         indent = "  " * int(item[1] + 1)
 
+        if (
+            index + 2 < len(target2)
+            and str(target2[index + 2][0]) in r"{["
+            and not edit_keys
+            and not show_brackets
+        ):
+            line = "  " * (target2[index][1] + 1) + f"[yellow]{target2[index][0]!s}"
+            underline = "  " * (target2[index][1] + 1) + "-" * (len(target2[index][0]))
+            display_lines.append((line, index, ""))
+            display_lines.append((underline, index, ""))
+
         if str(target2[index - 1][0]) == ":" and target2[index - 1][2] is None:
             if not edit_keys:
                 indent += f"{target2[index - 2][0]}: "
                 del display_lines[-1]
+
             else:
                 display_lines[-2] = (
                     display_lines[-2][0] + ": ",
@@ -778,6 +790,7 @@ def edit_object(
 
             # ESC: Cancel Edit
             case "\x1b":
+                target2 = original_target
                 continue
     return reconstitute_object(target2)
 

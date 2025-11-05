@@ -6,7 +6,6 @@ import sys
 from typing import Callable
 
 import appdirs
-import PyMultiDictionary
 import rich
 import survey
 import toml
@@ -417,7 +416,7 @@ def chemistry_default(
             approved_problems = _approve_chemistry_problems(user)
 
         start_date = query.dateQ(
-            preamble=f"\n  Select assignment start date: ",
+            preamble="\n  Select assignment start date: ",
             target=start_date,
         )
         assignment_count = query.integerQ(
