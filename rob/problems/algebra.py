@@ -1356,3 +1356,64 @@ def generate_complex_multiplication_divison(
         rf"{prompt} \\ \\ \({expr_tex}\) \\ \\ \\ \\ \\ \\ ",
         rf"\({answer_tex}\)",
     )
+
+
+def generate_real_quadratic_equation_roots(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate a quadratic equation root-finding problem.
+    Problem Description:
+    Quadratic Formula (Real)"""
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    x = sympy.Symbol(random.choice(_VARIABLES))
+
+    # Coefficient ranges scale mildly with difficulty
+    if difficulty > 1:
+        sol_1 = random.randint(2, 5)
+        sol_2 = random.randint(6, 9)
+    else:
+        sol_1 = random.randint(-9, 4)
+        sol_2 = random.randint(5, 9)
+        if random.random() > 0.5:
+            sol_1 += 0.5
+
+    expression = sympy.latex(sympy.expand(sympy.sympify((x - sympy.Rational(sol_1)) * (x - sol_2))))
+    # Build prompt and TeX
+    problem_statement = rf"Find the values of \({x}\) for which the expression is equal to zero."
+    answer_tex = rf"x = {sol_1}\text{{ or }}{sol_2}"
+
+    return (rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\", rf"\({answer_tex}\)")
+
+
+def generate_complex_quadratic_equation_roots(
+    freq_weight: int = 1000, difficulty: int | None = None
+) -> tuple[str, str]:
+    """Generate a quadratic equation root-finding problem.
+    Problem Description:
+    Quadratic Formula (Complex)"""
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    x = sympy.Symbol(random.choice(_VARIABLES))
+
+    # Coefficient ranges scale mildly with difficulty
+    a = random.randint(1, 2)
+    b = random.randint(2, 9)
+    c_max = b**2 / (4 * a)
+    c = random.randint(math.floor(c_max) - 10, math.floor(c_max))
+
+    expression = sympy.latex(sympy.expand(sympy.sympify(a * (x**2) + b * x + c)))
+    solution = sympy.latex(sympy.solve(a * (x**2) + b * x + c))
+
+    # Build prompt and TeX
+    problem_statement = rf"Find the values of \({x}\) for which the expression is equal to zero."
+
+    return (rf"{problem_statement} \\ \\ \({expression}\) \\ \\ \\ \\ \\ \\ \\", rf"\({solution}\)")
