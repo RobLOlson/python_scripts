@@ -1407,6 +1407,7 @@ def generate_complex_quadratic_equation_roots(
     # Coefficient ranges scale mildly with difficulty
     a = random.randint(1, 2)
     b = random.randint(2, 9)
+
     c_max = b**2 / (4 * a)
     c = random.randint(math.floor(c_max) - 10, math.floor(c_max))
 
