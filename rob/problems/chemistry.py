@@ -272,12 +272,7 @@ def generate_valence_electron_count_problem(
 ) -> tuple[str, str]:
     """Generate a valence-electron counting problem for a neutral atom.
     Problem Description:
-    Valence Electron Count
-
-    Notes:
-    - Restricted to representative (main-group) elements for which
-      the simple group-number rule holds (noble gases are 8 except He=2).
-    """
+    Valence Electron Count"""
 
     # Map a small, classroom-friendly set of symbols to valence electrons
     # (main-group convention). Helium is a special case with 2.

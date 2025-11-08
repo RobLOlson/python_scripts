@@ -138,7 +138,6 @@ def _approve_algebra_problems(user: str | None = None) -> list[Callable]:
     all_problems: list[Callable] = [
         obj for name, obj in algebra.__dict__.items() if name.startswith("generate_") and callable(obj)
     ]
-
     approved_problems = query.approve_list(
         all_problems,
         repr_func=lambda p: p.__doc__.split("\n")[-1].strip()
@@ -240,7 +239,7 @@ def algebra_default(
     _DATES = [f"{_WEEKDAYS[day.weekday()]} {_MONTHS[day.month]} {day.day}, {day.year}" for day in days]
 
     approved_weights = [
-        db.get(_USERNAME, {}).get("algebra", {}).get("weights", {}).get(p.__name__, 1000)
+        db.get(user, {}).get("algebra", {}).get("weights", {}).get(p.__name__, 1000)
         for p in approved_problems
     ]
 
@@ -266,8 +265,8 @@ def algebra_default(
         else:
             problem_list.append(chosen_problem)
             used_problems.append(chosen_problem)
-            db[_USERNAME]["algebra"]["weights"][chosen_problem.__name__] = int(
-                db[_USERNAME]["algebra"]["weights"][chosen_problem.__name__] * 0.8
+            db[user]["algebra"]["weights"][chosen_problem.__name__] = int(
+                db[user]["algebra"]["weights"][chosen_problem.__name__] * 0.8
             )
             approved_weights[approved_problems.index(chosen_problem)] = int(
                 approved_weights[approved_problems.index(chosen_problem)] * 0.8
@@ -359,6 +358,7 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
                     )
                 )
             case "chemistry":
+                approved_problems = _approve_chemistry_problems(user)
                 problem_set.extend(
                     chemistry_default(
                         user=user,
@@ -366,6 +366,7 @@ def multiple_default(user: str | None = None, assignment_count: int | None = Non
                         problem_count=problem_count,
                         render=False,
                         interact=False,
+                        approved_problems=approved_problems,
                     )
                 )
 
@@ -432,9 +433,6 @@ def chemistry_default(
             maximum=100,
         )
 
-    else:
-        start_date = datetime.datetime.today()
-
     days = [start_date + datetime.timedelta(days=i) for i in range(assignment_count + 1)]
 
     global _DATES
@@ -443,25 +441,26 @@ def chemistry_default(
     # Mirror algebra: seed and persist weights, then perform weighted selection and decay
     db = tomlconfig.TomlConfig(_SAVE_FILE)
 
-    all_problems: list[Callable[..., tuple[str, str]]] = [
-        obj for name, obj in chemistry.__dict__.items() if name.startswith("generate_") and callable(obj)
-    ]
+    # db.sync()
 
-    # Seed missing weights for chemistry problems
-    for problem in all_problems:
-        try:
-            db[user]["chemistry"]["weights"][problem.__name__]
-        except KeyError:
-            db[user] = db.get(user, {})
-            db[user]["chemistry"] = db.get(user, {}).get("chemistry", {})
-            db[user]["chemistry"]["weights"] = db.get(user, {}).get("chemistry", {}).get("weights", {})
-            db[user]["chemistry"]["weights"][problem.__name__] = 1000
+    if not approved_problems:
+        all_problems: list[Callable[..., tuple[str, str]]] = [
+            obj for name, obj in chemistry.__dict__.items() if name.startswith("generate_") and callable(obj)
+        ]
 
-    db.sync()
+        # Seed missing weights for chemistry problems
+        for problem in all_problems:
+            try:
+                db[user]["chemistry"]["weights"][problem.__name__]
+            except KeyError:
+                db[user] = db.get(user, {})
+                db[user]["chemistry"] = db.get(user, {}).get("chemistry", {})
+                db[user]["chemistry"]["weights"] = db.get(user, {}).get("chemistry", {}).get("weights", {})
+                db[user]["chemistry"]["weights"][problem.__name__] = 1000
+        approved_problems = all_problems
 
-    approved_problems = all_problems
     approved_weights = [
-        db.get(_USERNAME, {}).get("chemistry", {}).get("weights", {}).get(p.__name__, 1000)
+        db.get(user, {}).get("chemistry", {}).get("weights", {}).get(p.__name__, 1000)
         for p in approved_problems
     ]
 
@@ -485,9 +484,9 @@ def chemistry_default(
         else:
             problem_list.append(chosen_problem)
             used_problems.append(chosen_problem)
-            # Apply decay mirroring algebra
-            db[_USERNAME]["chemistry"]["weights"][chosen_problem.__name__] = int(
-                db[_USERNAME]["chemistry"]["weights"][chosen_problem.__name__] * 0.8
+
+            db[user]["chemistry"]["weights"][chosen_problem.__name__] = int(
+                db[user]["chemistry"]["weights"][chosen_problem.__name__] * 0.8
             )
             approved_weights[approved_problems.index(chosen_problem)] = int(
                 approved_weights[approved_problems.index(chosen_problem)] * 0.8
@@ -536,10 +535,6 @@ def vocabulary_default(
             preamble=f"  Select assignment start date:\n{_PROMPT}",
             target=start_date,
         )
-        # start_date = survey.routines.datetime(
-        #     "Select assignment start date: ",
-        #     attrs=("month", "day", "year"),
-        # )
         assignment_count = query.integerQ(
             preamble="How many vocabulary assignments to generate? ",
             default=assignment_count,
@@ -590,12 +585,9 @@ def vocab_problem(
 ) -> tuple[str, str]:
     """Generate a vocabulary problem."""
 
-    # dictionary = PyMultiDictionary.MultiDictionary()
-
     if excludes is None:
         excludes = []
 
-    # vocab_weights = db.get(_USERNAME, {}).get("vocabulary", {}).get("weights")
     try:
         vocab_weights = _CONFIG[_USERNAME]["vocabulary"]["weights"]
     except KeyError:
@@ -660,21 +652,6 @@ def homework(user: str | None = None):
 
     multiple_default(user=user)
     exit(0)
-
-    # available_apps = ["multiple", "algebra", "vocabulary"]
-
-    # print("Which subject?")
-    # choice = query.select(available_apps)
-
-    # match choice:
-    #     case "multiple":
-    #         multiple_default(user=user)
-
-    #     case "algebra":
-    #         algebra_default(user=user)
-
-    #     case "vocabulary":
-    #         vocabulary_default(user=user)
 
 
 _OPTIONS = cli._parse_options(sys.argv[1:])

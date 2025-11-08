@@ -181,7 +181,7 @@ def approve_list(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
 
         match choice:
@@ -252,6 +252,9 @@ def approve_list(
                     cursor_index += 1
                     cursor_index = cursor_index % len(pages[current_page])
 
+            # CTRL+SHIFT+DOWN => Go to bottom of page
+            # case
+
             case "w" | "k" | readchar.key.UP:
                 if cursor_index == 0:
                     if current_page > 0:
@@ -282,7 +285,7 @@ def approve_list(
                     readchar.readkey()
                     print(_CLEAR_LINE, end="")
                 except KeyboardInterrupt:
-                    rich.print("\n\n  [red]Interrupted by user (Ctrl+C).", end="")
+                    rich.print("\n\n  \n[red]Interrupted by user (Ctrl+C).", end="")
                     exit(1)
 
             # Ctrl+Enter to commit and continue
@@ -393,7 +396,7 @@ def approve_dict(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
 
         match choice:
@@ -489,7 +492,7 @@ def approve_dict(
                     readchar.readkey()
                     print(_CLEAR_LINE, end="")
                 except KeyboardInterrupt:
-                    rich.print("\n\n  [red]Interrupted by user (Ctrl+C).", end="")
+                    rich.print("\n\n  \n[red]Interrupted by user (Ctrl+C).", end="")
                     exit(1)
 
             # ctrl+enter
@@ -682,7 +685,7 @@ def edit_object(
         try:
             choice = readchar.readkey()
         except KeyboardInterrupt:
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
 
         match choice:
@@ -780,7 +783,7 @@ def edit_object(
                 try:
                     readchar.readkey()
                 except KeyboardInterrupt:
-                    rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+                    rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
                     exit(1)
             case readchar.key.CTRL_J | "\r" | "\n":
                 break
@@ -921,7 +924,7 @@ def dateQ(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
         match choice:
             case "k" | readchar.key.UP:
@@ -1013,7 +1016,7 @@ def integerQ(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
 
         match choice:
@@ -1081,7 +1084,7 @@ def handle_string(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
         match choice:
             case "\r":
@@ -1151,7 +1154,7 @@ def handle_datetime(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
 
         match choice:
@@ -1247,7 +1250,7 @@ def handle_integer(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
         match choice:
             case "\r":
@@ -1321,7 +1324,7 @@ def handle_float(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
 
         match choice:
@@ -1410,7 +1413,7 @@ def handle_bool(
             choice = readchar.readkey()
         except KeyboardInterrupt:
             print("")
-            rich.print("[red]Interrupted by user (Ctrl+C).", end="")
+            rich.print("\n[red]Interrupted by user (Ctrl+C).", end="")
             exit(1)
         match choice:
             case "\r":
