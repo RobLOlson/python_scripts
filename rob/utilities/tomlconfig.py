@@ -1,7 +1,9 @@
 import os
 import pathlib
 
+import inspect
 import toml
+import appdirs
 
 from . import query
 from .tomldict import TomlDict
@@ -10,15 +12,33 @@ from .tomldict import TomlDict
 
 
 class TomlConfig:
-    """Creates a configuration object that reads and writes to a TOML file."""
+    """Creates a configuration object that reads and writes to a TOML file.
+    
+    Usage:
+    
+    config = TomlConfig(user_toml_file, default_toml_file)
+    """
 
     def __init__(
         self,
-        user_toml_file: str | pathlib.Path,
+        user_toml_file: str | pathlib.Path | None = None,
         default_toml_file: str | pathlib.Path | None = None,
         readonly: bool = False,
     ):
         self.readonly = readonly
+
+        # by default, use the caller file's file information to generate a config path
+        if user_toml_file is None:
+            caller_frame = inspect.stack()[1]
+            caller_path = pathlib.Path(caller_frame.filename).resolve()
+            
+            script_name = caller_path.stem
+            parent = caller_path.parent.name
+            grandparent = caller_path.parent.parent.name
+            
+            user_config_dir = pathlib.Path(appdirs.user_config_dir())
+            user_toml_file = user_config_dir / "configs" / grandparent / parent / script_name / "config.toml"
+
         if default_toml_file is not None:
             default_toml_file = pathlib.Path(default_toml_file)
             default_toml_file.parent.mkdir(parents=True, exist_ok=True)
@@ -26,8 +46,20 @@ class TomlConfig:
             default_dict = toml.load(default_toml_file)
             self.default_config_path = default_toml_file
         else:
-            default_dict = {}
-            self.default_config_path = None
+            # If no default is provided, look for a local config.toml in ./configs/{script_name}/config.toml
+            # relative to the calling script
+            caller_frame = inspect.stack()[1]
+            caller_path = pathlib.Path(caller_frame.filename).resolve()
+            local_default_path = caller_path.parent / "default_configs" / caller_path.stem / "config.toml"
+            local_default_path.parent.mkdir(parents=True, exist_ok=True)
+            local_default_path.touch(exist_ok=True)
+            if local_default_path.exists():
+                default_dict = toml.load(local_default_path)
+                self.default_config_path = local_default_path
+            else:
+                default_dict = {}
+                self.default_config_path = None
+
 
         user_toml_file = pathlib.Path(user_toml_file)
         self.user_config_path = pathlib.Path(user_toml_file)
