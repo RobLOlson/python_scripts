@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import re
 import time
 import winreg
 from ctypes import POINTER, cast
@@ -13,11 +14,9 @@ from appdirs import user_data_dir
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
-from .utilities import cli
+from .utilities import cli, tomlconfig
 
-# from typing import Optional
-
-# from typing_extensions import Annotated
+_CONFIG = tomlconfig.TomlConfig()
 
 log_dir = Path(user_data_dir()) / "robolson" / "nightlight" / "logs"
 log_dir.mkdir(parents=True, exist_ok=True)
@@ -33,9 +32,6 @@ formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
 
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-
-# logging.basicConfig(filename=log_file, format="%(asctime)s %(levelname)s %(message)s")
-
 
 if log_file.exists() and log_file.stat().st_size > 2 * 1024 * 1024:
     with open(log_file, "r") as fp:
@@ -125,6 +121,14 @@ class NightLight:
 
 
 def dim_audio_video():
+
+    pause_until = _CONFIG.get("resume", None)
+    if pause_until is not None:
+        if datetime.datetime.now() < pause_until:
+            print(f"Dimming paused until {pause_until}")
+            logger.warning(f"Dimming paused until {pause_until}")
+            return
+
     # <REDUCE SCREEN BRIGHTNESS>
     c = wmi.WMI(namespace="wmi")
     monitor = c.WmiMonitorBrightness()
@@ -198,6 +202,49 @@ def logs():
         exit(1)
     exit(0)
 
+@cli.cli("config")
+def config():
+    """Open the config file with your $env.EDITOR."""
+    try:
+        os.startfile(_CONFIG.user_config_path)
+    except Exception as e:
+        logger.error(f"Error opening config file: {e}")
+        exit(1)
+    exit(0)
+
+@cli.cli("pause")
+def pause(duration: str | None = None):
+    """Block the dimming command for a specified duration."""
+    if duration is None:
+        resume = datetime.datetime.now() + datetime.timedelta(hours=1)
+        print(f"Pausing for 1 hour.")
+        logger.warning(f"Pausing for 1 hour.")
+    else:
+        match = re.match(r"(\d+)(h|m|s)?", duration)
+        if match is None:
+            print("Invalid duration format. E.g., use `1h`, `1m`, `1s` or just `1` for hours.")
+            logger.warning("Invalid duration format. E.g., use `1h`, `1m`, `1s` or just `1` for hours.")
+            exit(1)
+        match match.group(2):
+            case "h":
+                resume = datetime.datetime.now() + datetime.timedelta(hours=int(match.group(1)))
+                print(f"Pausing for {match.group(1)} hours.")
+                logger.warning(f"Pausing for {match.group(1)} hours.")
+            case "m":
+                resume = datetime.datetime.now() + datetime.timedelta(minutes=int(match.group(1)))
+                print(f"Pausing for {match.group(1)} minutes.")
+                logger.warning(f"Pausing for {match.group(1)} minutes.")
+            case "s":
+                resume = datetime.datetime.now() + datetime.timedelta(seconds=int(match.group(1)))
+                print(f"Pausing for {match.group(1)} seconds.")
+                logger.warning(f"Pausing for {match.group(1)} seconds.")
+            case _:
+                resume = datetime.datetime.now() + datetime.timedelta(hours=int(match.group(1)))
+                print(f"Pausing for {match.group(1)} hours.")
+                logger.warning(f"Pausing for {match.group(1)} hours.")
+    _CONFIG["resume"] = resume
+    _CONFIG.sync()
+    exit(0)
 
 if __name__ == "__main__":
     cli.parse_and_invoke(use_configs=True)
