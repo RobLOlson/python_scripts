@@ -245,8 +245,9 @@ def algebra_default(
 
     used_problems = []
     problem_list = []
+    
     for n in range(assignment_count * problem_count):
-        target_weight = random.randint(0, 1000)
+        target_weight = random.randint(500, 1000)
         cur_weight = 0
         chosen_problem = None
         for problem in approved_problems:
@@ -255,10 +256,11 @@ def algebra_default(
 
             cur_weight += approved_weights[approved_problems.index(problem)]
             if cur_weight >= target_weight and problem not in used_problems:
+                # print(f"target weight was {target_weight}, current weight is {cur_weight}")
                 chosen_problem = problem
-                # problem_list.append(problem)
-                # used_problems.append(problem)
+
                 break
+
         if chosen_problem is None:
             problem_list.append(random.choice(approved_problems))
             used_problems.append(problem_list[-1])

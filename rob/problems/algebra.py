@@ -23,6 +23,64 @@ def random_factor(var, min_coef: int = 1, max_coef: int = 9, min_order: int = 1,
 # * return a 2-tuple of strings ('TeX problem', 'TeX answer')
 # * the last line of the doc string should name the problem type
 
+def generate_adding_integers(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+    """Generate adding integers problems.
+    Problem Description:
+    Adding Integers"""
+    
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    if difficulty <= 1:
+        first_numbers = [random.randint(-10, 10) for _ in range(6)]
+        second_numbers = [random.randint(-10, 10) for _ in range(6)]
+    elif difficulty == 2:
+        first_numbers = [random.randint(5, 10) for _ in range(6)]
+        second_numbers = [random.randint(5, 10) for _ in range(6)]
+    elif difficulty >= 3:
+        first_numbers = [random.randint(2, 7) for _ in range(6)]
+        second_numbers = [random.randint(2, 7) for _ in range(6)]
+
+    problems = [fr"{first_numbers[i]} + {second_numbers[i]} = \underline{{\hspace{{1cm}}}} \;\;\;\;" for i in range(6)]
+
+    problem = "".join(problems[:3]) + "\\ \\ \\ \\ \\\" + "".join(problems[3:])
+
+    answer = ", ".join([f"{first_numbers[i] + second_numbers[i]}" for i in range(6)])
+
+    return (
+        rf"\({problem}\) \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
+def generate_multiplying_integers(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+    """Generate multiplying integers problems.
+    Problem Description:
+    Multiplying Integers"""
+    
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    if difficulty <= 1:
+        first_numbers = [random.randint(5, 12) for _ in range(6)]
+        second_numbers = [random.randint(5, 12) for _ in range(6)]
+    elif difficulty == 2:
+        first_numbers = [random.randint(5, 10) for _ in range(6)]
+        second_numbers = [random.randint(5, 10) for _ in range(6)]
+    elif difficulty >= 3:
+        first_numbers = [random.randint(2, 7) for _ in range(6)]
+        second_numbers = [random.randint(2, 7) for _ in range(6)]
+
+    problems = [fr"{first_numbers[i]} \cdot {second_numbers[i]} = \underline{{\hspace{{1cm}}}} \;\;\;\;" for i in range(6)]
+
+    problem = "".join(problems[:3])+"\\ \\" + "".join(problems[3:])
+
+    answer = ", ".join([f"{first_numbers[i] * second_numbers[i]}" for i in range(6)])
+
+    return (
+        rf"\({problem}\) \\ \\ \\ \\ \\",
+        rf"\({answer}\)",
+    )
+
 
 def generate_numerical_expression_to_ones(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate numerical expression to ones problems.
@@ -117,7 +175,12 @@ def generate_fraction_addition(freq_weight: int = 1000, difficulty: int = None) 
     frac1 = Fraction(num1, denom1)
     frac2 = Fraction(num2, denom2)
 
-    result = frac1 + frac2
+    op = random.choice(["+", "-"])
+
+    if op == "+":
+        result = frac1 + frac2
+    else:
+        result = frac1 - frac2
 
     if difficulty > 2:
         frac3 = Fraction(num3, denom3)
@@ -126,15 +189,20 @@ def generate_fraction_addition(freq_weight: int = 1000, difficulty: int = None) 
     # Create the problem
     if difficulty > 2:
         problem = (
-            f"\\frac{{{num1}}}{{{denom1}}} + \\frac{{{num2}}}{{{denom2}}} + \\frac{{{num3}}}{{{denom3}}}"
+            f"\\frac{{{num1}}}{{{denom1}}} {op} \\frac{{{num2}}}{{{denom2}}} + \\frac{{{num3}}}{{{denom3}}}"
         )
     else:
-        problem = f"\\frac{{{num1}}}{{{denom1}}} + \\frac{{{num2}}}{{{denom2}}}"
+        problem = f"\\frac{{{num1}}}{{{denom1}}} {op} \\frac{{{num2}}}{{{denom2}}}"
 
     # Format the answer
     answer = f"\\dfrac{{{result.numerator}}}{{{result.denominator}}}"
 
-    problem_statement = "Add the following fractions and express your answer as a simplified fraction."
+    if op == "+":
+        problem_statement = "Add the following fractions and express your answer as a simplified fraction."
+    else:
+        problem_statement = (
+            "Subtract the following fractions and express your answer as a simplified fraction."
+        )
 
     return (
         rf"{problem_statement} \\ \\ \({problem}\) \\ \\ \\ \\ \\ \\ \\ \\ \\ \\ \\",
@@ -641,6 +709,135 @@ def generate_geometric_sequence_evaluation(
     )
 
 
+def generate_sum_of_geometric_series(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+    """Generate sum of geometric series problem.
+    Problem Description:
+    Sum of Geometric Series"""
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    if difficulty > 2:
+        r = random.choice([2, 3, 4])
+        a = random.randint(1, 5)
+        n = random.randint(3, 6)
+    elif difficulty == 2:
+        r = random.choice([2, 3, 4, 5])
+        a = random.randint(-5, 10)
+        if a == 0:
+            a = 1
+        n = random.randint(4, 9)
+    else:
+        r = random.choice([-3, -2, 2, 3, 4, 5, 6])
+        a = random.randint(-10, 10)
+        if a == 0:
+            a = 1
+        n = random.randint(5, 10)
+
+    # Calculate sum S_n = a * (1 - r^n) // (1 - r)
+    total_sum = a * (1 - r**n) // (1 - r)
+
+    problem_statement = (
+        f"The common ratio in a geometric series is {r} and the first term is {a}. "
+        f"Find the sum of the first {n} terms in the series."
+    )
+
+    return (
+        rf"{problem_statement} \\ \\ \\ \\ \\ \\ \\",
+        rf"\({total_sum}\)",
+    )
+
+
+def generate_rational_equations(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
+    """Generate rational equations.
+    Problem Description:
+    Solving Rational Equations"""
+
+    sympy = get_sympy()
+
+    if difficulty is None:
+        difficulty = int(3 - math.log(freq_weight + 1, 10))
+
+    var_symbol = random.choice(['x', 'y', 'k', 'n', 'a', 'm'])
+    x = sympy.symbols(var_symbol)
+
+    for _ in range(100): # max retries
+        # Form: (ax + b) / (cx + d) = e
+        
+        # Ranges
+        coeff_max = 10
+        e_max = 10
+        
+        a = random.randint(1, coeff_max) * random.choice([-1, 1])
+        b = random.randint(-coeff_max, coeff_max)
+        c = random.randint(1, coeff_max)
+        
+        if difficulty <= 1:
+            d = 0
+            # If d=0, c cannot be 0.
+        else:
+            d = random.randint(-coeff_max, coeff_max)
+            # Avoid independent term being 0 in denominator for diff 2 to distinguish from diff 1?
+            if random.random() < 0.8:
+                while d == 0:
+                     d = random.randint(-coeff_max, coeff_max)
+
+        e = random.randint(-e_max, e_max)
+        if e == 0: e = 1
+        
+        denom_x = a - e * c
+        if denom_x == 0:
+            continue
+            
+        num_x = e * d - b
+        
+        sol = sympy.Rational(num_x, denom_x)
+        
+        # Check for undefined (denominator is zero at solution)
+        if c * sol + d == 0:
+            continue
+
+        # Criteria for "nice"
+        if abs(sol.q) <= 12 and abs(sol.p) <= 100:
+             numerator_poly = sympy.latex(a * x + b)
+             if d == 0:
+                 denominator_poly = sympy.latex(c * x)
+             else:
+                 denominator_poly = sympy.latex(c * x + d)
+             
+             prob = rf"\frac{{{numerator_poly}}}{{{denominator_poly}}} = {e}"
+             
+             sol_tex = sympy.latex(sol)
+             
+             return (
+                 rf"Solve for \({x}\). \\ \\ \({prob}\) \\ \\ \\ \\ \\",
+                 rf"\({x} = {sol_tex}\)"
+             )
+
+    # Fallback to a simple guaranteed integer case
+    x_val = random.randint(1, 5)
+    e = random.randint(2, 5)
+    c = random.randint(1, 3)
+    d = random.randint(1, 3) if difficulty > 1 else 0
+
+    D = c * x_val + d
+    N = e * D
+    a = random.randint(2, 5)
+    b = N - a * x_val
+    
+    numerator_poly = sympy.latex(a * x + b)
+    if d == 0:
+        denominator_poly = sympy.latex(c * x)
+    else:
+        denominator_poly = sympy.latex(c * x + d)
+    prob = rf"\frac{{{numerator_poly}}}{{{denominator_poly}}} = {e}"
+
+    return (
+        rf"Solve for \({x}\). \\ \\ \({prob}\) \\ \\ \\ \\ \\",
+        rf"\({x} = {x_val}\)"
+    )
+
+
 def generate_power_expression(freq_weight: int = 1000, difficulty: int = None) -> tuple[str, str]:
     """Generate power evaluation.
     Problem Description:
@@ -740,7 +937,6 @@ def generate_binomial_product_expansion(freq_weight: int = 1000, difficulty: int
     Binomial Product Expansion"""
 
     global _VARIABLES
-
     sympy = get_sympy()
 
     if difficulty is None:
@@ -917,7 +1113,7 @@ def generate_average_rate_of_change_of_polynomial(
     rate = sympy.simplify(rate_num / rate_den)
     answer_tex = sympy.latex(rate)
 
-    problem_statement = rf"What is the average rate of change of \( f(x) = {poly_tex} \) over the interval \( {interval_tex} \)?"
+    problem_statement = rf"What is the average rate of change of \( f({x}) = {poly_tex} \) over the interval \( {interval_tex} \)?"
 
     return (
         rf"{problem_statement} \\ \\ \\ \\ \\ \\ \\",
